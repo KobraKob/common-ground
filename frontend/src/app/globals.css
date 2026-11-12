@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=JetBrains+Mono:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #F5F6FD;
+  --color-surface: #FFFFFF;
+  --color-accent: #1A1C29;
+  --color-border: #CCCFFA;
+  --color-neon: #C5E17A;
+  --color-muted: #686D8C;
+  --font-display: 'Crimson Text', serif;
+  --font-sans: 'Poppins', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+.dark {
+  --color-bg: #0E0F1A;
+  --color-surface: #151726;
+  --color-accent: #C5E17A;
+  --color-border: #282C47;
+  --color-neon: #C5E17A;
+  --color-muted: #8D92B5;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-accent);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+/* Neo-Y2K Architectural Hairline Card */
+.neo-card {
+  border-radius: 6px;
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--color-border);
+  background-color: var(--color-surface);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .neo-card {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Tactile Pill Controls */
+.neo-pill-btn {
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-accent);
+  transition: all 0.15s ease-out;
+  cursor: pointer;
+  user-select: none;
+}
+
+.neo-pill-btn:hover {
+  border-color: var(--color-neon);
+  filter: brightness(0.98);
+}
+
+.neo-pill-btn:active {
+  transform: translateY(1px);
+}
+
+.neo-pill-btn-primary {
+  background: #1A1C29;
+  color: #C5E17A;
+  border-color: #1A1C29;
+}
+
+.dark .neo-pill-btn-primary {
+  background: #C5E17A;
+  color: #0E0F1A;
+  border-color: #C5E17A;
+}
+
+.neo-pill-btn-primary:hover {
+  box-shadow: 0 0 12px rgba(197, 225, 122, 0.4);
+}
+
+/* Technical Badges and Monospace Chips */
+.neo-badge {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-border);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-weight: 600;
+}
+
+/* Editorial display typography */
+.neo-heading {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+
+.neo-heading em {
+  font-style: italic;
+  font-family: var(--font-display);
+  color: #6366F1;
+}
+
+.dark .neo-heading em {
+  color: #C5E17A;
+}
+
+/* Chat Composer rounded style */
+.neo-composer {
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 9999px;
+}
