@@ -1,10 +1,8 @@
-import uuid
 from typing import Optional
+
+import httpx
 from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import jwt
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -17,13 +15,12 @@ async def get_current_user_id(
     x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
 ) -> str:
     """
-    Extract user ID from either Supabase JWT bearer token or X-User-Id header (for dev/testing).
+    Resolve identity through Supabase Auth in production.
+    X-User-Id is accepted only for local development and tests.
     """
-    # 1. Dev/Testing explicit user header
-    if x_user_id:
+    if settings.ENVIRONMENT != "production" and x_user_id:
         return x_user_id
 
-    # 2. Bearer JWT
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -31,31 +28,39 @@ async def get_current_user_id(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token = credentials.credentials
-    try:
-        # Decode without verification if dev token, or verify with secret if provided
-        try:
-            payload = jwt.decode(
-                token,
-                settings.SUPABASE_JWT_SECRET,
-                algorithms=["HS256"],
-                options={"verify_aud": False},
-            )
-        except Exception:
-            # Fallback decode for unverified / mock test tokens
-            payload = jwt.decode(token, options={"verify_signature": False})
+    if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service is not configured",
+        )
 
-        user_id = payload.get("sub") or payload.get("user_id")
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            response = await client.get(
+                f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/user",
+                headers={
+                    "apikey": settings.SUPABASE_ANON_KEY,
+                    "Authorization": f"Bearer {credentials.credentials}",
+                },
+            )
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired authentication token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        payload = response.json()
+        user_id = payload.get("id")
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token payload missing subject identifier",
+                detail="Authentication token has no user identity",
             )
         return str(user_id)
-    except jwt.PyJWTError as e:
+    except httpx.RequestError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid authentication token: {str(e)}",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service is temporarily unavailable",
         )
 
 
@@ -66,6 +71,8 @@ async def get_current_user(
     """
     Retrieve user record and ensure account is active (not suspended).
     """
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy import select
     from app.modules.identity.models import User
 
     result = await db.execute(select(User).where(User.id == user_id))
