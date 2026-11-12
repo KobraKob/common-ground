@@ -3,6 +3,8 @@ from typing import Optional
 import httpx
 from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -71,8 +73,6 @@ async def get_current_user(
     """
     Retrieve user record and ensure account is active (not suspended).
     """
-    from sqlalchemy.ext.asyncio import AsyncSession
-    from sqlalchemy import select
     from app.modules.identity.models import User
 
     result = await db.execute(select(User).where(User.id == user_id))
