@@ -5,7 +5,6 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.seed import run_seed
 
 # Import routers
 from app.modules.identity.router import router as identity_router
@@ -18,15 +17,17 @@ from app.modules.moderation.router import router as moderation_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: ensure tables exist and seed demo data
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    try:
-        await run_seed()
-    except Exception as e:
-        print(f"[Startup Seed Warning] {e}")
+    # Production schema is provisioned through reviewed Supabase migrations.
+    # Demo data and create_all are restricted to local development.
+    if settings.ENVIRONMENT != "production":
+        from app.seed import run_seed
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        try:
+            await run_seed()
+        except Exception as exc:
+            print(f"[Development Seed Warning] {exc}")
     yield
-    # Shutdown
     await engine.dispose()
 
 
@@ -37,26 +38,25 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows Next.js, Capacitor, and local mobile dev
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# Global Exception Handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    # Avoid leaking SQL, credentials, and internal exception details.
+    print(f"[Unhandled API Error] {type(exc).__name__}: {exc}")
     return JSONResponse(
         status_code=500,
-        content={"error": "Internal Server Error", "detail": str(exc)},
+        content={"error": "Internal Server Error"},
     )
 
 
-# Health check endpoint
 @app.get("/health", tags=["System"])
 async def health_check():
     return {
@@ -67,7 +67,6 @@ async def health_check():
     }
 
 
-# Include Module Routers with /api/v1 prefix
 app.include_router(identity_router, prefix=settings.API_V1_PREFIX)
 app.include_router(colleges_router, prefix=settings.API_V1_PREFIX)
 app.include_router(communities_router, prefix=settings.API_V1_PREFIX)
