@@ -1,6 +1,6 @@
 import asyncio
 from sqlalchemy import select
-from app.core.database import AsyncSessionLocal, engine, Base
+from app.core.database import AsyncSessionLocal
 from app.modules.colleges.models import College
 
 
@@ -9,9 +9,6 @@ async def init_college_directory():
     Idempotently initialize the accredited Bengaluru colleges cluster directory.
     Zero demo personas, zero fake posts, zero mock data.
     """
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
     async with AsyncSessionLocal() as db:
         colleges_data = [
             ("11111111-1111-1111-1111-111111111111", "RV College of Engineering", "rvce", "RVCE", ["rvce.edu.in"]),
