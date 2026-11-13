@@ -10,7 +10,12 @@ import {
   X, 
   LogOut, 
   LogIn, 
-  UserPlus
+  UserPlus,
+  Compass,
+  Building2,
+  BookOpen,
+  Hammer,
+  Map
 } from 'lucide-react';
 import { 
   unifiedSearch, 
@@ -118,6 +123,15 @@ export function GlobalHeader() {
           </Link>
         </div>
 
+        {!isLoggedIn && <nav aria-label="Public navigation" className="hidden lg:flex items-center gap-1">
+          {[
+            { href: '/city', label: 'City', icon: Compass },
+            { href: '/campus', label: 'Campuses', icon: Building2 },
+            { href: '/commons', label: 'Q&A', icon: BookOpen },
+            { href: '/build', label: 'Build', icon: Hammer },
+            { href: '/discover', label: 'Discover', icon: Map },
+          ].map(({href,label,icon:Icon}) => <Link key={href} href={href} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-[var(--cg-muted)] hover:bg-[var(--cg-elevated)] hover:text-[var(--cg-text)]"><Icon size={15}/>{label}</Link>)}
+        </nav>}
         {/* Global Search Bar (Jakob's Law & Fitts's Law) */}
         <div className="flex-1 max-w-md relative hidden md:block">
           <div className="relative">
@@ -277,6 +291,9 @@ export function GlobalHeader() {
         </div>
       </div>
 
+      {!isLoggedIn && <nav aria-label="Public navigation" className="flex items-center gap-1 overflow-x-auto border-t border-[var(--cg-border)] px-3 py-1.5 lg:hidden">
+        {[['/city','City'],['/campus','Campuses'],['/commons','Q&A'],['/build','Build'],['/discover','Discover']].map(([href,label])=><Link key={href} href={href} className="min-h-10 shrink-0 rounded-full px-3 py-2 text-xs font-medium text-[var(--cg-muted)] hover:bg-[var(--cg-elevated)]">{label}</Link>)}
+      </nav>}
       {/* Expandable Mobile Search Drawer */}
       {isMobileSearchOpen && (
         <div className="md:hidden border-t border-white/10 px-4 py-3 bg-[#0A0C12]/95 backdrop-blur-2xl">
