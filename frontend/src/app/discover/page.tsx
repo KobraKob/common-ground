@@ -2,47 +2,51 @@
 
 import type { FormEvent } from 'react';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Building2, CalendarDays, ExternalLink, Layers3, MapPin, Users } from 'lucide-react';
-import { getColleges, getCommunities, getEvents, getProjects, getMyProfile, getPosts, joinCommunity, createCommunity, rsvpEvent } from '@/lib/api';
+import { getColleges, getCommunities, getEvents, getProjects, getMyProfile, getPosts, joinCommunity, createCommunity, rsvpEvent, isAuthenticated } from '@/lib/api';
 import type { College, Community, EventItem, Post, ProjectItem, StudentProfile } from '@/types';
 import { CampusNetworkMap } from '@/components/discover/CampusNetworkMap';
 
 type Section = 'campuses' | 'circles' | 'projects' | 'events' | 'opportunities';
+type DiscoveryData = { colleges: College[]; circles: Community[]; projects: ProjectItem[]; events: EventItem[]; opportunities: Post[]; profile: StudentProfile | null };
 
 export default function DiscoverPage() {
   const [section, setSection] = useState<Section>('campuses');
-  const [colleges, setColleges] = useState<College[]>([]);
-  const [circles, setCircles] = useState<Community[]>([]);
-  const [projects, setProjects] = useState<ProjectItem[]>([]);
-  const [events, setEvents] = useState<EventItem[]>([]);
-  const [opportunities, setOpportunities] = useState<Post[]>([]);
-  const [profile, setProfile] = useState<StudentProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const discoveryQuery = useQuery<DiscoveryData>({
+    queryKey: ['discover', 'hub'],
+    queryFn: async () => {
+      const [campusData, circleData, projectData, eventData, myProfile, opportunityData] = await Promise.all([
+        getColleges(),
+        getCommunities(),
+        getProjects(),
+        getEvents(),
+        isAuthenticated() ? getMyProfile().catch(() => null) : Promise.resolve(null),
+        getPosts('opportunities'),
+      ]);
+      return {
+        colleges: campusData || [],
+        circles: (circleData || []).filter((item) => item.community_type === 'CROSS_CAMPUS_INTEREST'),
+        projects: projectData || [],
+        events: eventData || [],
+        profile: myProfile || null,
+        opportunities: (opportunityData || []).filter((item) => item.category === 'OPPORTUNITY'),
+      };
+    },
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const { colleges = [], circles = [], projects = [], events = [], opportunities = [], profile = null } = discoveryQuery.data || {};
+  const loading = discoveryQuery.isLoading;
   const [busyId, setBusyId] = useState('');
   const [notice, setNotice] = useState('');
   const [matchSkillsOnly, setMatchSkillsOnly] = useState(false);
   const [showCircleForm, setShowCircleForm] = useState(false);
   const [circleName, setCircleName] = useState('');
   const [circleDescription, setCircleDescription] = useState('');
-
-  useEffect(() => {
-    let live = true;
-    Promise.all([getColleges(), getCommunities(), getProjects(), getEvents(), getMyProfile(), getPosts('opportunities')])
-      .then(([campusData, circleData, projectData, eventData, myProfile, opportunityData]) => {
-        if (!live) return;
-        setColleges(campusData || []);
-        setCircles((circleData || []).filter((item) => item.community_type === 'CROSS_CAMPUS_INTEREST'));
-        setProjects(projectData || []);
-        setEvents(eventData || []);
-        setProfile(myProfile || null);
-        setOpportunities((opportunityData || []).filter((item) => item.category === 'OPPORTUNITY'));
-      })
-      .catch(() => { if (live) setNotice('Some discovery data could not be loaded. Try again in a moment.'); })
-      .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
-  }, []);
 
   const upcoming = useMemo(() => events.filter((event) => new Date(event.ends_at) >= new Date()), [events]);
   const matchingProjects = useMemo(() => projects.filter((project) => {
@@ -64,13 +68,13 @@ export default function DiscoverPage() {
 
   async function joinCircle(circle: Community) {
     setBusyId(circle.id); setNotice('');
-    try { await joinCommunity(circle.id); setNotice(`Joined ${circle.name}.`); }
+    try { await joinCommunity(circle.id); await queryClient.invalidateQueries({ queryKey: ['discover', 'hub'] }); setNotice(`Joined ${circle.name}.`); }
     catch { setNotice('Could not join this circle. Sign in and try again.'); }
     finally { setBusyId(''); }
   }
   async function rsvp(event: EventItem) {
     setBusyId(event.id); setNotice('');
-    try { await rsvpEvent(event.id, 'GOING'); setNotice(`Your RSVP for ${event.title} was recorded.`); }
+    try { await rsvpEvent(event.id, 'GOING'); await queryClient.invalidateQueries({ queryKey: ['discover', 'hub'] }); setNotice(`Your RSVP for ${event.title} was recorded.`); }
     catch { setNotice('Could not record your RSVP. Sign in and try again.'); }
     finally { setBusyId(''); }
   }
@@ -84,7 +88,7 @@ export default function DiscoverPage() {
     const slug = cleanName.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Math.random().toString(36).slice(2, 7);
     try {
       const created = await createCommunity({ name: cleanName, slug, description: cleanDescription, community_type: 'CROSS_CAMPUS_INTEREST', visibility: 'PUBLIC' });
-      setCircles((current) => [created, ...current]);
+      queryClient.setQueryData<DiscoveryData>(['discover', 'hub'], (current) => current ? { ...current, circles: [created, ...current.circles] } : current);
       setCircleName(''); setCircleDescription(''); setShowCircleForm(false);
       setNotice('Your circle is live. Invite students who share the interest.');
     } catch { setNotice('Could not create the circle. Sign in and try again.'); }
@@ -108,6 +112,7 @@ export default function DiscoverPage() {
           className={`min-h-11 rounded-full px-4 text-sm font-medium transition-colors ${section === tab.id ? 'bg-[var(--cg-accent)] text-white' : 'bg-[var(--cg-elevated)] text-[var(--cg-muted)] hover:text-[var(--cg-text)]'}`}>{tab.label}</button>)}
       </div>
 
+      {discoveryQuery.isError && <p role="alert" className="rounded-xl border border-[var(--cg-border)] bg-[var(--cg-surface)] px-4 py-3 text-sm">Some discovery data could not be loaded. Refresh to try again.</p>}
       {notice && <p role="status" className="rounded-xl border border-[var(--cg-border)] bg-[var(--cg-surface)] px-4 py-3 text-sm">{notice}</p>}
       {loading ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Loading discovery"><div className="h-36 animate-pulse rounded-2xl bg-[var(--cg-elevated)]"/><div className="h-36 animate-pulse rounded-2xl bg-[var(--cg-elevated)]"/><div className="h-36 animate-pulse rounded-2xl bg-[var(--cg-elevated)]"/></div> : (
         <>
