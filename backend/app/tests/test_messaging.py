@@ -37,7 +37,7 @@ async def test_direct_messaging_is_private_and_idempotent(client: AsyncClient, d
 
     created = await client.post(
         "/api/v1/conversations/direct",
-        json={"target_user_id": recipient.id},
+        json={"recipient_user_id": recipient.id},
         headers={"X-User-Id": sender.id},
     )
     assert created.status_code == 201
@@ -46,7 +46,7 @@ async def test_direct_messaging_is_private_and_idempotent(client: AsyncClient, d
 
     repeated = await client.post(
         "/api/v1/conversations/direct",
-        json={"target_user_id": recipient.id},
+        json={"recipient_user_id": recipient.id},
         headers={"X-User-Id": sender.id},
     )
     assert repeated.status_code == 201
@@ -117,14 +117,14 @@ async def test_direct_messaging_respects_blocks_and_contact_permissions(client: 
 
     blocked_response = await client.post(
         "/api/v1/conversations/direct",
-        json={"target_user_id": blocked_user.id},
+        json={"recipient_user_id": blocked_user.id},
         headers={"X-User-Id": requester.id},
     )
     assert blocked_response.status_code == 403
 
     restricted_response = await client.post(
         "/api/v1/conversations/direct",
-        json={"target_user_id": restricted_user.id},
+        json={"recipient_user_id": restricted_user.id},
         headers={"X-User-Id": requester.id},
     )
     assert restricted_response.status_code == 403
