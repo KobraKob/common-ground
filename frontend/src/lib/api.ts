@@ -801,7 +801,7 @@ export async function trackAnalyticsEvent(
 export async function unifiedSearch(q: string, signal?: AbortSignal): Promise<any> {
   try {
     const results = await request<any>(`/search?q=${encodeURIComponent(q)}`, { signal });
-    if (q.trim()) void trackAnalyticsEvent('search_performed');
+    if (q.trim()) void trackAnalyticsEvent('search_performed', 'search');
     return results;
   } catch (error) {
     if (signal?.aborted) throw error;
