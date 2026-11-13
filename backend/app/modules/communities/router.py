@@ -331,7 +331,7 @@ async def list_user_conversations(
             counterpart_id = counterpart["user_id"]
             same_campus = bool(current_college_id and counterpart["college_id"] == current_college_id)
             shares_community = counterpart_id in shared_users
-            if counterpart_id in blocked_user_ids or counterpart["dm_permission"] == "NONE":
+            if counterpart_id in blocked_user_ids or counterpart["dm_permission"] not in {"EVERYONE", "SAME_CAMPUS_OR_COMMUNITY"}:
                 continue
             if counterpart["profile_visibility"] == "CAMPUS_ONLY" and not same_campus:
                 continue
@@ -430,7 +430,7 @@ async def get_or_create_direct_conversation(
 async def list_conversation_messages(
     conversation_id: str,
     response: Response,
-    q: Optional[str] = Query(None),
+    q: Optional[str] = Query(None, max_length=100),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
