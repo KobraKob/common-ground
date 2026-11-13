@@ -120,6 +120,7 @@ export function CampusPageContent({ initialSlug }: { initialSlug?: string }) {
         actionSlot={
           <div className="flex flex-wrap items-center gap-3">
             <a href="/discover" className="cg-link inline-flex min-h-11 items-center text-sm font-medium">Campus network map</a>
+            <a href="/build" className="cg-link inline-flex min-h-11 items-center text-sm font-medium">Find projects</a>
             <span className="text-xs font-mono text-slate-400 hidden sm:inline">Campus:</span>
             <div className="relative inline-block">
               <select
