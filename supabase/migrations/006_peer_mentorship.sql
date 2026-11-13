@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS mentorship_profiles (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     is_available BOOLEAN NOT NULL DEFAULT FALSE,
-    topics JSONB NOT NULL DEFAULT '[]'::jsonb,
+    topics TEXT NOT NULL DEFAULT '[]',
     bio TEXT NOT NULL DEFAULT '',
     availability_note VARCHAR(160) NOT NULL DEFAULT '',
     format VARCHAR(20) NOT NULL DEFAULT 'ONLINE',
