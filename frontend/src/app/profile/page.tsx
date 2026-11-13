@@ -129,7 +129,8 @@ export default function ProfilePage() {
 
         {/* Right: Institutional Credentials, Bio, Skills & Quick Actions */}
         <div className="lg:col-span-7 space-y-5">
-          <div className="celestial-card p-6 md:p-8 rounded-xl border border-white/10 bg-[#12151F] space-y-4">\n          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="celestial-card p-6 md:p-8 rounded-xl border border-white/10 bg-[#12151F] space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs cg-muted">Your identity and privacy settings</p>
             <Link href="/passport" className="cg-link inline-flex min-h-11 items-center text-sm font-medium">View Campus Passport <ArrowRight className="ml-1 h-4 w-4" /></Link>
           </div>
