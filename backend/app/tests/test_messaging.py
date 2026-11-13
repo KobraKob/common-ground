@@ -159,3 +159,45 @@ async def test_direct_messaging_respects_blocks_and_contact_permissions(client: 
         headers={"X-User-Id": requester.id},
     )
     assert shared_only_response.status_code == 403, shared_only_response.text
+
+
+@pytest.mark.asyncio
+async def test_existing_direct_thread_stops_sending_after_a_block(client: AsyncClient, db_session):
+    sender = User(id="30000000-0000-4000-8000-000000000001", email="block-sender@messages.test")
+    recipient = User(id="30000000-0000-4000-8000-000000000002", email="block-recipient@messages.test")
+    db_session.add_all([sender, recipient])
+    db_session.add_all([
+        StudentProfile(
+            user_id=sender.id,
+            handle="blocksender",
+            display_name="Block Sender",
+            profile_visibility="PUBLIC",
+            dm_permission="EVERYONE",
+        ),
+        StudentProfile(
+            user_id=recipient.id,
+            handle="blockrecipient",
+            display_name="Block Recipient",
+            profile_visibility="PUBLIC",
+            dm_permission="EVERYONE",
+        ),
+    ])
+    await db_session.commit()
+
+    created = await client.post(
+        "/api/v1/conversations/direct",
+        json={"recipient_user_id": recipient.id},
+        headers={"X-User-Id": sender.id},
+    )
+    assert created.status_code == 200, created.text
+    conversation_id = created.json()["id"]
+
+    db_session.add(UserBlock(blocker_id=recipient.id, blocked_id=sender.id))
+    await db_session.commit()
+
+    blocked_send = await client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        json={"body": "This should not be delivered"},
+        headers={"X-User-Id": sender.id},
+    )
+    assert blocked_send.status_code == 403, blocked_send.text
