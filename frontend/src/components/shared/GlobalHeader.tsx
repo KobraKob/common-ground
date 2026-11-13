@@ -114,7 +114,6 @@ export function GlobalHeader() {
         {showSearch && <div className="relative hidden max-w-md flex-1 md:block">
           <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <input ref={searchInputRef} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search students, posts and projects" aria-label="Search CommonGround" className="celestial-input h-10 w-full pl-9 pr-12 text-sm" />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[var(--text-muted)]">⌘K</span>
           {searchQuery.trim().length >= 2 && <div className="absolute left-0 right-0 top-12 z-50 rounded-xl bg-[var(--surface)] p-3 shadow-2xl">
             <p className="text-xs text-[var(--text-muted)]">{isSearching ? 'Searching…' : searchResults ? 'Search results are ready' : 'No results to show'}</p>
             {searchResults && <div className="mt-2 grid gap-1 text-sm">
