@@ -673,6 +673,74 @@ export async function executeModerationAction(payload: any): Promise<any> {
 }
 
 // ----------------------------------------------------
+export type MentorshipProfileData = {
+  is_available: boolean;
+  topics: string[];
+  bio: string;
+  availability_note: string;
+  format: 'ONLINE' | 'IN_PERSON' | 'BOTH';
+};
+
+export type MentorDirectoryItem = {
+  user_id: string;
+  display_name: string;
+  handle: string;
+  college_name?: string;
+  skills: string[];
+  topics: string[];
+  bio: string;
+  availability_note: string;
+  format: 'ONLINE' | 'IN_PERSON' | 'BOTH';
+};
+
+export type MentorshipRequestItem = {
+  id: string;
+  user_id: string;
+  display_name: string;
+  handle: string;
+  note: string;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
+  created_at: string;
+};
+
+export type MentorshipRequests = {
+  incoming: MentorshipRequestItem[];
+  outgoing: MentorshipRequestItem[];
+};
+
+export async function getMentors(): Promise<MentorDirectoryItem[]> {
+  return await request<MentorDirectoryItem[]>('/mentorship/mentors');
+}
+
+export async function getMyMentorshipProfile(): Promise<MentorshipProfileData> {
+  return await request<MentorshipProfileData>('/mentorship/profile/me');
+}
+
+export async function updateMyMentorshipProfile(payload: MentorshipProfileData): Promise<MentorshipProfileData> {
+  return await request<MentorshipProfileData>('/mentorship/profile/me', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getMyMentorshipRequests(): Promise<MentorshipRequests> {
+  return await request<MentorshipRequests>('/mentorship/requests/mine');
+}
+
+export async function createMentorshipRequest(mentorId: string, note: string): Promise<{ id: string; status: string; created_at: string }> {
+  return await request('/mentorship/requests', {
+    method: 'POST',
+    body: JSON.stringify({ mentor_id: mentorId, note }),
+  });
+}
+
+export async function updateMentorshipRequest(requestId: string, status: 'ACCEPTED' | 'DECLINED' | 'CANCELLED'): Promise<{ id: string; status: string }> {
+  return await request(`/mentorship/requests/${requestId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
 export async function getAnalyticsSummary(days = 30): Promise<any> {
   return await request<any>(`/analytics/summary?days=${days}`);
 }
