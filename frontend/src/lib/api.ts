@@ -445,6 +445,7 @@ export async function getCommunitiesPaginated({
 export async function joinCommunity(communityId: string): Promise<any> {
   const result = await request<any>(`/communities/${communityId}/join`, { method: 'POST' });
   void trackAnalyticsEvent('community_joined', 'discover');
+  void trackAnalyticsEvent('connection_created', 'discover');
   return result;
 }
 
@@ -748,10 +749,12 @@ export async function createMentorshipRequest(mentorId: string, note: string): P
 }
 
 export async function updateMentorshipRequest(requestId: string, status: 'ACCEPTED' | 'DECLINED' | 'CANCELLED'): Promise<{ id: string; status: string }> {
-  return await request(`/mentorship/requests/${requestId}`, {
+  const updated = await request<{ id: string; status: string }>(`/mentorship/requests/${requestId}`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
+  if (status === 'ACCEPTED') void trackAnalyticsEvent('connection_created', 'mentorship');
+  return updated;
 }
 
 export async function getAnalyticsSummary(days = 30): Promise<any> {
@@ -759,12 +762,13 @@ export async function getAnalyticsSummary(days = 30): Promise<any> {
 }
 
 export async function trackAnalyticsEvent(
-  event_name: 'page_view' | 'search_performed' | 'post_created' | 'project_created' | 'event_rsvp' | 'community_joined' | 'circle_created',
-  surface?: 'landing' | 'city' | 'campus' | 'commons' | 'build' | 'discover' | 'messages' | 'profile' | 'passport'
+  event_name: 'page_view' | 'search_performed' | 'post_created' | 'project_created' | 'event_rsvp' | 'community_joined' | 'circle_created' | 'connection_created' | 'feed_load_completed',
+  surface?: 'landing' | 'city' | 'campus' | 'commons' | 'build' | 'discover' | 'messages' | 'profile' | 'passport' | 'mentorship' | 'insights' | 'privacy' | 'terms',
+  durationMs?: number
 ): Promise<void> {
   if (!isAuthenticated()) return;
   try {
-    await request('/analytics/events', { method: 'POST', body: JSON.stringify({ event_name, surface }) });
+    await request('/analytics/events', { method: 'POST', body: JSON.stringify({ event_name, surface, duration_ms: durationMs }) });
   } catch {
     // Analytics are best-effort and must never block a student action.
   }
@@ -775,7 +779,9 @@ export async function trackAnalyticsEvent(
 
 export async function unifiedSearch(q: string, signal?: AbortSignal): Promise<any> {
   try {
-    return await request<any>(`/search?q=${encodeURIComponent(q)}`, { signal });
+    const results = await request<any>(`/search?q=${encodeURIComponent(q)}`, { signal });
+    if (q.trim()) void trackAnalyticsEvent('search_performed');
+    return results;
   } catch (error) {
     if (signal?.aborted) throw error;
     return {
