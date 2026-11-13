@@ -25,7 +25,7 @@ const stories = [
   },
   {
     label: 'Q&A',
-    title: 'Get answers from students who've been there.',
+    title: "Get answers from students who’ve been there.",
     body: 'Accepted answers, notes and course discussions, free for every student.',
     href: '/commons',
     action: 'Visit Q&A',
