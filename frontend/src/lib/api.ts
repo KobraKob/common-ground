@@ -28,16 +28,22 @@ let activeUserId = 'aaaa0001-0000-0000-0000-000000000001'; // Default: Aarav Pat
 
 export function setActiveUser(userId: string) {
   activeUserId = userId;
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem('commonground.activeUserId', userId);
+  }
 }
 
 export function getActiveUserId(): string {
+  if (typeof window !== 'undefined') {
+    return window.localStorage.getItem('commonground.activeUserId') || activeUserId;
+  }
   return activeUserId;
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const headers = {
     'Content-Type': 'application/json',
-    'X-User-Id': activeUserId,
+    'X-User-Id': getActiveUserId(),
     ...(options.headers || {}),
   };
 
@@ -404,10 +410,11 @@ export async function executeModerationAction(payload: any): Promise<any> {
 // Unified Search
 // ----------------------------------------------------
 
-export async function unifiedSearch(q: string): Promise<any> {
+export async function unifiedSearch(q: string, signal?: AbortSignal): Promise<any> {
   try {
-    return await request<any>(`/search?q=${encodeURIComponent(q)}`);
-  } catch {
+    return await request<any>(`/search?q=${encodeURIComponent(q)}`, { signal });
+  } catch (error) {
+    if (signal?.aborted) throw error;
     const term = q.toLowerCase();
     return {
       students: DEMO_USERS.filter((u) => u.handle.includes(term) || u.display_name.toLowerCase().includes(term) || u.skills.some((s) => s.toLowerCase().includes(term))),
