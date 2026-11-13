@@ -13,6 +13,8 @@ class CollegeResponse(BaseModel):
     email_domains: List[str]
     is_official_partner: bool
     is_active_cluster: bool
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     member_count: int = 0
     community_count: int = 0
     created_at: datetime

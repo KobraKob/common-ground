@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import String, Boolean, Text, DateTime, ForeignKey, UniqueConstraint, JSON, Index
+from sqlalchemy import String, Boolean, Text, DateTime, ForeignKey, UniqueConstraint, JSON, Index, Enum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, GUID
@@ -14,15 +15,18 @@ class Conversation(Base):
     __tablename__ = "conversations"
 
     id: Mapped[str] = mapped_column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
-    conversation_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # DIRECT, GROUP_CHAT, ANNOUNCEMENT_CHANNEL
+    conversation_type: Mapped[str] = mapped_column(Enum('DIRECT', 'GROUP_CHAT', 'ANNOUNCEMENT_CHANNEL', name='conversation_type'), nullable=False, index=True)  # DIRECT, GROUP_CHAT, ANNOUNCEMENT_CHANNEL
     community_id: Mapped[str] = mapped_column(GUID, ForeignKey("communities.id", ondelete="CASCADE"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(150), nullable=True)
     description: Mapped[Text] = mapped_column(Text, nullable=True)
+    direct_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     last_message_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
 
     members = relationship("ConversationMember", back_populates="conversation", cascade="all, delete-orphan")
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
+
+    __table_args__ = (UniqueConstraint("direct_key", name="uq_conversations_direct_key"),)
 
 
 class ConversationMember(Base):
@@ -31,7 +35,7 @@ class ConversationMember(Base):
     id: Mapped[str] = mapped_column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
     conversation_id: Mapped[str] = mapped_column(GUID, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id: Mapped[str] = mapped_column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    role: Mapped[str] = mapped_column(String(50), default="MEMBER")
+    role: Mapped[str] = mapped_column(Enum('MEMBER', 'MODERATOR', 'OWNER', name='member_role'), default="MEMBER")
     is_muted: Mapped[bool] = mapped_column(Boolean, default=False)
     quiet_hours_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     last_read_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
@@ -52,7 +56,7 @@ class Message(Base):
     sender_id: Mapped[str] = mapped_column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     reply_to_message_id: Mapped[str] = mapped_column(GUID, ForeignKey("messages.id", ondelete="SET NULL"), nullable=True)
     body: Mapped[str] = mapped_column(Text, nullable=False)
-    attachments: Mapped[list] = mapped_column(JSON, default=list)
+    attachments: Mapped[list] = mapped_column(JSON().with_variant(JSONB, "postgresql"), default=list)
     is_announcement: Mapped[bool] = mapped_column(Boolean, default=False)
     is_pinned: Mapped[bool] = mapped_column(Boolean, default=False)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)

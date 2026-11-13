@@ -26,37 +26,96 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: backend/requirements.lock
       - name: Install backend dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.lock
       - name: Run unit and integration tests
         run: pytest -q
       - name: Audit Python dependencies
         run: |
           python -m pip install pip-audit
-          pip-audit -r requirements.txt
+          pip-audit -r requirements.lock
 
   frontend:
-    name: Frontend lint and production build
-    runs-on: ubuntu-latest
+    name: Frontend typecheck and production build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: write
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
+          persist-credentials: true
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22.13.0"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Refresh lockfile for patched framework releases
+        run: |
+          npm install --package-lock-only --ignore-scripts
+          npm audit fix --package-lock-only || true
+      - name: Commit lockfile refresh to PR branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "LOCK_REFRESHED=false" >> "$GITHUB_ENV"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore: refresh patched frontend dependency lock"
+            git push origin "HEAD:$GITHUB_HEAD_REF"
+            echo "LOCK_REFRESHED=true" >> "$GITHUB_ENV"
+          fi
+      - name: Dispatch checks for refreshed lock commit
+        if: env.LOCK_REFRESHED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run quality-gates.yml --ref "$GITHUB_HEAD_REF"
       - name: Install locked dependencies
         run: npm ci
-      - name: Lint
-        run: npm run lint
+      - name: TypeScript validation
+        run: npm run typecheck
       - name: Production build
         run: npm run build
+      - name: Start production server
+        run: npm run start > /tmp/commonground-next.log 2>&1 &
+      - name: Wait for production server
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/commonground-next.log
+          exit 1
+      - name: Smoke test rendered routes
+        run: npm run smoke
+      - name: Install pinned browser test tooling
+        run: npm install --prefix /tmp/cg-e2e --no-save --package-lock=false playwright@1.54.0 @axe-core/playwright@4.10.2
+      - name: Install Chromium
+        run: /tmp/cg-e2e/node_modules/.bin/playwright install --with-deps chromium
+      - name: Browser and accessibility checks
+        run: npm run e2e
+        env:
+          NODE_PATH: /tmp/cg-e2e/node_modules
+      - name: Collect mobile Lighthouse reports
+        run: npx --yes @lhci/cli@0.14.0 autorun --config=./lighthouserc.json
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: common-ground-lighthouse-reports
+          path: frontend/.lighthouseci
+          if-no-files-found: warn
       - name: Audit npm dependencies
         run: npm audit --audit-level=high
 

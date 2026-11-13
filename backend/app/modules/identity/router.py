@@ -22,6 +22,9 @@ from app.modules.identity.schemas import (
 )
 from app.modules.colleges.models import College
 from app.modules.communities.models import Community, CommunityMembership
+from app.modules.commons.models import Post, Comment
+from app.modules.events.models import Event, EventAttendance
+from app.modules.projects.models import Task
 
 
 def hash_password(password: str) -> str:
@@ -162,6 +165,7 @@ async def signup(
         dm_permission=profile.dm_permission,
         onboarding_completed=profile.onboarding_completed,
         created_at=profile.created_at,
+        platform_role=new_user.platform_role,
     )
 
     return AuthResponse(
@@ -223,6 +227,7 @@ async def login(
         dm_permission=profile.dm_permission if profile else "SAME_CAMPUS_OR_COMMUNITY",
         onboarding_completed=profile.onboarding_completed if profile else True,
         created_at=profile.created_at if profile else user.created_at,
+        platform_role=user.platform_role,
     )
 
     return AuthResponse(
@@ -267,6 +272,7 @@ async def auth_me(
         dm_permission=profile.dm_permission,
         onboarding_completed=profile.onboarding_completed,
         created_at=profile.created_at,
+        platform_role=user.platform_role,
     )
 
 
@@ -283,10 +289,36 @@ async def list_profiles(
     current_user_id: Optional[str] = Depends(get_optional_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
+    visibility_conditions = [StudentProfile.profile_visibility == "PUBLIC"]
+    if current_user_id:
+        viewer_college_result = await db.execute(
+            select(StudentProfile.college_id).where(StudentProfile.user_id == current_user_id)
+        )
+        viewer_college_id = viewer_college_result.scalar_one_or_none()
+        if viewer_college_id:
+            visibility_conditions.append(
+                and_(
+                    StudentProfile.profile_visibility == "CAMPUS_ONLY",
+                    StudentProfile.college_id == viewer_college_id,
+                )
+            )
+        viewer_community_ids = select(CommunityMembership.community_id).where(
+            CommunityMembership.user_id == current_user_id
+        )
+        shared_community_users = select(CommunityMembership.user_id).where(
+            CommunityMembership.community_id.in_(viewer_community_ids)
+        )
+        visibility_conditions.append(
+            and_(
+                StudentProfile.profile_visibility == "SHARED_COMMUNITIES_ONLY",
+                StudentProfile.user_id.in_(shared_community_users),
+            )
+        )
+
     query = (
         select(StudentProfile, College.name)
         .outerjoin(College, StudentProfile.college_id == College.id)
-        .where(StudentProfile.profile_visibility == "PUBLIC")
+        .where(or_(*visibility_conditions))
     )
     if college_id:
         query = query.where(StudentProfile.college_id == college_id)
@@ -543,6 +575,56 @@ async def update_my_profile(
     )
 
 
+@router.get("/me/contributions")
+async def get_my_contributions(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    posts_created = await db.execute(
+        select(func.count(Post.id)).where(Post.author_id == user.id)
+    )
+    questions_asked = await db.execute(
+        select(func.count(Post.id)).where(Post.author_id == user.id, Post.category == "QUESTION_QA")
+    )
+    useful_answers = await db.execute(
+        select(func.count(Comment.id)).where(Comment.author_id == user.id, Comment.is_useful_answer.is_(True))
+    )
+    tasks_marked_done = await db.execute(
+        select(func.count(Task.id)).where(Task.assignee_id == user.id, Task.status == "DONE")
+    )
+
+    membership_result = await db.execute(
+        select(Community, CommunityMembership.joined_at)
+        .join(CommunityMembership, CommunityMembership.community_id == Community.id)
+        .where(CommunityMembership.user_id == user.id)
+        .order_by(CommunityMembership.joined_at.desc())
+        .limit(50)
+    )
+    attendance_result = await db.execute(
+        select(EventAttendance, Event)
+        .join(Event, Event.id == EventAttendance.event_id)
+        .where(EventAttendance.user_id == user.id)
+        .order_by(EventAttendance.marked_at.desc())
+        .limit(50)
+    )
+
+    return {
+        "posts_created": int(posts_created.scalar() or 0),
+        "questions_asked": int(questions_asked.scalar() or 0),
+        "useful_answers": int(useful_answers.scalar() or 0),
+        "tasks_marked_done": int(tasks_marked_done.scalar() or 0),
+        "communities": [
+            {"id": community.id, "name": community.name, "slug": community.slug, "joined_at": joined_at}
+            for community, joined_at in membership_result.all()
+        ],
+        "events_attended": [
+            {"id": event.id, "title": event.title, "starts_at": event.starts_at, "attended_at": attendance.marked_at}
+            for attendance, event in attendance_result.all()
+        ],
+        "attendance_note": "Events appear only after their organizer confirms attendance. An RSVP alone is not counted as attendance.",
+    }
+
+
 @router.get("/{handle}", response_model=StudentProfileResponse)
 async def get_profile_by_handle(
     handle: str,
@@ -624,11 +706,45 @@ async def request_verification(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if not payload.institutional_email:
+        raise HTTPException(status_code=422, detail="Institutional email is required for a verification request")
+
+    college_result = await db.execute(select(College).where(College.id == payload.college_id))
+    college = college_result.scalar_one_or_none()
+    if not college:
+        raise HTTPException(status_code=404, detail="College not found")
+
+    profile_result = await db.execute(
+        select(StudentProfile.college_id).where(StudentProfile.user_id == user.id)
+    )
+    profile_college_id = profile_result.scalar_one_or_none()
+    if not profile_college_id or profile_college_id != college.id:
+        raise HTTPException(status_code=409, detail="Set this college as your profile institution before requesting verification")
+
+    approved_domains = {
+        str(domain).strip().lower().lstrip("@")
+        for domain in (college.email_domains or [])
+        if str(domain).strip()
+    }
+    submitted_domain = str(payload.institutional_email).rsplit("@", 1)[-1].lower()
+    if approved_domains and submitted_domain not in approved_domains:
+        raise HTTPException(status_code=400, detail="Use an email domain listed for your selected institution")
+
+    pending_result = await db.execute(
+        select(AffiliationClaim.id).where(
+            AffiliationClaim.user_id == user.id,
+            AffiliationClaim.status == "PENDING",
+        ).limit(1)
+    )
+    existing_claim_id = pending_result.scalar_one_or_none()
+    if existing_claim_id:
+        raise HTTPException(status_code=409, detail="You already have a pending verification request")
+
     claim = AffiliationClaim(
         user_id=user.id,
-        college_id=payload.college_id,
+        college_id=college.id,
         claimed_stage=payload.claimed_stage,
-        institutional_email=payload.institutional_email,
+        institutional_email=str(payload.institutional_email),
         status="PENDING",
     )
     db.add(claim)

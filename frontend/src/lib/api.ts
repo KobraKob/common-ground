@@ -6,7 +6,9 @@ import {
   Community, 
   Conversation, 
   MessageItem, 
-  ProjectItem, 
+  ProjectItem,
+  ProjectMemberItem,
+  ProjectJoinRequestItem,
   TaskItem, 
   EventItem,
   ResourceItem, 
@@ -130,7 +132,7 @@ export async function requestWithMeta<T>(
   const fetchPromise = (async () => {
     try {
       const headers = {
-        'Content-Type': 'application/json',
+        ...(typeof options.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
         ...(activeAuthToken ? { 'Authorization': `Bearer ${activeAuthToken}` } : {}),
         ...(options.headers || {}),
       };
@@ -226,6 +228,10 @@ export async function getCampusOverview(slug: string): Promise<any> {
 // Identity & Profiles
 // ----------------------------------------------------
 
+export async function getStudentProfile(handle: string): Promise<StudentProfile> {
+  return await request<StudentProfile>(`/profiles/${encodeURIComponent(handle)}`);
+}
+
 export async function getMyProfile(): Promise<StudentProfile | null> {
   try {
     const prof = await request<StudentProfile>('/auth/me');
@@ -237,6 +243,30 @@ export async function getMyProfile(): Promise<StudentProfile | null> {
   } catch {
     return cachedUserProfile;
   }
+}
+
+export async function updateMyProfile(payload: Partial<StudentProfile>): Promise<StudentProfile> {
+  const updated = await request<StudentProfile>('/profiles/me', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+  const merged = { ...cachedUserProfile, ...updated } as StudentProfile;
+  cachedUserProfile = merged;
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('cg_user_profile', JSON.stringify(merged));
+  }
+  return merged;
+}
+
+export async function requestVerificationClaim(payload: {
+  college_id: string;
+  claimed_stage?: string;
+  institutional_email?: string;
+}): Promise<{ message: string; claim_id: string }> {
+  return await request<{ message: string; claim_id: string }>('/profiles/verify/request', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function getStudents(skill?: string): Promise<StudentProfile[]> {
@@ -323,7 +353,12 @@ export async function getPostsPaginated({
       offset: String(offset),
       ...(tag ? { tag } : {}),
     });
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const { data, headers } = await requestWithMeta<Post[]>(`/posts?${params}`);
+    const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startedAt;
+    if (scope === 'city' || scope === 'campus' || scope === 'commons') {
+      void trackAnalyticsEvent('feed_load_completed', scope, durationMs);
+    }
     const totalCount = Number(headers.get('x-total-count') || data.length);
     const hasMore = headers.get('x-has-more') === 'true' || offset + data.length < totalCount;
     return {
@@ -419,15 +454,38 @@ export async function getCommunitiesPaginated({
 }
 
 export async function joinCommunity(communityId: string): Promise<any> {
-  return await request<any>(`/communities/${communityId}/join`, { method: 'POST' });
+  const result = await request<any>(`/communities/${communityId}/join`, { method: 'POST' });
+  void trackAnalyticsEvent('community_joined', 'discover');
+  void trackAnalyticsEvent('connection_created', 'discover');
+  return result;
+}
+
+export async function createCommunity(payload: {
+  name: string;
+  slug: string;
+  description: string;
+  community_type: 'CROSS_CAMPUS_INTEREST';
+  visibility: 'PUBLIC';
+}): Promise<Community> {
+  const created = await request<Community>('/communities', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  void trackAnalyticsEvent('circle_created', 'discover');
+  return created;
+}
+
+export async function createDirectConversation(targetUserId: string): Promise<Conversation> {
+  const conversation = await request<Conversation>('/conversations/direct', {
+    method: 'POST',
+    body: JSON.stringify({ recipient_user_id: targetUserId }),
+  });
+  void trackAnalyticsEvent('connection_created', 'messages');
+  return conversation;
 }
 
 export async function getConversations(): Promise<Conversation[]> {
-  try {
-    return await request<Conversation[]>('/conversations');
-  } catch {
-    return [];
-  }
+  return await request<Conversation[]>('/conversations');
 }
 
 export async function getMessages(conversationId: string): Promise<MessageItem[]> {
@@ -446,19 +504,15 @@ export async function getMessagesPaginated({
   offset?: number;
   q?: string;
 }): Promise<PaginatedResult<MessageItem>> {
-  try {
-    const params = new URLSearchParams({
-      limit: String(limit),
-      offset: String(offset),
-      ...(q ? { q } : {}),
-    });
-    const { data, headers } = await requestWithMeta<MessageItem[]>(`/conversations/${conversationId}/messages?${params}`);
-    const totalCount = Number(headers.get('x-total-count') || data.length);
-    const hasMore = headers.get('x-has-more') === 'true' || offset + data.length < totalCount;
-    return { items: data, totalCount, hasMore, nextOffset: offset + data.length };
-  } catch {
-    return { items: [], totalCount: 0, hasMore: false, nextOffset: offset };
-  }
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+    ...(q ? { q } : {}),
+  });
+  const { data, headers } = await requestWithMeta<MessageItem[]>(`/conversations/${conversationId}/messages?${params}`);
+  const totalCount = Number(headers.get('x-total-count') || data.length);
+  const hasMore = headers.get('x-has-more') === 'true' || offset + data.length < totalCount;
+  return { items: data, totalCount, hasMore, nextOffset: offset + data.length };
 }
 
 export async function sendMessage(conversationId: string, body: string): Promise<MessageItem> {
@@ -471,6 +525,44 @@ export async function sendMessage(conversationId: string, body: string): Promise
 // ----------------------------------------------------
 // Projects & Events
 // ----------------------------------------------------
+
+export type MyContributions = {
+  posts_created: number;
+  questions_asked: number;
+  useful_answers: number;
+  tasks_marked_done: number;
+  communities: { id: string; name: string; slug: string; joined_at: string }[];
+  events_attended: { id: string; title: string; starts_at: string; attended_at: string }[];
+  attendance_note: string;
+};
+
+export async function getMyContributions(): Promise<MyContributions> {
+  return await request<MyContributions>('/profiles/me/contributions');
+}
+
+export type EventAttendeeItem = {
+  user_id: string;
+  display_name: string;
+  handle: string;
+  attended: boolean;
+};
+
+export async function getEventAttendees(eventId: string): Promise<EventAttendeeItem[]> {
+  return await request<EventAttendeeItem[]>(`/events/${eventId}/attendees`);
+}
+
+export async function getMyEventAttendance(): Promise<{ id: string; event_id: string; title: string; starts_at: string; attended_at: string }[]> {
+  return await request('/events/attendance/mine');
+}
+
+export async function markEventAttendance(eventId: string, attendeeId: string): Promise<{ marked: boolean; already_marked: boolean }> {
+  return await request(`/events/${eventId}/attendance/${attendeeId}`, { method: 'POST' });
+}
+
+export async function getMyProjects(): Promise<ProjectItem[]> {
+  try { return await request<ProjectItem[]>('/projects/mine'); }
+  catch { return []; }
+}
 
 export async function getProjects(): Promise<ProjectItem[]> {
   const res = await getProjectsPaginated({ limit: 50, offset: 0 });
@@ -505,9 +597,55 @@ export async function getProjectsPaginated({
 }
 
 export async function createProject(payload: any): Promise<ProjectItem> {
-  return await request<ProjectItem>('/projects', {
+  const created = await request<ProjectItem>('/projects', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+  void trackAnalyticsEvent('project_created', 'build');
+  return created;
+}
+
+export async function requestToJoinProject(projectId: string, payload: { pitch_note: string; role_title?: string }): Promise<{ message: string }> {
+  return await request<{ message: string }>(`/projects/${projectId}/join-request`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getProjectJoinRequests(projectId: string): Promise<ProjectJoinRequestItem[]> {
+  return await request<ProjectJoinRequestItem[]>(`/projects/${projectId}/join-requests`);
+}
+
+export async function updateProjectMemberStatus(projectId: string, memberId: string, status: 'ACCEPTED' | 'DECLINED'): Promise<{ message: string }> {
+  return await request<{ message: string }>(`/projects/${projectId}/members/${memberId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function getProjectMembers(projectId: string): Promise<ProjectMemberItem[]> {
+  return await request<ProjectMemberItem[]>(`/projects/${projectId}/members`);
+}
+
+export async function updateProjectTask(
+  projectId: string,
+  taskId: string,
+  changes: { title?: string; status?: TaskItem['status']; assignee_id?: string | null }
+): Promise<TaskItem> {
+  return await request<TaskItem>(`/projects/${projectId}/tasks/${taskId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(changes),
+  });
+}
+
+export async function getProjectTasks(projectId: string): Promise<TaskItem[]> {
+  return await request<TaskItem[]>(`/projects/${projectId}/tasks`);
+}
+
+export async function createProjectTask(projectId: string, title: string, assigneeId?: string): Promise<TaskItem> {
+  return await request<TaskItem>(`/projects/${projectId}/tasks`, {
+    method: 'POST',
+    body: JSON.stringify({ title, status: 'TODO', assignee_id: assigneeId }),
   });
 }
 
@@ -520,7 +658,9 @@ export async function getEvents(): Promise<EventItem[]> {
 }
 
 export async function rsvpEvent(eventId: string, status: 'GOING' | 'INTERESTED'): Promise<any> {
-  return await request<any>(`/events/${eventId}/rsvp?status_choice=${status}`, { method: 'POST' });
+  const result = await request<any>(`/events/${eventId}/rsvp?status_choice=${status}`, { method: 'POST' });
+  void trackAnalyticsEvent('event_rsvp', 'discover');
+  return result;
 }
 
 // ----------------------------------------------------
@@ -570,12 +710,100 @@ export async function executeModerationAction(payload: any): Promise<any> {
 }
 
 // ----------------------------------------------------
+export type MentorshipProfileData = {
+  is_available: boolean;
+  topics: string[];
+  bio: string;
+  availability_note: string;
+  format: 'ONLINE' | 'IN_PERSON' | 'BOTH';
+};
+
+export type MentorDirectoryItem = {
+  user_id: string;
+  display_name: string;
+  handle: string;
+  college_name?: string;
+  skills: string[];
+  topics: string[];
+  bio: string;
+  availability_note: string;
+  format: 'ONLINE' | 'IN_PERSON' | 'BOTH';
+};
+
+export type MentorshipRequestItem = {
+  id: string;
+  user_id: string;
+  display_name: string;
+  handle: string;
+  note: string;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
+  created_at: string;
+};
+
+export type MentorshipRequests = {
+  incoming: MentorshipRequestItem[];
+  outgoing: MentorshipRequestItem[];
+};
+
+export async function getMentors(): Promise<MentorDirectoryItem[]> {
+  return await request<MentorDirectoryItem[]>('/mentorship/mentors');
+}
+
+export async function getMyMentorshipProfile(): Promise<MentorshipProfileData> {
+  return await request<MentorshipProfileData>('/mentorship/profile/me');
+}
+
+export async function updateMyMentorshipProfile(payload: MentorshipProfileData): Promise<MentorshipProfileData> {
+  return await request<MentorshipProfileData>('/mentorship/profile/me', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getMyMentorshipRequests(): Promise<MentorshipRequests> {
+  return await request<MentorshipRequests>('/mentorship/requests/mine');
+}
+
+export async function createMentorshipRequest(mentorId: string, note: string): Promise<{ id: string; status: string; created_at: string }> {
+  return await request('/mentorship/requests', {
+    method: 'POST',
+    body: JSON.stringify({ mentor_id: mentorId, note }),
+  });
+}
+
+export async function updateMentorshipRequest(requestId: string, status: 'ACCEPTED' | 'DECLINED' | 'CANCELLED'): Promise<{ id: string; status: string }> {
+  const updated = await request<{ id: string; status: string }>(`/mentorship/requests/${requestId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+  return updated;
+}
+
+export async function getAnalyticsSummary(days = 30): Promise<any> {
+  return await request<any>(`/analytics/summary?days=${days}`);
+}
+
+export async function trackAnalyticsEvent(
+  event_name: 'page_view' | 'search_performed' | 'post_created' | 'project_created' | 'event_rsvp' | 'community_joined' | 'circle_created' | 'connection_created' | 'feed_load_completed' | 'profile_opened',
+  surface?: 'landing' | 'city' | 'campus' | 'commons' | 'build' | 'discover' | 'messages' | 'profile' | 'passport' | 'mentorship' | 'insights' | 'privacy' | 'terms' | 'search' | 'opportunities',
+  durationMs?: number
+): Promise<void> {
+  if (!isAuthenticated()) return;
+  try {
+    await request('/analytics/events', { method: 'POST', body: JSON.stringify({ event_name, surface, duration_ms: durationMs }) });
+  } catch {
+    // Analytics are best-effort and must never block a student action.
+  }
+}
+
 // Unified Search
 // ----------------------------------------------------
 
 export async function unifiedSearch(q: string, signal?: AbortSignal): Promise<any> {
   try {
-    return await request<any>(`/search?q=${encodeURIComponent(q)}`, { signal });
+    const results = await request<any>(`/search?q=${encodeURIComponent(q)}`, { signal });
+    if (q.trim()) void trackAnalyticsEvent('search_performed', 'search');
+    return results;
   } catch (error) {
     if (signal?.aborted) throw error;
     return {

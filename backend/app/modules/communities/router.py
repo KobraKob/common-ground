@@ -1,5 +1,7 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc, func
@@ -7,7 +9,7 @@ from sqlalchemy import select, and_, or_, desc, func
 from app.core.database import get_db
 from app.core.security import get_current_user, get_current_user_id
 from app.core.permissions import verify_can_dm, require_community_member_role
-from app.modules.identity.models import User, StudentProfile
+from app.modules.identity.models import User, StudentProfile, UserBlock
 from app.modules.communities.models import Community, CommunityMembership
 from app.modules.messaging.models import Conversation, ConversationMember, Message
 from app.modules.communities.schemas import (
@@ -225,39 +227,142 @@ async def list_user_conversations(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = (
+    result = await db.execute(
         select(Conversation)
         .join(ConversationMember, Conversation.id == ConversationMember.conversation_id)
         .where(ConversationMember.user_id == user.id)
         .order_by(desc(Conversation.last_message_at))
     )
-    result = await db.execute(query)
-    convs = result.scalars().all()
+    conversations = result.scalars().unique().all()
+    if not conversations:
+        return []
 
-    resp = []
-    for c in convs:
-        # Get last message text if any
-        lm_res = await db.execute(
-            select(Message.body)
-            .where(and_(Message.conversation_id == c.id, Message.is_deleted == False))
-            .order_by(desc(Message.created_at))
-            .limit(1)
-        )
-        last_body = lm_res.scalar_one_or_none()
-        resp.append(
-            ConversationResponse(
-                id=c.id,
-                conversation_type=c.conversation_type,
-                community_id=c.community_id,
-                title=c.title,
-                description=c.description,
-                created_at=c.created_at,
-                last_message_at=c.last_message_at,
-                last_message=last_body,
-            )
-        )
-    return resp
+    conversation_ids = [conversation.id for conversation in conversations]
+    direct_ids = [
+        conversation.id for conversation in conversations
+        if conversation.conversation_type == "DIRECT"
+    ]
 
+    latest_messages = (
+        select(
+            Message.conversation_id.label("conversation_id"),
+            Message.body.label("body"),
+            func.row_number().over(
+                partition_by=Message.conversation_id,
+                order_by=Message.created_at.desc(),
+            ).label("row_number"),
+        )
+        .where(
+            Message.conversation_id.in_(conversation_ids),
+            Message.is_deleted.is_(False),
+        )
+        .subquery()
+    )
+    previews_result = await db.execute(
+        select(latest_messages.c.conversation_id, latest_messages.c.body)
+        .where(latest_messages.c.row_number == 1)
+    )
+    previews = {
+        conversation_id: body[:140]
+        for conversation_id, body in previews_result.all()
+    }
+
+    counterpart_rows = await db.execute(
+        select(
+            ConversationMember.conversation_id,
+            ConversationMember.user_id,
+            StudentProfile.display_name,
+            StudentProfile.dm_permission,
+            StudentProfile.profile_visibility,
+            StudentProfile.college_id,
+        )
+        .join(StudentProfile, StudentProfile.user_id == ConversationMember.user_id)
+        .where(
+            ConversationMember.conversation_id.in_(direct_ids),
+            ConversationMember.user_id != user.id,
+        )
+    ) if direct_ids else None
+    counterparts = {
+        conversation_id: {
+            "user_id": other_user_id,
+            "display_name": display_name,
+            "dm_permission": dm_permission,
+            "profile_visibility": profile_visibility,
+            "college_id": college_id,
+        }
+        for conversation_id, other_user_id, display_name, dm_permission, profile_visibility, college_id
+        in (counterpart_rows.all() if counterpart_rows else [])
+    }
+
+    member_roles_result = await db.execute(
+        select(ConversationMember.conversation_id, ConversationMember.role).where(
+            ConversationMember.user_id == user.id,
+            ConversationMember.conversation_id.in_(conversation_ids),
+        )
+    )
+    member_roles = {conversation_id: role for conversation_id, role in member_roles_result.all()}
+
+    current_profile_result = await db.execute(
+        select(StudentProfile.college_id).where(StudentProfile.user_id == user.id)
+    )
+    current_college_id = current_profile_result.scalar_one_or_none()
+    current_community_result = await db.execute(
+        select(CommunityMembership.community_id).where(CommunityMembership.user_id == user.id)
+    )
+    current_community_ids = set(current_community_result.scalars().all())
+
+    outgoing_blocks = await db.execute(
+        select(UserBlock.blocked_id).where(UserBlock.blocker_id == user.id)
+    )
+    incoming_blocks = await db.execute(
+        select(UserBlock.blocker_id).where(UserBlock.blocked_id == user.id)
+    )
+    blocked_user_ids = set(outgoing_blocks.scalars().all()) | set(incoming_blocks.scalars().all())
+
+    shared_users = set()
+    if current_community_ids and counterparts:
+        shared_rows = await db.execute(
+            select(CommunityMembership.user_id).where(
+                CommunityMembership.user_id.in_([item["user_id"] for item in counterparts.values()]),
+                CommunityMembership.community_id.in_(current_community_ids),
+            ).distinct()
+        )
+        shared_users = set(shared_rows.scalars().all())
+
+    responses = []
+    for conversation in conversations:
+        title = conversation.title
+        if conversation.conversation_type == "DIRECT":
+            counterpart = counterparts.get(conversation.id)
+            if not counterpart:
+                continue
+            counterpart_id = counterpart["user_id"]
+            same_campus = bool(current_college_id and counterpart["college_id"] == current_college_id)
+            shares_community = counterpart_id in shared_users
+            if counterpart_id in blocked_user_ids or counterpart["dm_permission"] not in {"EVERYONE", "SAME_CAMPUS_OR_COMMUNITY"}:
+                continue
+            if counterpart["profile_visibility"] == "CAMPUS_ONLY" and not same_campus:
+                continue
+            if counterpart["profile_visibility"] == "SHARED_COMMUNITIES_ONLY" and not shares_community:
+                continue
+            if counterpart["profile_visibility"] not in {"PUBLIC", "CAMPUS_ONLY", "SHARED_COMMUNITIES_ONLY"}:
+                continue
+            if counterpart["dm_permission"] == "SAME_CAMPUS_OR_COMMUNITY" and not (same_campus or shares_community):
+                continue
+            title = counterpart["display_name"] or "Student"
+
+        responses.append(ConversationResponse(
+            id=conversation.id,
+            conversation_type=conversation.conversation_type,
+            community_id=conversation.community_id,
+            title=title,
+            description=conversation.description,
+            created_at=conversation.created_at,
+            last_message_at=conversation.last_message_at,
+            last_message=previews.get(conversation.id),
+            member_role=member_roles.get(conversation.id),
+        ))
+    return responses
 
 @router.post("/conversations/direct", response_model=ConversationResponse)
 async def get_or_create_direct_conversation(
@@ -334,7 +439,7 @@ async def get_or_create_direct_conversation(
 async def list_conversation_messages(
     conversation_id: str,
     response: Response,
-    q: Optional[str] = Query(None),
+    q: Optional[str] = Query(None, max_length=100),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
@@ -346,8 +451,26 @@ async def list_conversation_messages(
             and_(ConversationMember.conversation_id == conversation_id, ConversationMember.user_id == user.id)
         )
     )
-    if not mem_res.scalar_one_or_none():
+    member = mem_res.scalar_one_or_none()
+    if not member:
         raise HTTPException(status_code=403, detail="You do not have access to this conversation")
+
+    conversation_result = await db.execute(
+        select(Conversation).where(Conversation.id == conversation_id)
+    )
+    conversation = conversation_result.scalar_one_or_none()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if conversation.conversation_type == "DIRECT":
+        other_result = await db.execute(
+            select(ConversationMember.user_id).where(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.user_id != user.id,
+            ).limit(1)
+        )
+        other_user_id = other_result.scalar_one_or_none()
+        if other_user_id:
+            await verify_can_dm(user.id, other_user_id, db)
 
     query = (
         select(Message, StudentProfile.display_name, StudentProfile.handle)
@@ -365,9 +488,14 @@ async def list_conversation_messages(
     count_res = await db.execute(count_subq)
     total_count = count_res.scalar() or 0
 
-    query = query.order_by(Message.created_at.asc()).offset(offset).limit(limit)
+    query = query.order_by(Message.created_at.desc()).offset(offset).limit(limit)
     result = await db.execute(query)
-    rows = result.all()
+    rows = list(result.all())
+    rows.reverse()
+
+    from datetime import datetime, timezone
+    member.last_read_at = datetime.now(timezone.utc)
+    await db.commit()
 
     has_more = (offset + len(rows)) < total_count
     response.headers["X-Total-Count"] = str(total_count)
@@ -402,6 +530,15 @@ async def send_message(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if user.is_suspended:
+        raise HTTPException(status_code=403, detail="Suspended accounts cannot send messages")
+
+    body = payload.body.strip()
+    if not body:
+        raise HTTPException(status_code=422, detail="Message cannot be empty")
+    if len(body) > 5000:
+        raise HTTPException(status_code=422, detail="Message exceeds the 5000 character limit")
+
     # Verify membership
     mem_res = await db.execute(
         select(ConversationMember).where(
@@ -439,13 +576,23 @@ async def send_message(
         if other_user_id:
             await verify_can_dm(user.id, other_user_id, db)
 
-    from datetime import datetime, timezone
+    recent_since = datetime.now(timezone.utc) - timedelta(minutes=1)
+    recent_count_result = await db.execute(
+        select(func.count(Message.id)).where(
+            Message.sender_id == user.id,
+            Message.created_at >= recent_since,
+        )
+    )
+    if int(recent_count_result.scalar() or 0) >= 30:
+        raise HTTPException(status_code=429, detail="Message rate limit reached. Try again shortly.")
+
     now = datetime.now(timezone.utc)
+    member.last_read_at = now
     msg = Message(
         conversation_id=conversation_id,
         sender_id=user.id,
         reply_to_message_id=payload.reply_to_message_id,
-        body=payload.body,
+        body=body,
         attachments=payload.attachments,
         is_announcement=is_announcement,
         created_at=now,

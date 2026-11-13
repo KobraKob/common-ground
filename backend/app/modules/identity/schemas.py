@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
 
@@ -13,8 +13,8 @@ class OnboardingRequest(BaseModel):
     skills: List[str] = []
     interests: List[str] = []
     collaboration_goals: List[str] = []
-    profile_visibility: str = "PUBLIC"  # PUBLIC, CAMPUS_ONLY, SHARED_COMMUNITIES_ONLY
-    dm_permission: str = "SAME_CAMPUS_OR_COMMUNITY"  # EVERYONE, SAME_CAMPUS_OR_COMMUNITY, NONE
+    profile_visibility: Literal["PUBLIC", "CAMPUS_ONLY", "SHARED_COMMUNITIES_ONLY"] = "PUBLIC"
+    dm_permission: Literal["EVERYONE", "SAME_CAMPUS_OR_COMMUNITY", "NONE"] = "SAME_CAMPUS_OR_COMMUNITY"
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -26,15 +26,15 @@ class ProfileUpdateRequest(BaseModel):
     skills: Optional[List[str]] = None
     interests: Optional[List[str]] = None
     collaboration_goals: Optional[List[str]] = None
-    profile_visibility: Optional[str] = None
+    profile_visibility: Optional[Literal['PUBLIC', 'CAMPUS_ONLY', 'SHARED_COMMUNITIES_ONLY']] = None
     show_course_year: Optional[bool] = None
-    dm_permission: Optional[str] = None
+    dm_permission: Optional[Literal['EVERYONE', 'SAME_CAMPUS_OR_COMMUNITY', 'NONE']] = None
 
 
 class VerificationClaimRequest(BaseModel):
     college_id: str
-    claimed_stage: str = "STAGE_3_INSTITUTIONAL_VERIFIED"
-    institutional_email: Optional[str] = None
+    claimed_stage: Literal["STAGE_3_INSTITUTIONAL_VERIFIED"] = "STAGE_3_INSTITUTIONAL_VERIFIED"
+    institutional_email: Optional[EmailStr] = None
     invite_code: Optional[str] = None
 
 
@@ -49,6 +49,7 @@ class MuteTargetRequest(BaseModel):
 
 class StudentProfileResponse(BaseModel):
     user_id: str
+    platform_role: Optional[str] = None
     handle: str
     display_name: str
     bio: Optional[str] = None

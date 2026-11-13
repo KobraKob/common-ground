@@ -1,0 +1,203 @@
+import pytest
+from httpx import AsyncClient
+
+from app.modules.identity.models import StudentProfile, User, UserBlock
+
+
+@pytest.mark.asyncio
+async def test_direct_messaging_is_private_and_idempotent(client: AsyncClient, db_session):
+    sender = User(id="10000000-0000-4000-8000-000000000001", email="sender@messages.test")
+    recipient = User(id="10000000-0000-4000-8000-000000000002", email="recipient@messages.test")
+    stranger = User(id="10000000-0000-4000-8000-000000000003", email="stranger@messages.test")
+    db_session.add_all([sender, recipient, stranger])
+    db_session.add_all([
+        StudentProfile(
+            user_id=sender.id,
+            handle="messagesender",
+            display_name="Message Sender",
+            profile_visibility="PUBLIC",
+            dm_permission="EVERYONE",
+        ),
+        StudentProfile(
+            user_id=recipient.id,
+            handle="messagerecipient",
+            display_name="Message Recipient",
+            profile_visibility="PUBLIC",
+            dm_permission="EVERYONE",
+        ),
+        StudentProfile(
+            user_id=stranger.id,
+            handle="messagestrange",
+            display_name="Message Stranger",
+            profile_visibility="PUBLIC",
+            dm_permission="EVERYONE",
+        ),
+    ])
+    await db_session.commit()
+
+    created = await client.post(
+        "/api/v1/conversations/direct",
+        json={"recipient_user_id": recipient.id},
+        headers={"X-User-Id": sender.id},
+    )
+    assert created.status_code == 200, created.text
+    conversation_id = created.json()["id"]
+    assert created.json()["title"] == "Message Recipient"
+
+    repeated = await client.post(
+        "/api/v1/conversations/direct",
+        json={"recipient_user_id": recipient.id},
+        headers={"X-User-Id": sender.id},
+    )
+    assert repeated.status_code == 200
+    assert repeated.json()["id"] == conversation_id
+
+    sent = await client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        json={"body": "Could you review my project portfolio?"},
+        headers={"X-User-Id": sender.id},
+    )
+    assert sent.status_code == 200
+    assert sent.json()["sender_name"] == "Message Sender"
+    assert "email" not in sent.json()
+
+    recipient_inbox = await client.get(
+        "/api/v1/conversations",
+        headers={"X-User-Id": recipient.id},
+    )
+    assert recipient_inbox.status_code == 200
+    assert recipient_inbox.json()[0]["title"] == "Message Sender"
+    assert recipient_inbox.json()[0]["last_message"] == "Could you review my project portfolio?"
+
+    recipient_messages = await client.get(
+        f"/api/v1/conversations/{conversation_id}/messages?limit=50&offset=0",
+        headers={"X-User-Id": recipient.id},
+    )
+    assert recipient_messages.status_code == 200
+    assert recipient_messages.headers["x-total-count"] == "1"
+    assert recipient_messages.json()[0]["body"] == "Could you review my project portfolio?"
+
+    stranger_messages = await client.get(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers={"X-User-Id": stranger.id},
+    )
+    assert stranger_messages.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_direct_messaging_respects_blocks_and_contact_permissions(client: AsyncClient, db_session):
+    requester = User(id="20000000-0000-4000-8000-000000000001", email="requester@messages.test")
+    blocked_user = User(id="20000000-0000-4000-8000-000000000002", email="blocked@messages.test")
+    restricted_user = User(id="20000000-0000-4000-8000-000000000003", email="restricted@messages.test")
+    campus_only_user = User(id="20000000-0000-4000-8000-000000000004", email="campus-only@messages.test")
+    shared_only_user = User(id="20000000-0000-4000-8000-000000000005", email="shared-only@messages.test")
+    db_session.add_all([requester, blocked_user, restricted_user, campus_only_user, shared_only_user])
+    db_session.add_all([
+        StudentProfile(
+            user_id=requester.id,
+            handle="blockedrequester",
+            display_name="Requester",
+            profile_visibility="PUBLIC",
+            dm_permission="EVERYONE",
+        ),
+        StudentProfile(
+            user_id=blocked_user.id,
+            handle="blockedtarget",
+            display_name="Blocked Target",
+            profile_visibility="PUBLIC",
+            dm_permission="EVERYONE",
+        ),
+        StudentProfile(
+            user_id=restricted_user.id,
+            handle="restrictedtarget",
+            display_name="Restricted Target",
+            profile_visibility="PUBLIC",
+            dm_permission="SAME_CAMPUS_OR_COMMUNITY",
+        ),
+        StudentProfile(
+            user_id=campus_only_user.id,
+            handle="campusonlytarget",
+            display_name="Campus Only Target",
+            profile_visibility="CAMPUS_ONLY",
+            dm_permission="EVERYONE",
+        ),
+        StudentProfile(
+            user_id=shared_only_user.id,
+            handle="sharedonlytarget",
+            display_name="Shared Community Target",
+            profile_visibility="SHARED_COMMUNITIES_ONLY",
+            dm_permission="EVERYONE",
+        ),
+    ])
+    db_session.add(UserBlock(blocker_id=blocked_user.id, blocked_id=requester.id))
+    await db_session.commit()
+
+    blocked_response = await client.post(
+        "/api/v1/conversations/direct",
+        json={"recipient_user_id": blocked_user.id},
+        headers={"X-User-Id": requester.id},
+    )
+    assert blocked_response.status_code == 403, blocked_response.text
+
+    restricted_response = await client.post(
+        "/api/v1/conversations/direct",
+        json={"recipient_user_id": restricted_user.id},
+        headers={"X-User-Id": requester.id},
+    )
+    assert restricted_response.status_code == 403, restricted_response.text
+
+    campus_only_response = await client.post(
+        "/api/v1/conversations/direct",
+        json={"recipient_user_id": campus_only_user.id},
+        headers={"X-User-Id": requester.id},
+    )
+    assert campus_only_response.status_code == 403, campus_only_response.text
+
+    shared_only_response = await client.post(
+        "/api/v1/conversations/direct",
+        json={"recipient_user_id": shared_only_user.id},
+        headers={"X-User-Id": requester.id},
+    )
+    assert shared_only_response.status_code == 403, shared_only_response.text
+
+
+@pytest.mark.asyncio
+async def test_existing_direct_thread_stops_sending_after_a_block(client: AsyncClient, db_session):
+    sender = User(id="30000000-0000-4000-8000-000000000001", email="block-sender@messages.test")
+    recipient = User(id="30000000-0000-4000-8000-000000000002", email="block-recipient@messages.test")
+    db_session.add_all([sender, recipient])
+    db_session.add_all([
+        StudentProfile(
+            user_id=sender.id,
+            handle="blocksender",
+            display_name="Block Sender",
+            profile_visibility="PUBLIC",
+            dm_permission="EVERYONE",
+        ),
+        StudentProfile(
+            user_id=recipient.id,
+            handle="blockrecipient",
+            display_name="Block Recipient",
+            profile_visibility="PUBLIC",
+            dm_permission="EVERYONE",
+        ),
+    ])
+    await db_session.commit()
+
+    created = await client.post(
+        "/api/v1/conversations/direct",
+        json={"recipient_user_id": recipient.id},
+        headers={"X-User-Id": sender.id},
+    )
+    assert created.status_code == 200, created.text
+    conversation_id = created.json()["id"]
+
+    db_session.add(UserBlock(blocker_id=recipient.id, blocked_id=sender.id))
+    await db_session.commit()
+
+    blocked_send = await client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        json={"body": "This should not be delivered"},
+        headers={"X-User-Id": sender.id},
+    )
+    assert blocked_send.status_code == 403, blocked_send.text

@@ -1,7 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { VirtualizedFeed } from '@/components/shared/VirtualizedFeed';
+import { OptimizedImage } from '@/components/shared/OptimizedImage';
+import { useInfinitePostsQuery } from '@/lib/queries';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { 
   Compass, 
   Users, 
@@ -27,7 +31,6 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { 
-  getPosts, 
   getCommunities, 
   getStudents,
   votePoll, 
@@ -37,82 +40,17 @@ import {
   getPostComments, 
   addComment,
   getActiveProfile,
-  isAuthenticated
+  isAuthenticated,
+  trackAnalyticsEvent
 } from '@/lib/api';
 import { Post, Community, StudentProfile, Comment } from '@/types';
 import { TrustBadge } from '@/components/shared/TrustBadge';
 import { ReportModal } from '@/components/shared/ReportModal';
 import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
-import { StudentHoloCard } from '@/components/profile';
-
-// Starter spotlight posts (Real Unsplash photography, no emojis, verified student context)
-const STARTER_SPOTLIGHT_POSTS: Post[] = [
-  {
-    id: 'spotlight-1',
-    author_id: 'aarav-rvce',
-    author_name: 'Aarav Patel',
-    author_handle: 'aarav_builder',
-    college_name: 'RV College of Engineering',
-    author_verification: 'STAGE_3_INSTITUTIONAL_VERIFIED',
-    category: 'HANGOUT_MEME',
-    title: '8th Mile Main Stage Audio Engineering Soundcheck',
-    body: 'Midnight acoustic test completed in the main quadrangle. Sound dispersion across the mechanical engineering block is dialed in for tomorrow evening.',
-    media_url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=900&auto=format&fit=crop&q=80',
-    media_type: 'IMAGE',
-    upvotes_count: 134,
-    comments_count: 18,
-    shares_count: 22,
-    is_cross_campus: true,
-    is_pinned: false,
-    tags: ['RVCE', '8thMile', 'Music'],
-    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-  },
-  {
-    id: 'spotlight-2',
-    author_id: 'diya-pesu',
-    author_name: 'Diya Sharma',
-    author_handle: 'diya_design',
-    college_name: 'PES University',
-    author_verification: 'STAGE_3_INSTITUTIONAL_VERIFIED',
-    category: 'DISCUSSION',
-    title: 'Late Night Coffee and Study Spaces on Outer Ring Road',
-    body: 'Exam preparation season is starting. Which late-night study spots in Bengaluru have reliable Wi-Fi and power outlets?',
-    poll: {
-      id: 'poll-1',
-      question: 'Best midnight study coffee location?',
-      options: [
-        { id: 'opt-1', text: 'Rameshwaram Cafe (Indiranagar)', votes: 82 },
-        { id: 'opt-2', text: 'Third Wave Coffee (Koramangala 24/7)', votes: 65 },
-        { id: 'opt-3', text: 'Campus Dorm Canteen & Chai Tapri', votes: 114 },
-      ],
-    },
-    upvotes_count: 98,
-    comments_count: 24,
-    shares_count: 15,
-    is_cross_campus: true,
-    is_pinned: false,
-    tags: ['CampusLife', 'StudySpots', 'Bengaluru'],
-    created_at: new Date(Date.now() - 3600000 * 5).toISOString(),
-  },
-  {
-    id: 'spotlight-3',
-    author_id: 'rohan-bmsce',
-    author_name: 'Rohan Kumar',
-    author_handle: 'rohan_systems',
-    college_name: 'BMS College of Engineering',
-    author_verification: 'STAGE_3_INSTITUTIONAL_VERIFIED',
-    category: 'OPPORTUNITY',
-    title: 'Recruiting ROS2 Vision Contributor for Precision Agriculture Drone',
-    body: 'Prototyping an autonomous drone for real-time crop disease detection. Looking for a cross-campus collaborator with OpenCV or ROS2 experience.',
-    upvotes_count: 56,
-    comments_count: 9,
-    shares_count: 11,
-    is_cross_campus: true,
-    is_pinned: false,
-    tags: ['Robotics', 'BuildSquad', 'BMSCE'],
-    created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
-  },
-];
+const StudentHoloCard = dynamic(() => import('@/components/profile').then((module) => module.StudentHoloCard), {
+  ssr: false,
+  loading: () => <div className="h-64 animate-pulse rounded-2xl bg-[var(--cg-elevated)]" aria-label="Loading student profile card"/>,
+});
 
 export default function CityPage() {
   const [activeTab, setActiveTab] = useState<'feed' | 'directory' | 'communities'>('feed');
@@ -125,6 +63,19 @@ export default function CityPage() {
   const [sortOrder, setSortOrder] = useState<'LATEST' | 'POPULAR'>('LATEST');
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const postsQuery = useInfinitePostsQuery('city', undefined, 12);
+  const feedLoadStartedAt = useRef<number | null>(null);
+  const feedLoadReported = useRef(false);
+  useEffect(() => { feedLoadStartedAt.current = performance.now(); }, []);
+  useEffect(() => {
+    if (postsQuery.isSuccess && !feedLoadReported.current && feedLoadStartedAt.current !== null) {
+      feedLoadReported.current = true;
+      void trackAnalyticsEvent('feed_load_completed', 'city', performance.now() - feedLoadStartedAt.current);
+    }
+  }, [postsQuery.isSuccess]);
+  const hasMorePosts = Boolean(postsQuery.hasNextPage);
+  const isLoadingMorePosts = postsQuery.isFetchingNextPage;
+  const isFeedLoading = loading || postsQuery.isLoading;
 
   // Poll voting state
   const [votedPolls, setVotedPolls] = useState<Record<string, string>>({});
@@ -162,27 +113,40 @@ export default function CityPage() {
     async function loadData() {
       setLoading(true);
       try {
-        const [pData, cData, peers] = await Promise.all([
-          getPosts('city'),
+        const [cData, peers] = await Promise.all([
           getCommunities(),
           getStudents(),
         ]);
-        if (!pData || pData.length === 0) {
-          setPosts(STARTER_SPOTLIGHT_POSTS);
-        } else {
-          setPosts(pData);
-        }
         setCommunities((cData || []).filter((c) => c.community_type === 'CROSS_CAMPUS_INTEREST' || !c.college_id));
         setStudents(peers || []);
       } catch (err) {
-        console.warn('Using starter spotlight posts:', err);
-        setPosts(STARTER_SPOTLIGHT_POSTS);
+        console.warn('Could not load the city feed:', err);
+        setPosts([]);
       } finally {
         setLoading(false);
       }
     }
     loadData();
   }, []);
+
+  useEffect(() => {
+    const incoming = postsQuery.data?.pages.flatMap((page) => page.items) ?? [];
+    if (!incoming.length) return;
+    setPosts((current) => {
+      const currentById = new Map(current.map((post) => [post.id, post]));
+      const incomingIds = new Set(incoming.map((post) => post.id));
+      return [
+        ...incoming.map((post) => currentById.get(post.id) ?? post),
+        ...current.filter((post) => !incomingIds.has(post.id)),
+      ];
+    });
+  }, [postsQuery.data?.pages]);
+
+  const loadMorePosts = useCallback(() => {
+    if (postsQuery.hasNextPage && !postsQuery.isFetchingNextPage) {
+      void postsQuery.fetchNextPage();
+    }
+  }, [postsQuery.fetchNextPage, postsQuery.hasNextPage, postsQuery.isFetchingNextPage]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -231,7 +195,13 @@ export default function CityPage() {
       setPosts((prev) =>
         prev.map((p) => (p.id === postId ? { ...p, poll: res.poll } : p))
       );
-    } catch {}
+    } catch {
+      setVotedPolls((prev) => {
+        const next = { ...prev };
+        delete next[postId];
+        return next;
+      });
+    }
   };
 
   const handleReaction = async (postId: string) => {
@@ -249,17 +219,7 @@ export default function CityPage() {
         )
       );
     } catch {
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                upvotes_count: p.liked_by_me ? p.upvotes_count - 1 : p.upvotes_count + 1,
-                liked_by_me: !p.liked_by_me,
-              }
-            : p
-        )
-      );
+      // Preserve server-confirmed counts when a reaction request fails.
     }
   };
 
@@ -330,7 +290,7 @@ export default function CityPage() {
       }
 
       const created = await createPost(postPayload);
-      setPosts([created, ...posts]);
+      setPosts((current) => [created, ...current]);
       setPostTitle('');
       setPostBody('');
       handleClearMedia();
@@ -360,271 +320,8 @@ export default function CityPage() {
     ? students
     : students.filter((s) => s.skills.some((sk) => sk.toLowerCase() === selectedSkillFilter.toLowerCase()));
 
-  return (
-    <div className="space-y-8 max-w-4xl mx-auto py-2">
-      {/* City Hero Banner */}
-      <CampusHeroBanner
-        title="Bengaluru City Feed"
-        badgeText="CROSS-CAMPUS NETWORK"
-        shortCode="BLR"
-        subtitle="Connect across Bengaluru colleges. Share updates, technical questions, project pitches, and campus events."
-        isOfficial={false}
-      />
-
-      {/* Primary Segmented Navigation (Hick's Law: 3 clear jobs) */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-3">
-        <div className="flex gap-2">
-          {[
-            { key: 'feed', label: 'Feed & Updates', icon: Flame },
-            { key: 'directory', label: 'Peer Directory', icon: Users },
-            { key: 'communities', label: 'Campus Clubs', icon: Compass },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key as any)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono transition-all ${
-                  isActive
-                    ? 'bg-amber-500/15 text-amber-300 font-bold border border-amber-400/40 shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-amber-400' : 'text-slate-500'}`} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* TAB 1: FEED */}
-      {activeTab === 'feed' && (
-        <div className="space-y-6">
-          {/* Guest View Row vs Authenticated Composer (Apple HIG Principle 4) */}
-          {!isLoggedIn ? (
-            <div
-              onClick={() => setShowAuthModal(true)}
-              className="celestial-card p-4 flex items-center justify-between gap-3 cursor-pointer hover:border-amber-400/50 transition-all group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400">
-                  <Flame className="w-4 h-4 text-amber-400" />
-                </div>
-                <span className="text-xs font-mono text-slate-400 group-hover:text-slate-200 transition-colors">
-                  Share an update with Bengaluru students...
-                </span>
-              </div>
-              <span className="neo-badge text-[10px] bg-amber-500/15 text-amber-300 border border-amber-400/30 font-medium">
-                Sign in to post
-              </span>
-            </div>
-          ) : (
-            <div className="celestial-card p-5 border border-white/10 transition-all">
-              {!isComposerExpanded ? (
-                <div
-                  onClick={() => setIsComposerExpanded(true)}
-                  className="flex items-center gap-3 cursor-pointer"
-                >
-                  <div className="w-8 h-8 rounded-full bg-amber-400 text-[#0A0C12] flex items-center justify-center font-mono font-bold text-xs">
-                    {getActiveProfile()?.display_name?.charAt(0) || 'U'}
-                  </div>
-                  <input
-                    type="text"
-                    readOnly
-                    placeholder="Share a campus update, question, or photo..."
-                    className="celestial-input w-full text-xs font-mono py-2 px-3 text-white cursor-pointer"
-                  />
-                </div>
-              ) : (
-                <form onSubmit={handleCreatePost} className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-amber-300">
-                      Create New Post
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setIsComposerExpanded(false)}
-                      className="text-slate-400 hover:text-white p-1"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <input
-                    type="text"
-                    value={postTitle}
-                    onChange={(e) => setPostTitle(e.target.value)}
-                    placeholder="Title (optional)..."
-                    className="celestial-input w-full text-xs font-mono p-3 text-white"
-                  />
-
-                  <textarea
-                    value={postBody}
-                    onChange={(e) => setPostBody(e.target.value)}
-                    placeholder="What is happening on your campus?"
-                    rows={3}
-                    className="celestial-input w-full text-xs p-3 leading-relaxed text-white"
-                    autoFocus
-                  />
-
-                  {mediaPreview && (
-                    <div className="relative rounded-xl overflow-hidden border border-white/15 p-2 bg-black/40">
-                      <button
-                        type="button"
-                        onClick={handleClearMedia}
-                        className="absolute top-3 right-3 p-1 rounded-full bg-black/80 text-white hover:bg-rose-600"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                      <img src={mediaPreview} alt="Upload preview" className="max-h-48 object-contain rounded-lg mx-auto" />
-                    </div>
-                  )}
-
-                  {showPollCreator && (
-                    <div className="p-4 rounded-xl bg-black/30 border border-white/10 space-y-3">
-                      <input
-                        type="text"
-                        value={pollQuestion}
-                        onChange={(e) => setPollQuestion(e.target.value)}
-                        placeholder="Poll Question?"
-                        className="celestial-input w-full text-xs p-2 text-white"
-                      />
-                      <div className="grid grid-cols-2 gap-2">
-                        {pollOptions.map((opt, i) => (
-                          <input
-                            key={i}
-                            type="text"
-                            value={opt}
-                            onChange={(e) => {
-                              const next = [...pollOptions];
-                              next[i] = e.target.value;
-                              setPollOptions(next);
-                            }}
-                            className="celestial-input text-xs p-2 text-white"
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between pt-3 border-t border-white/10">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="p-2 rounded-xl border border-white/10 hover:border-amber-400/50 text-slate-300 hover:text-white text-xs font-mono flex items-center gap-1.5"
-                      >
-                        <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Photo</span>
-                      </button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*,video/*"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => setShowPollCreator(!showPollCreator)}
-                        className="p-2 rounded-xl border border-white/10 hover:border-amber-400/50 text-slate-300 hover:text-white text-xs font-mono flex items-center gap-1.5"
-                      >
-                        <Vote className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Poll</span>
-                      </button>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={isPosting}
-                      className="btn-campus-amber text-xs font-mono px-5 py-2 flex items-center gap-1.5 font-bold shadow-md"
-                    >
-                      <Send className="w-3 h-3" />
-                      <span>{isPosting ? 'Posting...' : 'Post'}</span>
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
-          )}
-
-          {/* Filter Pills & Sort Order */}
-          <div className="flex items-center justify-between flex-wrap gap-2 text-xs font-mono">
-            <div className="flex items-center gap-2">
-              {[
-                { id: 'ALL', label: 'All Posts' },
-                { id: 'MEDIA', label: 'Photos & Videos' },
-                { id: 'POLLS', label: 'Polls' },
-                { id: 'DISCUSSIONS', label: 'Discussions' },
-              ].map((filter) => (
-                <button
-                  key={filter.id}
-                  onClick={() => setFeedFilter(filter.id as any)}
-                  className={`px-3.5 py-1.5 rounded-full border text-[11px] transition-all ${
-                    feedFilter === filter.id
-                      ? 'border-amber-400/60 bg-amber-500/15 text-amber-300 font-bold shadow-sm'
-                      : 'border-white/10 text-slate-400 hover:text-white hover:border-white/20'
-                  }`}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setSortOrder(sortOrder === 'LATEST' ? 'POPULAR' : 'LATEST')}
-              className="text-[11px] text-slate-400 hover:text-white transition-colors"
-            >
-              Sort: <strong className="text-amber-300 font-semibold">{sortOrder === 'LATEST' ? 'Latest' : 'Most Upvoted'}</strong>
-            </button>
-          </div>
-
-          {/* Proper Skeleton Loading State */}
-          {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="celestial-card p-6 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full skeleton-shimmer" />
-                    <div className="space-y-1.5 flex-1 max-w-xs">
-                      <div className="h-3.5 w-32 skeleton-shimmer rounded" />
-                      <div className="h-3 w-20 skeleton-shimmer rounded" />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="h-4 w-3/4 skeleton-shimmer rounded" />
-                    <div className="h-3.5 w-full skeleton-shimmer rounded" />
-                    <div className="h-3.5 w-5/6 skeleton-shimmer rounded" />
-                  </div>
-                  <div className="h-44 w-full skeleton-shimmer rounded-xl" />
-                </div>
-              ))}
-            </div>
-          ) : displayedPosts.length === 0 ? (
-            /* Thoughtful Empty State (Miller's Law & Apple Empty State) */
-            <div className="celestial-card p-12 text-center space-y-3 border-dashed">
-              <HelpCircle className="w-10 h-10 text-slate-500 mx-auto opacity-60" />
-              <h3 className="font-display text-base font-bold text-white">
-                No matching posts in this filter
-              </h3>
-              <p className="text-xs font-mono text-slate-400 max-w-sm mx-auto">
-                Try switching to "All Posts" to view updates from other campuses across Bengaluru.
-              </p>
-              <button
-                onClick={() => setFeedFilter('ALL')}
-                className="btn-campus-amber text-xs font-mono px-4 py-1.5 mt-2 font-bold"
-              >
-                Reset Filter
-              </button>
-            </div>
-          ) : (
-            /* Post Feed Cards */
-            <div className="space-y-5">
-              {displayedPosts.map((post) => (
-                <div
+  const renderPostCard = (post: Post) => {
+    return (<div
                   key={post.id}
                   id={`post-${post.id}`}
                   className="celestial-card p-5 sm:p-6 space-y-4"
@@ -637,10 +334,10 @@ export default function CityPage() {
                       </div>
                       <div>
                         <div className="text-xs font-mono font-bold text-white">
-                          {post.author_name || 'Student Builder'}
+                          {post.author_name || 'Student'}
                         </div>
                         <div className="text-[10px] font-mono text-slate-400">
-                          @{post.author_handle || 'student'} • {post.college_name || 'Bengaluru Campus'}
+                          @{post.author_handle || 'student'} • {post.college_name || 'College not listed'}
                         </div>
                       </div>
                     </div>
@@ -671,13 +368,14 @@ export default function CityPage() {
                   {post.media_url && (
                     <div
                       onClick={() => setLightboxImage({ url: post.media_url!, title: post.title, author: post.author_name || 'Student' })}
-                      className="rounded-xl overflow-hidden border border-white/10 max-h-96 cursor-pointer bg-black/50 relative group"
+                      className="aspect-video max-h-96 cursor-pointer overflow-hidden rounded-xl border border-[var(--cg-border)] bg-black/30 relative group"
                     >
-                      <img
+                      <OptimizedImage
                         src={post.media_url}
                         alt={post.title || 'Post media'}
-                        className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-[1.01]"
-                        loading="lazy"
+                        fill
+                        containerClassName="absolute inset-0"
+                        className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.01]"
                       />
                     </div>
                   )}
@@ -793,9 +491,129 @@ export default function CityPage() {
                       </div>
                     </div>
                   )}
+                </div>);
+  };
+
+  return (
+    <div className="space-y-8 max-w-4xl mx-auto py-2">
+      {/* City Hero Banner */}
+      <CampusHeroBanner
+        title="Bengaluru City Feed"
+        badgeText="CROSS-CAMPUS NETWORK"
+        shortCode="BLR"
+        subtitle="Connect across Bengaluru colleges. Share updates, technical questions, project pitches, and campus events."
+        isOfficial={false}
+      />
+
+      {/* Primary Segmented Navigation (Hick's Law: 3 clear jobs) */}
+      <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <div className="flex gap-2">
+          {[
+            { key: 'feed', label: 'Feed & Updates', icon: Flame },
+            { key: 'directory', label: 'Peer Directory', icon: Users },
+            { key: 'communities', label: 'Campus Clubs', icon: Compass },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as any)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono transition-all ${
+                  isActive
+                    ? 'bg-amber-500/15 text-amber-300 font-bold border border-amber-400/40 shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-amber-400' : 'text-slate-500'}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* TAB 1: FEED */}
+      {activeTab === 'feed' && (
+        <div className="space-y-6">
+          {/* Guest View Row vs Authenticated Composer (Apple HIG Principle 4) */}
+          {!isLoggedIn ? (
+            <div
+              onClick={() => setShowAuthModal(true)}
+              className="celestial-card p-4 flex items-center justify-between gap-3 cursor-pointer hover:border-amber-400/50 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400">
+                  <Flame className="w-4 h-4 text-amber-400" />
                 </div>
-              ))}
+                <span className="text-xs font-mono text-slate-400 group-hover:text-slate-200 transition-colors">
+                  Share an update with Bengaluru students...
+                </span>
+              </div>
+              <span className="neo-badge text-[10px] bg-amber-500/15 text-amber-300 border border-amber-400/30 font-medium">
+                Sign in to post
+              </span>
             </div>
+          ) : (
+            <div className="cg-surface space-y-4 p-5">
+              {!isComposerExpanded ? (
+                <button type="button" onClick={() => setIsComposerExpanded(true)} className="flex min-h-12 w-full items-center gap-3 text-left">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--cg-accent)] text-sm font-semibold text-white">{getActiveProfile()?.display_name?.charAt(0) || 'U'}</span>
+                  <span className="text-sm cg-muted">Share a campus update, question or photo…</span>
+                </button>
+              ) : (
+                <form onSubmit={handleCreatePost} className="space-y-4">
+                  <div className="flex items-center justify-between"><span className="text-sm font-semibold">Create a post</span><button type="button" onClick={() => setIsComposerExpanded(false)} className="min-h-11 rounded-full px-3 text-sm cg-muted">Close</button></div>
+                  <label className="block text-sm font-medium">Post title<input type="text" value={postTitle} onChange={(event)=>setPostTitle(event.target.value)} maxLength={160} placeholder="Title (optional)" className="celestial-input mt-2 min-h-11 w-full px-3"/></label>
+                  <label className="block text-sm font-medium">Your update<textarea value={postBody} onChange={(event)=>setPostBody(event.target.value)} maxLength={5000} rows={4} placeholder="What is happening on your campus?" className="celestial-input mt-2 w-full px-3 py-2"/></label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="block text-sm font-medium">Post type<select value={postCategory} onChange={(event)=>setPostCategory(event.target.value as typeof postCategory)} className="celestial-input mt-2 min-h-11 w-full px-3"><option value="HANGOUT_MEME">Campus update</option><option value="DISCUSSION">Discussion</option><option value="OPPORTUNITY">Opportunity</option></select></label>
+                    <label className="block text-sm font-medium">Tags<input value={postTags} onChange={(event)=>setPostTags(event.target.value)} maxLength={160} placeholder="Bengaluru, design, coding" className="celestial-input mt-2 min-h-11 w-full px-3"/></label>
+                  </div>
+                  {mediaPreview && <div className="relative rounded-xl border border-[var(--cg-border)] p-2"><button type="button" onClick={handleClearMedia} className="absolute right-3 top-3 z-10 min-h-10 rounded-full bg-black/80 px-3 text-xs text-white">Remove media</button>{mediaType === 'VIDEO' ? <video src={mediaPreview} controls className="mx-auto max-h-56 rounded-lg"/> : <img src={mediaPreview} alt="Selected upload preview" className="mx-auto max-h-56 rounded-lg object-contain"/>}</div>}
+                  {showPollCreator && <div className="space-y-3 rounded-xl border border-[var(--cg-border)] p-4"><label className="block text-sm font-medium">Poll question<input value={pollQuestion} onChange={(event)=>setPollQuestion(event.target.value)} maxLength={180} className="celestial-input mt-2 min-h-11 w-full px-3"/></label><div className="grid gap-2 sm:grid-cols-2">{pollOptions.map((option,index)=><input key={index} value={option} onChange={(event)=>setPollOptions((current)=>current.map((item,itemIndex)=>itemIndex===index?event.target.value:item))} maxLength={100} aria-label={`Poll option ${index+1}`} className="celestial-input min-h-11 w-full px-3"/>)}</div></div>}
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--cg-border)] pt-3">
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={()=>fileInputRef.current?.click()} className="min-h-11 rounded-full border border-[var(--cg-border)] px-4 text-sm">Add media</button>
+                      <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleFileUpload} className="hidden"/>
+                      <button type="button" onClick={()=>setShowPollCreator((current)=>!current)} className="min-h-11 rounded-full border border-[var(--cg-border)] px-4 text-sm">{showPollCreator?'Remove poll':'Add poll'}</button>
+                    </div>
+                    <button type="submit" disabled={isPosting || (!postBody.trim() && !mediaUrl)} className="btn-campus-amber min-h-11 rounded-full px-5 text-sm font-semibold disabled:opacity-50">{isPosting?'Publishing…':'Publish post'}</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: 'ALL', label: 'All posts' },
+                { id: 'MEDIA', label: 'Media' },
+                { id: 'POLLS', label: 'Polls' },
+                { id: 'DISCUSSIONS', label: 'Discussions' },
+              ].map((filter) => <button key={filter.id} type="button" aria-pressed={feedFilter===filter.id} onClick={()=>setFeedFilter(filter.id as typeof feedFilter)} className={`min-h-11 rounded-full border px-3 text-xs ${feedFilter===filter.id?'border-[var(--cg-accent)] bg-[var(--cg-elevated)]':'border-[var(--cg-border)] cg-muted'}`}>{filter.label}</button>)}
+            </div>
+            <button type="button" onClick={()=>setSortOrder((current)=>current==='LATEST'?'POPULAR':'LATEST')} className="min-h-11 rounded-full px-3 text-xs cg-muted">Sort: {sortOrder==='LATEST'?'Latest':'Most upvoted'}</button>
+          </div>
+
+          {isFeedLoading ? (
+            <div className="space-y-4" aria-label="Loading city feed">{[1,2,3].map((index)=><div key={index} className="cg-surface h-40 animate-pulse rounded-2xl"/>)}</div>
+          ) : postsQuery.isError ? (
+            <div role="alert" className="cg-surface p-6 text-sm cg-muted">The city feed could not be loaded. Refresh to try again.</div>
+          ) : displayedPosts.length===0 ? (
+            <div className="cg-surface space-y-3 border border-dashed p-10 text-center"><h3 className="font-semibold">No matching posts yet</h3><p className="text-sm cg-muted">Change the filter or start a conversation with Bengaluru students.</p><button type="button" onClick={()=>setFeedFilter('ALL')} className="cg-link min-h-11">Reset filters</button></div>
+          ) : (
+            <VirtualizedFeed
+              items={displayedPosts}
+              renderItem={renderPostCard}
+              getItemKey={(post) => post.id}
+              estimateSize={520}
+              overscan={4}
+              hasMore={hasMorePosts}
+              isFetchingNextPage={isLoadingMorePosts}
+              onLoadMore={loadMorePosts}
+            />
           )}
         </div>
       )}
@@ -884,7 +702,7 @@ export default function CityPage() {
                 href="/messages"
                 className="btn-campus-amber text-xs font-mono py-2 text-center font-bold"
               >
-                Join Channel
+                Open messages
               </Link>
             </div>
           ))}

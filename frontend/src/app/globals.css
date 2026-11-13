@@ -4,22 +4,22 @@
 
 :root {
   /* Neutral Obsidian Dark Base (No purple washes) */
-  --bg-canvas: #0A0C12;
-  --bg-surface: #12151F;
-  --bg-elevated: #181C2A;
+  --bg-canvas: #000000;
+  --bg-surface: #1C1C1E;
+  --bg-elevated: #2C2C2E;
   --bg-glass-card: rgba(18, 21, 31, 0.78);
   --bg-glass-input: rgba(10, 12, 18, 0.85);
 
   /* ONE Accent Color: Warm Lit Campus Amber */
-  --accent-amber-core: #F59E0B;
-  --accent-amber-bright: #FBBF24;
-  --accent-amber-soft: #FDE68A;
-  --accent-amber-hover: #D97706;
+  --accent-amber-core: #0A84FF;
+  --accent-amber-bright: #409CFF;
+  --accent-amber-soft: #8EC5FF;
+  --accent-amber-hover: #0066CC;
 
   /* Typography Colors */
-  --text-primary: #F8F9FA;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
+  --text-primary: #F5F5F7;
+  --text-secondary: #A1A1A6;
+  --text-muted: #8E8E93;
 
   /* Borders & Specular Highlights (Quiet, precise) */
   --border-subtle: rgba(255, 255, 255, 0.08);
@@ -237,3 +237,62 @@ h1, h2, h3, h4, .font-display {
   animation: shimmer 1.5s infinite;
   border-radius: var(--radius-card);
 }
+
+/* CommonGround design system — calm surfaces, one accent, consistent interaction. */
+:root{color-scheme:dark;--cg-bg:#000;--cg-surface:#1c1c1e;--cg-elevated:#2c2c2e;--cg-text:#f5f5f7;--cg-muted:#a1a1a6;--cg-subtle:#8e8e93;--cg-border:rgba(235,235,245,.16);--cg-accent:#0a84ff;--cg-accent-strong:#409cff;--cg-success:#30d158;--cg-info:#7dd3fc;--cg-danger:#ff453a;--cg-radius:12px;--cg-radius-sm:8px;--cg-space-1:4px;--cg-space-2:8px;--cg-space-3:12px;--cg-space-4:16px;--cg-space-6:24px;--cg-space-8:32px;--cg-motion-fast:140ms;--cg-motion-normal:200ms;--cg-font:Inter,-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){color-scheme:light;--cg-bg:#fff;--cg-surface:#f5f5f7;--cg-elevated:#e8e8ed;--cg-text:#1d1d1f;--cg-muted:#6e6e73;--cg-subtle:#86868b;--cg-border:rgba(29,29,31,.14);--cg-accent:#0066cc;--cg-accent-strong:#007aff;--cg-success:#17803d;--cg-info:#075985}}
+:root[data-theme="light"]{color-scheme:light;--cg-bg:#fff;--cg-surface:#f5f5f7;--cg-elevated:#e8e8ed;--cg-text:#1d1d1f;--cg-muted:#6e6e73;--cg-subtle:#86868b;--cg-border:rgba(29,29,31,.14);--cg-accent:#0066cc;--cg-accent-strong:#007aff;--cg-success:#17803d;--cg-info:#075985}
+:root[data-theme="dark"]{color-scheme:dark}
+html,body{background:var(--cg-bg);color:var(--cg-text);font-family:var(--cg-font)}
+body{overflow-x:clip}h1,h2,h3,h4,.font-display{font-family:var(--cg-font);letter-spacing:-.035em}
+:root{--bg-canvas:var(--cg-bg);--bg-surface:var(--cg-surface);--bg-elevated:var(--cg-elevated);--text-primary:var(--cg-text);--text-secondary:var(--cg-muted);--text-muted:var(--cg-subtle);--accent-amber-core:var(--cg-accent);--accent-amber-bright:var(--cg-accent-strong);--accent-amber-soft:var(--cg-accent);--accent-amber-hover:var(--cg-accent-strong)}
+[class*="text-amber-"]{color:var(--cg-accent)!important}
+[class*="border-amber-"]{border-color:color-mix(in srgb,var(--cg-accent) 36%,var(--cg-border))!important}
+[class*="bg-amber-"]{background-color:color-mix(in srgb,var(--cg-accent) 12%,transparent)!important}
+.celestial-card,.neo-card,.celestial-card-amber{background:var(--cg-surface);border:1px solid var(--cg-border);border-radius:var(--cg-radius);box-shadow:0 1px 2px rgba(0,0,0,.08);backdrop-filter:none;-webkit-backdrop-filter:none;transition:border-color var(--cg-motion-fast) ease,background-color var(--cg-motion-fast) ease,transform var(--cg-motion-fast) ease}
+.celestial-card:hover,.neo-card:hover,.celestial-card-amber:hover{transform:none;border-color:color-mix(in srgb,var(--cg-accent) 38%,var(--cg-border));box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.btn-campus-amber,.neo-pill-btn{background:var(--cg-accent);color:#fff!important;border:1px solid transparent;box-shadow:none;min-height:44px;font-weight:600;transition:background-color var(--cg-motion-fast),transform var(--cg-motion-fast)}
+.btn-campus-amber:hover,.neo-pill-btn:hover{background:var(--cg-accent-strong);transform:none;box-shadow:none}.btn-campus-amber:active,.neo-pill-btn:active{transform:scale(.98)}
+.celestial-input{background:var(--cg-elevated);border:1px solid var(--cg-border);color:var(--cg-text);min-height:44px;border-radius:var(--cg-radius-sm);font-size:16px}
+.celestial-input:focus-visible,.celestial-input:focus{outline:2px solid var(--cg-accent);outline-offset:2px;box-shadow:none}
+a,button,[role=button],input,select,textarea{-webkit-tap-highlight-color:transparent}button,a{touch-action:manipulation}
+button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px solid var(--cg-accent);outline-offset:3px}
+::selection{background:color-mix(in srgb,var(--cg-accent) 32%,transparent);color:var(--cg-text)}
+.cg-page{width:min(100% - 32px,1120px);margin-inline:auto;padding-block:clamp(28px,5vw,64px)}
+.cg-eyebrow{color:var(--cg-accent);font-size:12px;font-weight:650;letter-spacing:.06em}.cg-muted{color:var(--cg-muted)}
+.cg-surface{background:var(--cg-surface);border:1px solid var(--cg-border);border-radius:var(--cg-radius)}
+.cg-link{color:var(--cg-accent);text-decoration:none}.cg-link:hover{text-decoration:underline;text-underline-offset:3px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+@media(max-width:767px){body:has(nav[aria-label="Mobile navigation"]){padding-bottom:calc(68px + env(safe-area-inset-bottom))}input,select,textarea{font-size:16px!important}button{min-height:44px}}
+
+/* Light appearance compatibility for legacy Tailwind surfaces during migration. */
+:root[data-theme="light"] [class~="text-white"] { color: var(--cg-text) !important; }
+:root[data-theme="light"] button [class~="text-white"],
+:root[data-theme="light"] a [class~="text-white"],
+:root[data-theme="light"] .btn-campus-amber { color: #fff !important; }
+:root[data-theme="light"] [class~="bg-[#12151F]"],
+:root[data-theme="light"] [class~="bg-[#12151F]/95"],
+:root[data-theme="light"] [class~="bg-[#0E1017]"],
+:root[data-theme="light"] [class~="bg-[#0A0C12]"] { background-color: var(--cg-surface) !important; }
+:root[data-theme="light"] [class*="border-white"] { border-color: var(--cg-border) !important; }
+:root[data-theme="light"] [class*="text-slate-300"],
+:root[data-theme="light"] [class*="text-slate-400"],
+:root[data-theme="light"] [class*="text-slate-500"] { color: var(--cg-muted) !important; }
+
+.cg-skip-link{position:fixed;left:16px;top:8px;z-index:1000;transform:translateY(-160%);padding:12px 16px;border-radius:8px;background:var(--cg-surface);color:var(--cg-text);border:2px solid var(--cg-accent);font-size:14px;font-weight:600}.cg-skip-link:focus{transform:translateY(0);outline:3px solid var(--cg-accent);outline-offset:3px}
+
+/* Cross-app component normalization: all legacy surfaces consume the same tokens. */
+.celestial-card,.neo-card{background:var(--cg-surface);border:1px solid var(--cg-border);border-radius:var(--cg-radius);box-shadow:0 1px 2px rgba(0,0,0,.08);backdrop-filter:none;-webkit-backdrop-filter:none}
+.celestial-card:hover,.neo-card:hover{transform:none;border-color:var(--cg-border);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.celestial-card-amber{background:var(--cg-surface);border:1px solid var(--cg-border);border-radius:var(--cg-radius);box-shadow:none;backdrop-filter:none}
+.celestial-card-amber:hover{transform:none;border-color:var(--cg-accent)}
+.btn-campus-amber,.neo-pill-btn{background:var(--cg-accent);color:#fff!important;border:1px solid transparent;box-shadow:none;font-family:var(--cg-font);font-weight:600;transition:background-color var(--cg-motion-fast) ease,transform var(--cg-motion-fast) ease}
+.btn-campus-amber:hover,.neo-pill-btn:hover{background:var(--cg-accent-strong);transform:translateY(-1px);box-shadow:none}
+.btn-campus-amber:active,.neo-pill-btn:active{transform:scale(.98);box-shadow:none}
+.pill-glass-active{background:color-mix(in srgb,var(--cg-accent) 14%,transparent)!important;border-color:var(--cg-accent)!important;color:var(--cg-accent)!important}
+.celestial-input{background:var(--cg-surface);color:var(--cg-text);border:1px solid var(--cg-border)}
+.celestial-input:focus{border-color:var(--cg-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--cg-accent) 20%,transparent)}
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--cg-accent);outline-offset:3px}
+:where(button,a,input,select,textarea){touch-action:manipulation}
+@media(max-width:767px){.celestial-input{font-size:16px!important}.celestial-card,.neo-card,.celestial-card-amber{backdrop-filter:none;-webkit-backdrop-filter:none}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}

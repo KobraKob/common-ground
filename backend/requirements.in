@@ -1,6 +1,7 @@
 # Input manifest for the Python dependency lock.
 # Generate backend/requirements.lock with:
-#   pip-compile --generate-hashes --resolver=backtracking --output-file=requirements.lock requirements.in
+#   pip-compile --resolver=backtracking --output-file=requirements.lock requirements.in
+# Review the complete transitive lock and commit it with any manifest update.
 fastapi>=0.111.0
 uvicorn>=0.30.0
 pydantic>=2.7.0

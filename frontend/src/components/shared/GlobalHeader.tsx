@@ -1,22 +1,28 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   Search, 
   Moon, 
-  Orbit, 
+  Sun, 
   X, 
   LogOut, 
   LogIn, 
-  UserPlus
+  UserPlus,
+  Compass,
+  Building2,
+  BookOpen,
+  Hammer,
+  Menu
 } from 'lucide-react';
 import { 
   unifiedSearch, 
   getActiveProfile, 
   clearAuthSession,
-  isAuthenticated
+  isAuthenticated,
+  trackAnalyticsEvent
 } from '@/lib/api';
 import { TrustBadge } from './TrustBadge';
 
@@ -26,29 +32,33 @@ export function GlobalHeader() {
   const [searchResults, setSearchResults] = useState<any>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const [isTwilight, setIsTwilight] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('system');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setIsLoggedIn(isAuthenticated());
-      const storedAtmosphere = localStorage.getItem('cg-atmosphere');
-      if (storedAtmosphere === 'twilight') {
-        setIsTwilight(true);
-        document.documentElement.classList.add('atmosphere-twilight');
-      }
+    setIsLoggedIn(isAuthenticated());
+    const savedTheme = localStorage.getItem('cg-theme');
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      setTheme(savedTheme);
+      document.documentElement.dataset.theme = savedTheme;
+    } else {
+      setTheme('system');
+      delete document.documentElement.dataset.theme;
     }
   }, []);
 
-  const toggleAtmosphere = () => {
-    const nextMode = !isTwilight;
-    setIsTwilight(nextMode);
-    if (nextMode) {
-      document.documentElement.classList.add('atmosphere-twilight');
-      localStorage.setItem('cg-atmosphere', 'twilight');
+  const toggleTheme = () => {
+    const nextTheme = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system';
+    setTheme(nextTheme);
+    if (nextTheme === 'system') {
+      localStorage.removeItem('cg-theme');
+      delete document.documentElement.dataset.theme;
     } else {
-      document.documentElement.classList.remove('atmosphere-twilight');
-      localStorage.setItem('cg-atmosphere', 'midnight');
+      localStorage.setItem('cg-theme', nextTheme);
+      document.documentElement.dataset.theme = nextTheme;
     }
   };
 
@@ -86,60 +96,88 @@ export function GlobalHeader() {
     };
   }, [searchQuery]);
 
+  useEffect(() => {
+    const onShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        if (window.matchMedia('(max-width: 767px)').matches) {
+          setIsMobileSearchOpen(true);
+          window.setTimeout(() => mobileSearchInputRef.current?.focus(), 0);
+        } else {
+          searchInputRef.current?.focus();
+        }
+      }
+      if (event.key === 'Escape') {
+        setSearchResults(null);
+        setIsMobileSearchOpen(false);
+        setIsMobileNavOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onShortcut);
+    return () => window.removeEventListener('keydown', onShortcut);
+  }, []);
+
   const handleSignOut = () => {
     clearAuthSession();
     setIsLoggedIn(false);
     router.push('/');
-    window.location.reload();
+    router.refresh();
   };
 
   const currentProfile = getActiveProfile();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#0A0C12]/85 backdrop-blur-2xl">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+    <header className="cg-header sticky top-0 z-40 w-full border-b border-[var(--cg-border)] bg-[var(--cg-bg)]/95 backdrop-blur-xl">
+      <div className="max-w-7xl mx-auto px-4 h-[52px] flex items-center justify-between gap-4">
         {/* Brand / Logo */}
         <div className="flex items-center gap-3 shrink-0">
           <Link href="/" className="flex items-center gap-2.5 group">
             {/* Minimal Geometric Node Logo */}
-            <div className="w-9 h-9 rounded-xl bg-[#161926] border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-sm transition-transform duration-150 group-hover:scale-105">
-              <span className="font-display font-extrabold text-xs tracking-wider text-amber-300">CG</span>
+            <div className="w-9 h-9 rounded-xl bg-[var(--cg-elevated)] border border-[var(--cg-border)] flex items-center justify-center text-[var(--cg-accent)] transition-colors">
+              <span className="font-display font-bold text-xs tracking-wider text-[var(--cg-accent)]">CG</span>
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
-                <span className="font-display text-base sm:text-lg font-bold tracking-tight text-white group-hover:text-amber-300 transition-colors">
-                  Common<span className="text-amber-400">Ground</span>
+                <span className="font-display text-base sm:text-lg font-bold tracking-tight text-[var(--cg-text)] group-hover:text-[var(--cg-accent)] transition-colors">
+                  Common<span className="text-[var(--cg-accent)]">Ground</span>
                 </span>
-                <span className="hidden sm:inline-block text-[9px] px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/25 font-mono">
-                  BLR
-                </span>
+                
               </div>
-              <span className="text-[9px] font-mono tracking-widest text-slate-500 uppercase hidden sm:block">
-                CROSS-CAMPUS STUDENT NETWORK
-              </span>
+              
             </div>
           </Link>
         </div>
 
+        {!isLoggedIn && <nav aria-label="Public navigation" className="hidden lg:flex items-center gap-1">
+          {[
+            { href: '/city', label: 'City', icon: Compass },
+            { href: '/campus', label: 'Campuses', icon: Building2 },
+            { href: '/commons', label: 'Q&A', icon: BookOpen },
+            { href: '/build', label: 'Build', icon: Hammer },
+          ].map(({href,label,icon:Icon}) => <Link key={href} href={href} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-[var(--cg-muted)] hover:bg-[var(--cg-elevated)] hover:text-[var(--cg-text)]"><Icon size={15}/>{label}</Link>)}
+        </nav>}
         {/* Global Search Bar (Jakob's Law & Fitts's Law) */}
         <div className="flex-1 max-w-md relative hidden md:block">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
-              type="text"
+              ref={searchInputRef}
+              type="search"
+              aria-label="Search CommonGround"
+              autoComplete="off"
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search peers, courses, notes, hackathons..."
-              className="celestial-input w-full text-xs font-mono py-2 pl-9 pr-12 text-white placeholder:text-slate-500"
+              className="celestial-input w-full text-sm py-2 pl-9 pr-12 placeholder:text-[var(--cg-muted)]"
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-slate-400">
-              ⌘K
+              Ctrl K / ⌘ K
             </span>
           </div>
 
           {/* Search Results Dropdown */}
           {searchResults && (
-            <div className="absolute top-full left-0 right-0 mt-2 celestial-card p-3 shadow-2xl max-h-96 overflow-y-auto border border-white/15 z-50 animate-entrance">
+            <div className="absolute top-full left-0 right-0 mt-2 celestial-card p-3 shadow-xl max-h-96 overflow-y-auto z-50 animate-entrance">
               {searchResults.students?.length > 0 && (
                 <div className="mb-3">
                   <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 mb-1.5 font-semibold">
@@ -149,8 +187,8 @@ export function GlobalHeader() {
                     {searchResults.students.map((s: any) => (
                       <Link
                         key={s.id || s.user_id}
-                        href="/profile"
-                        onClick={() => setSearchResults(null)}
+                        href={'/students/' + encodeURIComponent(s.handle)}
+                        onClick={() => { void trackAnalyticsEvent('profile_opened', 'search'); setSearchResults(null); }}
                         className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 text-xs font-mono transition-colors"
                       >
                         <span className="font-semibold text-white">
@@ -220,7 +258,7 @@ export function GlobalHeader() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-white/15 bg-white/5 hover:border-amber-400/50 text-xs font-mono text-slate-300 hover:text-white transition-all"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[var(--cg-border)] bg-[var(--cg-elevated)] text-sm text-[var(--cg-muted)] hover:text-[var(--cg-text)] transition-colors"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 <span>Sign In</span>
@@ -231,7 +269,7 @@ export function GlobalHeader() {
                 className="btn-campus-amber text-xs font-mono px-4 py-1.5 flex items-center gap-1 font-bold shadow-sm"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                <span>Join Free</span>
+                <span>Join</span>
               </Link>
             </div>
           ) : (
@@ -259,47 +297,79 @@ export function GlobalHeader() {
             </div>
           )}
 
-          {/* Mobile Search Button */}
-          <button
-            onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-            className="md:hidden p-2 rounded-full border border-white/15 bg-white/5 text-slate-300 hover:text-white transition-all"
-            title="Search"
-          >
-            {isMobileSearchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
-          </button>
+          {!isLoggedIn && (
+            <button
+              type="button"
+              onClick={() => setIsMobileNavOpen((open) => !open)}
+              className="md:hidden inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-[var(--cg-border)] bg-[var(--cg-elevated)] text-[var(--cg-text)]"
+              aria-label={isMobileNavOpen ? 'Close navigation' : 'Open navigation'}
+              aria-expanded={isMobileNavOpen}
+            >
+              {isMobileNavOpen ? <X size={19} /> : <Menu size={19} />}
+            </button>
+          )}
+          {isLoggedIn && (
+            <button
+              onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+              className="md:hidden p-2 rounded-full border border-[var(--cg-border)] bg-[var(--cg-elevated)] text-[var(--cg-muted)] hover:text-[var(--cg-text)] transition-colors"
+              title="Search"
+              aria-label="Search"
+            >
+              {isMobileSearchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+            </button>
+          )}
 
-          {/* Atmosphere Toggle */}
           <button
-            onClick={toggleAtmosphere}
-            className="p-2 rounded-full border border-white/15 bg-white/5 text-amber-300 hover:border-amber-400/50 transition-all"
-            title={isTwilight ? 'Switch to Deep Midnight' : 'Switch to Twilight Atmosphere'}
+            type="button"
+            onClick={toggleTheme}
+            className="min-h-11 min-w-11 rounded-full border border-[var(--cg-border)] bg-[var(--cg-elevated)] text-[var(--cg-muted)] transition-colors hover:text-[var(--cg-text)]"
+            title={`Appearance: ${theme}. Click to cycle system, light and dark.`}
+            aria-label={`Appearance: ${theme}. Change theme`}
           >
-            {isTwilight ? (
-              <Orbit className="w-4 h-4 text-amber-400" />
-            ) : (
-              <Moon className="w-4 h-4 text-amber-300" />
-            )}
+            {theme === 'light' ? <Sun className="mx-auto h-4 w-4" /> : <Moon className="mx-auto h-4 w-4" />}
           </button>
         </div>
       </div>
 
+      {!isLoggedIn && isMobileNavOpen && (
+        <div className="fixed inset-x-0 top-[52px] bottom-0 z-50 overflow-y-auto bg-[var(--cg-bg)] px-6 py-8 lg:hidden" role="dialog" aria-modal="true" aria-label="Site navigation">
+          <nav aria-label="Public navigation" className="flex flex-col">
+            {[
+              { href: '/city', label: 'City' },
+              { href: '/campus', label: 'Campuses' },
+              { href: '/commons', label: 'Q&A' },
+              { href: '/build', label: 'Build' },
+            ].map(({ href, label }) => (
+              <Link key={href} href={href} onClick={() => setIsMobileNavOpen(false)} className="flex min-h-16 items-center border-b border-[var(--cg-border)] text-2xl font-semibold tracking-tight">
+                {label}
+              </Link>
+            ))}
+          </nav>
+          <div className="mt-8 flex items-center gap-5 text-sm">
+            <Link href="/login" onClick={() => setIsMobileNavOpen(false)} className="cg-link min-h-11 inline-flex items-center font-semibold">Sign in</Link>
+            <Link href="/signup" onClick={() => setIsMobileNavOpen(false)} className="btn-campus-amber inline-flex min-h-11 items-center rounded-full px-5">Join free</Link>
+          </div>
+        </div>
+      )}
       {/* Expandable Mobile Search Drawer */}
       {isMobileSearchOpen && (
         <div className="md:hidden border-t border-white/10 px-4 py-3 bg-[#0A0C12]/95 backdrop-blur-2xl">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
-              type="text"
-              autoFocus
+              ref={mobileSearchInputRef}
+              type="search"
+              aria-label="Search CommonGround"
+              autoComplete="off"
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search peers, courses, notes..."
-              className="celestial-input w-full text-xs font-mono py-2 pl-9 pr-4 text-white"
+              className="celestial-input w-full text-sm py-2 pl-9 pr-4 placeholder:text-[var(--cg-muted)]"
             />
           </div>
 
           {searchResults && (
-            <div className="mt-2 celestial-card p-3 shadow-2xl max-h-72 overflow-y-auto border border-white/15">
+            <div className="mt-2 celestial-card p-3 shadow-xl max-h-72 overflow-y-auto">
               {searchResults.students?.length > 0 && (
                 <div className="mb-2">
                   <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 mb-1 font-semibold">

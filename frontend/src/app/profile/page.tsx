@@ -19,7 +19,7 @@ import {
   Layers,
   ArrowRight
 } from 'lucide-react';
-import { getMyProfile, blockUser } from '@/lib/api';
+import { getMyProfile, blockUser, updateMyProfile, requestVerificationClaim } from '@/lib/api';
 import { StudentProfile } from '@/types';
 import { TrustBadge } from '@/components/shared/TrustBadge';
 import { ReportModal } from '@/components/shared/ReportModal';
@@ -37,6 +37,10 @@ export default function ProfilePage() {
   // Privacy toggles
   const [visibility, setVisibility] = useState('PUBLIC');
   const [dmPermission, setDmPermission] = useState('SAME_CAMPUS_OR_COMMUNITY');
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsNotice, setSettingsNotice] = useState('');
+  const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
+  const [verificationError, setVerificationError] = useState('');
 
   // Report modal
   const [reportTarget, setReportTarget] = useState<{ id: string; type: any; title: string } | null>(null);
@@ -60,15 +64,40 @@ export default function ProfilePage() {
     loadData();
   }, []);
 
-  const handleRequestVerification = (e: React.FormEvent) => {
+  const savePrivacySettings = async () => {
+    setSettingsSaving(true);
+    setSettingsNotice('');
+    try {
+      const updated = await updateMyProfile({
+        profile_visibility: visibility as StudentProfile['profile_visibility'],
+        dm_permission: dmPermission as StudentProfile['dm_permission'],
+      });
+      setProfile(updated);
+      setSettingsNotice('Privacy settings saved.');
+    } catch {
+      setSettingsNotice('Could not save settings. Try again.');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const handleRequestVerification = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!instEmail.trim()) return;
-    setVerifySubmitted(true);
-    setTimeout(() => {
-      setVerifySubmitted(false);
-      setShowVerifyModal(false);
-      alert('Verification OTP link dispatched to your institutional student email.');
-    }, 1200);
+    if (!profile?.college_id) {
+      setVerificationError('Add your college to your profile before requesting institutional verification.');
+      return;
+    }
+    setIsSubmittingVerification(true);
+    setVerificationError('');
+    try {
+      await requestVerificationClaim({ college_id: profile.college_id, institutional_email: instEmail.trim() });
+      setVerifySubmitted(true);
+    } catch (error: any) {
+      setVerificationError(error?.detail || 'Could not submit your verification request. Try again.');
+    } finally {
+      setIsSubmittingVerification(false);
+    }
   };
 
   if (loading) {
@@ -130,6 +159,11 @@ export default function ProfilePage() {
         {/* Right: Institutional Credentials, Bio, Skills & Quick Actions */}
         <div className="lg:col-span-7 space-y-5">
           <div className="celestial-card p-6 md:p-8 rounded-xl border border-white/10 bg-[#12151F] space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs cg-muted">Your identity and privacy settings</p>
+            <Link href="/passport" className="cg-link inline-flex min-h-11 items-center text-sm font-medium">View Campus Passport <ArrowRight className="ml-1 h-4 w-4" /></Link>
+          </div>
+
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <div className="flex items-center gap-2.5 flex-wrap">
@@ -139,7 +173,7 @@ export default function ProfilePage() {
                   <TrustBadge stage={profile.verification_stage} />
                 </div>
                 <p className="text-xs font-mono text-slate-400 mt-1">
-                  @{profile.handle} • {profile.college_name || 'RV College of Engineering'}
+                  @{profile.handle} • {profile.college_name || 'College not listed'}
                 </p>
               </div>
 
@@ -267,10 +301,10 @@ export default function ProfilePage() {
         <div>
           <h3 className="font-display text-lg font-bold text-[#F8F7FF] flex items-center gap-2">
             <Lock className="w-5 h-5 text-amber-400" />
-            <span>Privacy Visibility &amp; Direct Message Governance</span>
+            <span>Profile Visibility &amp; Mentorship Contact</span>
           </h3>
           <p className="text-xs text-slate-400 font-mono mt-1">
-            Configure boundary settings for public directory search and private message delivery.
+            Control who can discover your profile and request mentorship contact. General chat restrictions are not yet enforced by a server-side messaging API.
           </p>
         </div>
 
@@ -300,10 +334,10 @@ export default function ProfilePage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-white/10 bg-white/[0.02]">
             <div>
               <div className="text-xs font-mono font-bold text-[#F8F7FF]">
-                Direct Message (1-to-1) Permission
+                Mentorship contact permission
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Server-side enforcement of who can initiate new private conversations with you.
+                Controls who can discover your opt-in mentor profile and send a mentorship request.
               </p>
             </div>
             <select
@@ -311,10 +345,17 @@ export default function ProfilePage() {
               onChange={(e) => setDmPermission(e.target.value)}
               className="celestial-input text-xs font-mono py-1.5 px-3 rounded-xl border border-white/10 bg-[#0E1017] text-white cursor-pointer shrink-0 focus:border-amber-400"
             >
-              <option value="EVERYONE">Everyone across Bengaluru</option>
-              <option value="SAME_CAMPUS_OR_COMMUNITY">Same Campus or Shared Clubs</option>
-              <option value="NONE">No Incoming Direct Messages</option>
+              <option value="EVERYONE">Anyone can request mentorship</option>
+              <option value="SAME_CAMPUS_OR_COMMUNITY">Same campus or shared community</option>
+              <option value="NONE">No mentorship requests</option>
             </select>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--cg-border)] pt-4">
+            <p role="status" className="text-sm cg-muted">{settingsNotice}</p>
+            <button type="button" onClick={savePrivacySettings} disabled={settingsSaving}
+              className="btn-campus-amber min-h-11 px-5 text-sm disabled:opacity-50">
+              {settingsSaving ? 'Saving…' : 'Save privacy settings'}
+            </button>
           </div>
         </div>
       </div>
@@ -332,13 +373,14 @@ export default function ProfilePage() {
               </button>
             </div>
             <p className="text-xs font-mono text-slate-400">
-              Enter your college email address ending in .edu.in or .ac.in to unlock the Stage 3 Verified Student badge.
+              Submit your institutional email for review. This creates a verification request; it does not send an OTP automatically.
             </p>
 
+            {verificationError && <p role='alert' className='rounded-lg border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-300'>{verificationError}</p>}
             {verifySubmitted ? (
               <div className="p-4 bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 rounded-xl text-center text-xs font-mono flex items-center justify-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Verification link dispatched. Please check your student inbox!</span>
+                <span>Request submitted. Your institutional affiliation is pending review.</span>
               </div>
             ) : (
               <form onSubmit={handleRequestVerification} className="space-y-4">
@@ -366,9 +408,10 @@ export default function ProfilePage() {
                   </button>
                   <button
                     type="submit"
-                    className="btn-campus-amber text-xs font-mono px-4 py-2 font-bold"
+                    disabled={isSubmittingVerification}
+                    className="btn-campus-amber text-xs font-mono px-4 py-2 font-bold disabled:opacity-50"
                   >
-                    Send OTP Verification
+                    {isSubmittingVerification ? 'Submitting…' : 'Submit verification request'}
                   </button>
                 </div>
               </form>

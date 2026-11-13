@@ -57,11 +57,14 @@ export interface College {
   is_active_cluster: boolean;
   member_count?: number;
   community_count?: number;
+  latitude?: number | null;
+  longitude?: number | null;
   created_at: string;
 }
 
 export interface StudentProfile {
   user_id: string;
+  platform_role?: PlatformRole;
   handle: string;
   display_name: string;
   bio?: string;
@@ -196,6 +199,7 @@ export interface Conversation {
   created_at: string;
   last_message_at: string;
   last_message?: string;
+  member_role?: 'OWNER' | 'MODERATOR' | 'MEMBER';
 }
 
 export interface MessageItem {
@@ -227,6 +231,7 @@ export interface ProjectItem {
   is_cross_campus_open: boolean;
   repo_or_demo_links: { label: string; url: string }[];
   members_count: number;
+  my_role?: string;
   created_at: string;
 }
 
@@ -237,6 +242,33 @@ export interface TaskItem {
   status: 'TODO' | 'IN_PROGRESS' | 'DONE';
   assignee_id?: string;
   created_at: string;
+}
+
+export interface ProjectJoinRequestItem {
+  member_id: string;
+  user_id: string;
+  display_name: string;
+  handle: string;
+  role_title: string;
+  pitch_note?: string | null;
+  requested_at: string;
+}
+
+export interface ProjectMemberItem {
+  user_id: string;
+  display_name: string;
+  handle: string;
+  role_title: string;
+  is_creator: boolean;
+  joined_at: string;
+}
+
+export interface EventAttendeeItem {
+  user_id: string;
+  display_name: string;
+  handle: string;
+  attended: boolean;
+  attended_at?: string | null;
 }
 
 export interface EventItem {

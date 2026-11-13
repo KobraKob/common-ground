@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import String, Boolean, Integer, Text, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import String, Boolean, Integer, Text, DateTime, ForeignKey, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base, GUID
@@ -40,4 +40,20 @@ class EventRSVP(Base):
 
     __table_args__ = (
         UniqueConstraint("event_id", "user_id", name="uq_event_rsvp"),
+    )
+
+
+class EventAttendance(Base):
+    """Organizer-confirmed attendance; an RSVP alone is not treated as attendance."""
+    __tablename__ = "event_attendance"
+
+    id: Mapped[str] = mapped_column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    event_id: Mapped[str] = mapped_column(GUID, ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[str] = mapped_column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    marked_by: Mapped[str] = mapped_column(GUID, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    marked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("event_id", "user_id", name="uq_event_attendance"),
+        Index("ix_event_attendance_user_marked", "user_id", "marked_at"),
     )
