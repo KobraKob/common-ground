@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   CheckCircle2
 } from 'lucide-react';
-import { getConversations, getMessages, sendMessage, getMyProfile, isAuthenticated } from '@/lib/api';
+import { getConversations, getMessagesPaginated, sendMessage, getMyProfile, isAuthenticated } from '@/lib/api';
 import { Conversation, MessageItem, StudentProfile } from '@/types';
 import { ReportModal } from '@/components/shared/ReportModal';
 
@@ -23,6 +23,9 @@ export default function MessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConvId, setSelectedConvId] = useState<string>('');
   const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [messagesOffset, setMessagesOffset] = useState(0);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [activeGroupSubTab, setActiveGroupSubTab] = useState<'announcements' | 'chat' | 'vault'>('chat');
   const [messageInput, setMessageInput] = useState('');
   const [messageSearch, setMessageSearch] = useState('');
@@ -51,8 +54,10 @@ export default function MessagesPage() {
         const selectedConversation = (convs || []).find((conversation) => conversation.id === requestedConversationId) || (convs || [])[0];
         if (selectedConversation) {
           setSelectedConvId(selectedConversation.id);
-          const msgs = await getMessages(selectedConversation.id);
-          setMessages(msgs || []);
+          const page = await getMessagesPaginated({ conversationId: selectedConversation.id, limit: 50, offset: 0 });
+          setMessages(page.items);
+          setMessagesOffset(page.nextOffset);
+          setHasMoreMessages(page.hasMore);
         }
       } catch (err: any) {
         console.warn('Could not load conversations:', err);
@@ -66,12 +71,32 @@ export default function MessagesPage() {
 
   const handleSelectConv = async (convId: string) => {
     setSelectedConvId(convId);
+    setMessages([]);
+    setMessagesOffset(0);
+    setHasMoreMessages(false);
     try {
-      const msgs = await getMessages(convId);
-      setMessages(msgs || []);
+      const page = await getMessagesPaginated({ conversationId: convId, limit: 50, offset: 0 });
+      setMessages(page.items);
+      setMessagesOffset(page.nextOffset);
+      setHasMoreMessages(page.hasMore);
     } catch (err: any) {
       console.warn('Failed to load thread messages:', err);
       setNotice(err?.detail || 'Could not load this conversation.');
+    }
+  };
+
+  const loadOlderMessages = async () => {
+    if (!selectedConvId || !hasMoreMessages || isLoadingOlder) return;
+    setIsLoadingOlder(true);
+    try {
+      const page = await getMessagesPaginated({ conversationId: selectedConvId, limit: 50, offset: messagesOffset });
+      setMessages((current) => [...page.items, ...current]);
+      setMessagesOffset(page.nextOffset);
+      setHasMoreMessages(page.hasMore);
+    } catch (error: any) {
+      setNotice(error?.detail || 'Could not load older messages.');
+    } finally {
+      setIsLoadingOlder(false);
     }
   };
 
@@ -269,6 +294,7 @@ export default function MessagesPage() {
 
               {/* Message Stream */}
               <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-3.5">
+                {hasMoreMessages && activeGroupSubTab !== 'vault' && <div className="flex justify-center"><button type="button" onClick={loadOlderMessages} disabled={isLoadingOlder} className="min-h-11 rounded-full border border-[var(--cg-border)] px-4 text-xs cg-muted disabled:opacity-50">{isLoadingOlder ? 'Loading older messages…' : 'Load older messages'}</button></div>}
                 {activeGroupSubTab === 'vault' ? (
                   <div className="p-8 text-center text-xs font-mono text-slate-400 celestial-card border border-white/10 bg-[#0E1017] rounded-xl m-4 space-y-3">
                     <Pin className="w-8 h-8 mx-auto text-amber-400" />
