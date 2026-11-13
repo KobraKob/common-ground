@@ -187,7 +187,7 @@ export async function getCampusOverview(slug: string): Promise<any> {
 
 export async function getMyProfile(): Promise<StudentProfile | null> {
   try {
-    const prof = await request<StudentProfile>('/profiles/me');
+    const prof = await request<StudentProfile>('/auth/me');
     cachedUserProfile = prof;
     if (typeof window !== 'undefined') {
       localStorage.setItem('cg_user_profile', JSON.stringify(prof));
