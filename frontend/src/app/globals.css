@@ -192,3 +192,5 @@ img, video { max-width: 100%; }
 [class*="text-[9px]"], [class*="text-[10px]"], [class*="text-[11px]"], [class~="text-xs"] { font-size: 13px !important; line-height: 1.4 !important; }
 input, textarea, select { min-height: 44px; font-size: 16px; }
 button { min-height: 44px; }
+
+.btn-primary, .btn-campus-amber { color: #ffffff !important; }
