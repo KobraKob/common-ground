@@ -23,7 +23,7 @@ Prioritise meaningful collaboration and repeat utility over vanity engagement me
 - Added campus deep links and external map-search links.
 - Added public circle creation and joining through the existing community service.
 - Added exact skill-tag matching for projects and opportunity posts. This is deterministic matching, not an opaque AI score.
-- Added a Campus Passport assembled from profile verification, skills, interests and projects created by the student.
+- Added a Campus Passport assembled from profile verification, skills, interests and accepted project memberships with role titles.
 - Added a Build workspace with project creation, join requests, and task creation for project leads and accepted members.
 - Added a moderator-only Campus Intelligence page with aggregated activity and platform inventory metrics.
 - Removed client-side fallback content that presented invented posts, resources, announcements, events or community counts as real activity.
@@ -67,7 +67,7 @@ The analytics dashboard displays this measurement limitation directly. It intent
 These are intentionally not represented as shipped functionality:
 
 - An embedded multi-campus map with verified coordinates and clustering. Current campus cards deep-link to map search; no coordinates have been invented.
-- A durable contribution ledger for event participation, accepted project work, peer mentoring and community contributions. Campus Passport currently shows verified profile details and projects created; it does not yet claim participation it cannot verify.
+- A durable contribution ledger for event participation, accepted project work, peer mentoring and community contributions. Campus Passport currently shows verified profile details and accepted project memberships; it does not yet claim event attendance or mentoring activity it cannot verify.
 - Mentor discovery and matching, including consent, availability and safeguarding rules.
 - Task status editing, assignment management, milestones and activity history in project workspaces.
 - Full infinite-scroll/virtualized feed integration. Pagination and a reusable virtualized feed primitive exist in the codebase, but the current city feed still needs end-to-end integration.
