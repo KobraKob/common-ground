@@ -8,10 +8,9 @@ import {
   XCircle, 
   Ban, 
   EyeOff, 
-  History, 
-  Sparkles
+  History
 } from 'lucide-react';
-import { getModerationQueue, executeModerationAction } from '@/lib/api';
+import { getModerationQueue, getModerationAuditLogs, executeModerationAction } from '@/lib/api';
 import { ReportItem } from '@/types';
 import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
 
@@ -19,15 +18,19 @@ export default function ModerationPage() {
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [auditLog, setAuditLog] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       try {
-        const queue = await getModerationQueue();
+        const [queue, audit] = await Promise.all([getModerationQueue(), getModerationAuditLogs()]);
         setReports(queue || []);
+        setAuditLog(audit || []);
+        setLoadError('');
       } catch (err) {
-        console.warn('Could not load moderation queue:', err);
+        console.warn('Could not load moderation tools:', err);
+        setLoadError('Moderation tools are available only to authorized platform moderators.');
       } finally {
         setLoading(false);
       }
@@ -45,26 +48,16 @@ export default function ModerationPage() {
         notes: `Executed ${actionType} by platform moderator in response to report ${reportId}`,
       });
 
-      // Update local state
-      setReports(reports.filter((r) => r.id !== reportId));
-      setAuditLog([
-        {
-          id: `act-${Date.now()}`,
-          actor: 'Platform Moderator',
-          action_type: actionType,
-          target: `${targetType} (${targetId})`,
-          notes: `Action taken against report ${reportId}`,
-          timestamp: 'Just now',
-        },
-        ...auditLog,
-      ]);
+      setReports((current) => current.filter((report) => report.id !== reportId));
+      setAuditLog(await getModerationAuditLogs());
     } catch {
-      alert('Failed to execute moderation action. Please try again.');
+      setLoadError('The moderation action could not be completed. Refresh and try again.');
     }
   };
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
+      {loadError && <p role="alert" className="rounded-xl bg-[var(--surface)] p-4 text-sm text-[var(--danger)]">{loadError}</p>}
       {/* Moderation Queue Header Banner */}
       <CampusHeroBanner
         title="Safety & Mod Queue"
@@ -161,12 +154,12 @@ export default function ModerationPage() {
         )}
       </div>
 
-      {/* Immutable Moderation Audit Log */}
+      {/* Recent moderation actions */}
       <div className="celestial-card p-6 md:p-8 rounded-xl border border-white/10 bg-[#12151F] space-y-4">
         <div className="flex items-center gap-2">
           <History className="w-4 h-4 text-[#FBBF24]" />
           <h2 className="font-display text-lg font-bold text-[#F8F7FF]">
-            Immutable Audit Trail (moderation_actions)
+            Recent moderation actions
           </h2>
         </div>
 
@@ -185,20 +178,20 @@ export default function ModerationPage() {
               {auditLog.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-slate-500">
-                    No moderation actions logged in current session. All actions taken by moderators are tracked here.
+                    No moderation actions recorded yet.
                   </td>
                 </tr>
               ) : (
                 auditLog.map((log) => (
                   <tr key={log.id} className="py-2.5">
-                    <td className="py-3 text-slate-500">{log.timestamp}</td>
-                    <td className="py-3 font-semibold text-[#F8F7FF]">{log.actor}</td>
+                    <td className="py-3 text-slate-500">{new Date(log.created_at).toLocaleString()}</td>
+                    <td className="py-3 font-semibold text-[#F8F7FF]">{String(log.actor_id).slice(0, 8)}</td>
                     <td className="py-3">
                       <span className="neo-badge text-[8px] bg-white/5 text-slate-300 border-white/10">
                         {log.action_type}
                       </span>
                     </td>
-                    <td className="py-3 text-slate-300">{log.target}</td>
+                    <td className="py-3 text-slate-300">{log.target_type} · {String(log.target_id).slice(0, 8)}</td>
                     <td className="py-3 text-slate-500 truncate max-w-xs">{log.notes}</td>
                   </tr>
                 ))
