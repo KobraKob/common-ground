@@ -22,6 +22,10 @@ from app.modules.identity.schemas import (
 )
 from app.modules.colleges.models import College
 from app.modules.communities.models import Community, CommunityMembership
+from app.modules.analytics.models import AnalyticsEvent
+from app.modules.commons.models import Post
+from app.modules.projects.models import ProjectMember
+from app.modules.events.models import EventRSVP
 
 
 def hash_password(password: str) -> str:
@@ -226,6 +230,11 @@ async def login(
         email=user.email,
         profile=prof_resp,
     )
+
+
+@auth_router.get("/role")
+async def get_current_role(user: User = Depends(get_current_user)):
+    return {"platform_role": user.platform_role}
 
 
 @auth_router.get("/me", response_model=StudentProfileResponse)
@@ -489,6 +498,55 @@ async def get_my_profile(
         onboarding_completed=profile.onboarding_completed,
         created_at=profile.created_at,
     )
+
+
+@router.get("/me/passport")
+async def get_my_passport(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    posts_shared = (await db.execute(select(func.count(Post.id)).where(Post.author_id == user.id))).scalar() or 0
+    projects_joined = (await db.execute(select(func.count(ProjectMember.id)).where(
+        ProjectMember.user_id == user.id, ProjectMember.status == "ACCEPTED"
+    ))).scalar() or 0
+    circles_joined = (await db.execute(select(func.count(CommunityMembership.id)).where(
+        CommunityMembership.user_id == user.id
+    ))).scalar() or 0
+    events_joined = (await db.execute(select(func.count(EventRSVP.id)).where(
+        EventRSVP.user_id == user.id, EventRSVP.status == "GOING"
+    ))).scalar() or 0
+
+    activity_rows = (await db.execute(
+        select(AnalyticsEvent.event_name, AnalyticsEvent.created_at)
+        .where(
+            AnalyticsEvent.user_id == user.id,
+            AnalyticsEvent.event_name.in_([
+                "post_created", "project_created", "project_member_accepted",
+                "cross_campus_project_connection", "community_joined", "event_rsvp",
+            ]),
+        )
+        .order_by(AnalyticsEvent.created_at.desc())
+        .limit(10)
+    )).all()
+    labels = {
+        "post_created": "Shared a post",
+        "project_created": "Started a project",
+        "project_member_accepted": "Joined a project",
+        "cross_campus_project_connection": "Joined a cross-campus project",
+        "community_joined": "Joined an interest circle",
+        "event_rsvp": "Responded to an event",
+    }
+    recent_activity = [
+        {"label": labels.get(name, "Contributed"), "created_at": created_at.isoformat()}
+        for name, created_at in activity_rows
+    ]
+    return {
+        "posts_shared": posts_shared,
+        "projects_joined": projects_joined,
+        "circles_joined": circles_joined,
+        "events_joined": events_joined,
+        "recent_activity": recent_activity,
+    }
 
 
 @router.patch("/me", response_model=StudentProfileResponse)
