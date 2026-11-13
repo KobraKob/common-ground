@@ -27,6 +27,8 @@ export function GlobalHeader() {
 
   const isAuth = ['/login', '/signup', '/onboarding'].some((path) => pathname.startsWith(path));
   const isMarketing = pathname === '/' || ['/about', '/privacy', '/terms'].some((path) => pathname.startsWith(path));
+  const privatePages = ['/messages', '/profile', '/passport', '/moderation', '/insights', '/performance'];
+  const showPublicNav = !isAuth && !privatePages.some((path) => pathname.startsWith(path));
   const showSearch = isLoggedIn && !isAuth && !isMarketing;
 
   useEffect(() => {
@@ -105,7 +107,7 @@ export function GlobalHeader() {
           <span className="text-[17px] font-semibold tracking-tight">CommonGround</span>
         </Link>
 
-        {isMarketing && <nav className="hidden items-center gap-7 md:flex" aria-label="Main navigation">
+        {showPublicNav && <nav className="hidden items-center gap-7 md:flex" aria-label="Main navigation">
           {publicLinks.map((item) => <Link key={item.href} href={item.href} className="min-h-[44px] flex items-center text-sm text-[var(--text-secondary)] transition-colors hover:text-[var(--text)]">{item.label}</Link>)}
         </nav>}
 
@@ -126,14 +128,14 @@ export function GlobalHeader() {
 
         <div className="flex shrink-0 items-center gap-1">
           <button onClick={toggleTheme} className="grid h-11 w-11 place-items-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--surface)]" aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button>
-          {isMarketing && !isLoggedIn && <>
+          {!isAuth && !isLoggedIn && <>
             <Link href="/login" className="hidden min-h-[44px] items-center px-3 text-sm text-[var(--text-secondary)] sm:inline-flex">Sign in</Link>
             <Link href="/signup" className="btn-primary min-h-[36px] px-4 text-sm">Join</Link>
           </>}
           {isMarketing && isLoggedIn && <Link href="/profile" className="hidden min-h-[44px] items-center px-3 text-sm text-[var(--text-secondary)] sm:inline-flex">{profileName}</Link>}
           {showSearch && <button onClick={() => searchInputRef.current?.focus()} className="grid h-11 w-11 place-items-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--surface)] md:hidden" aria-label="Open search"><Search size={19} /></button>}
           {isLoggedIn && !isMarketing && <button onClick={signOut} className="hidden h-10 items-center gap-2 rounded-full px-3 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface)] md:flex"><LogOut size={16} /> Sign out</button>}
-          {isMarketing && <button type="button" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="grid h-11 w-11 place-items-center rounded-full md:hidden" aria-label={mobileMenuOpen ? 'Close navigation' : 'Open navigation'}>{mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}</button>}
+          {showPublicNav && <button type="button" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="grid h-11 w-11 place-items-center rounded-full md:hidden" aria-label={mobileMenuOpen ? 'Close navigation' : 'Open navigation'}>{mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}</button>}
         </div>
       </div>
 
