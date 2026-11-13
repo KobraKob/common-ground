@@ -107,7 +107,7 @@ export default function CityPage() {
         setStudents(peers || []);
       } catch (err) {
         console.warn('Could not load the city feed:', err);
-        setPosts(STARTER_SPOTLIGHT_POSTS);
+        setPosts([]);
       } finally {
         setLoading(false);
       }
