@@ -52,7 +52,7 @@ export function CampusNetworkMap({ colleges }: { colleges: College[] }) {
       <span className="rounded-full bg-[var(--cg-elevated)] px-3 py-1.5 text-xs cg-muted">{campuses.length} mapped campuses</span>
     </div>
     <div className="relative aspect-[4/3] w-full overflow-hidden border-y border-[var(--cg-border)] bg-[var(--cg-elevated)] sm:aspect-[16/8]">
-      <iframe title="OpenStreetMap of Bengaluru campuses" src={OSM_EMBED} loading="lazy" className="absolute inset-0 h-full w-full border-0" />
+      <iframe title="OpenStreetMap of Bengaluru campuses" src={OSM_EMBED} loading="lazy" className="pointer-events-none absolute inset-0 h-full w-full border-0" />
       <div className="pointer-events-none absolute inset-0">
         {campuses.map((campus) => {
           const position = markerPosition(campus.latitude, campus.longitude);
