@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import re
 from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -76,6 +77,11 @@ async def update_my_mentorship_profile(
         raise HTTPException(status_code=409, detail="Complete your student profile before opting into mentorship")
     if payload.is_available and student.profile_visibility != "PUBLIC":
         raise HTTPException(status_code=409, detail="Set your student profile visibility to Public before appearing in mentor discovery")
+    public_text = f"{payload.bio} {payload.availability_note}"
+    if re.search(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}", public_text, re.IGNORECASE):
+        raise HTTPException(status_code=422, detail="Do not publish personal email addresses in a mentor profile")
+    if re.search(r"(?:\\+?\\d[\\d\\s().-]{7,}\\d)", public_text):
+        raise HTTPException(status_code=422, detail="Do not publish phone numbers in a mentor profile")
 
     result = await db.execute(
         select(MentorshipProfile).where(MentorshipProfile.user_id == user.id)
@@ -120,6 +126,7 @@ async def list_opt_in_mentors(
         .where(
             MentorshipProfile.is_available.is_(True),
             StudentProfile.profile_visibility == "PUBLIC",
+            StudentProfile.dm_permission != "NONE",
             MentorshipProfile.user_id != user.id,
             StudentProfile.user_id.notin_(blocked_ids),
             StudentProfile.user_id.notin_(blocked_by_ids),
@@ -207,6 +214,15 @@ async def create_mentorship_request(
         )
         if not same_campus and not shared_communities:
             raise HTTPException(status_code=403, detail="Mentorship requests are limited by this student's contact settings")
+
+    pending_count_result = await db.execute(
+        select(MentorshipRequest.id).where(
+            MentorshipRequest.requester_id == user.id,
+            MentorshipRequest.status == "PENDING",
+        ).limit(5)
+    )
+    if len(pending_count_result.scalars().all()) >= 5:
+        raise HTTPException(status_code=429, detail="You can have up to five pending mentorship requests at a time")
 
     existing_result = await db.execute(
         select(MentorshipRequest).where(
