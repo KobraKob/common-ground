@@ -422,6 +422,19 @@ export async function joinCommunity(communityId: string): Promise<any> {
   return await request<any>(`/communities/${communityId}/join`, { method: 'POST' });
 }
 
+export async function createCommunity(payload: {
+  name: string;
+  slug: string;
+  description: string;
+  community_type: 'CROSS_CAMPUS_INTEREST';
+  visibility: 'PUBLIC';
+}): Promise<Community> {
+  return await request<Community>('/communities', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function getConversations(): Promise<Conversation[]> {
   try {
     return await request<Conversation[]>('/conversations');
