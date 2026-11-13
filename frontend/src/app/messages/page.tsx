@@ -30,6 +30,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [myProfile, setMyProfile] = useState<StudentProfile | null>(null);
   const messageRequestId = useRef(0);
+  const selectedConversationRef = useRef('');
 
   // Report modal
   const [reportTarget, setReportTarget] = useState<{ id: string; type: any; title: string } | null>(null);
@@ -50,6 +51,7 @@ export default function MessagesPage() {
       if (convs.length > 0) {
         const requestId = ++messageRequestId.current;
         setSelectedConvId(convs[0].id);
+        selectedConversationRef.current = convs[0].id;
         const msgs = await getMessages(convs[0].id);
         if (isMounted && requestId === messageRequestId.current) setMessages(msgs);
       }
@@ -66,6 +68,7 @@ export default function MessagesPage() {
   const handleSelectConv = async (convId: string) => {
     const requestId = ++messageRequestId.current;
     setSelectedConvId(convId);
+    selectedConversationRef.current = convId;
     setMessages([]);
     const msgs = await getMessages(convId);
     if (requestId === messageRequestId.current) setMessages(msgs);
@@ -74,10 +77,13 @@ export default function MessagesPage() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim() || !selectedConvId) return;
+    const conversationId = selectedConvId;
     try {
-      const newMsg = await sendMessage(selectedConvId, messageInput.trim());
-      setMessages((current) => [...current, newMsg]);
-      setMessageInput('');
+      const newMsg = await sendMessage(conversationId, messageInput.trim());
+      if (selectedConversationRef.current === conversationId) {
+        setMessages((current) => [...current, newMsg]);
+        setMessageInput('');
+      }
     } catch {
       alert('Failed to deliver message');
     }
