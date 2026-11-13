@@ -38,7 +38,8 @@ import {
   getPostComments, 
   addComment,
   getActiveProfile,
-  isAuthenticated
+  isAuthenticated,
+  trackAnalyticsEvent
 } from '@/lib/api';
 import { Post, Community, StudentProfile, Comment } from '@/types';
 import { TrustBadge } from '@/components/shared/TrustBadge';
@@ -58,6 +59,15 @@ export default function CityPage() {
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const postsQuery = useInfinitePostsQuery('city', undefined, 12);
+  const feedLoadStartedAt = useRef<number | null>(null);
+  const feedLoadReported = useRef(false);
+  useEffect(() => { feedLoadStartedAt.current = performance.now(); }, []);
+  useEffect(() => {
+    if (postsQuery.isSuccess && !feedLoadReported.current && feedLoadStartedAt.current !== null) {
+      feedLoadReported.current = true;
+      void trackAnalyticsEvent('feed_load_completed', 'city', performance.now() - feedLoadStartedAt.current);
+    }
+  }, [postsQuery.isSuccess]);
   const hasMorePosts = Boolean(postsQuery.hasNextPage);
   const isLoadingMorePosts = postsQuery.isFetchingNextPage;
   const isFeedLoading = loading || postsQuery.isLoading;
