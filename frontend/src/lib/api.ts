@@ -244,11 +244,12 @@ export async function updateMyProfile(payload: Partial<StudentProfile>): Promise
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
-  cachedUserProfile = updated;
+  const merged = { ...cachedUserProfile, ...updated } as StudentProfile;
+  cachedUserProfile = merged;
   if (typeof window !== 'undefined') {
-    localStorage.setItem('cg_user_profile', JSON.stringify(updated));
+    localStorage.setItem('cg_user_profile', JSON.stringify(merged));
   }
-  return updated;
+  return merged;
 }
 
 export async function requestVerificationClaim(payload: {
