@@ -4,7 +4,7 @@ import hashlib
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -86,7 +86,7 @@ async def create_direct_conversation(
     if existing:
         return {
             "id": existing.id,
-            "title": recipient_profile.display_name,
+            "title": recipient_name,
             "description": existing.description,
             "conversation_type": existing.conversation_type,
             "last_message": None,
@@ -216,13 +216,13 @@ async def list_messages(
         select(Message, StudentProfile.display_name)
         .outerjoin(StudentProfile, StudentProfile.user_id == Message.sender_id)
         .where(*filters)
-        .order_by(Message.created_at.asc(), Message.id.asc())
+        .order_by(Message.created_at.desc(), Message.id.desc())
         .offset(offset)
         .limit(limit)
     )
 
     messages = []
-    for message, sender_name in result.all():
+    for message, sender_name in reversed(result.all()):
         messages.append({
             "id": message.id,
             "conversation_id": message.conversation_id,
