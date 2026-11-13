@@ -134,7 +134,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="cg-page space-y-8">
       {/* Student Identity Showcase & Holographic Pass */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left: 3D Holographic Student ID Card */}
