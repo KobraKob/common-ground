@@ -94,7 +94,7 @@ export default function CommonsPage() {
         tags: tagsList,
         is_cross_campus: true,
       });
-      setPosts([created, ...posts]);
+      setPosts((current) => [created, ...current]);
       setQTitle('');
       setQBody('');
       setShowAskModal(false);
