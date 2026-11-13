@@ -53,3 +53,22 @@ async def test_moderator_can_read_aggregated_summary(client: AsyncClient, db_ses
     assert body["period_days"] == 30
     assert "active_students_24h" in body
     assert "measurement_note" in body
+
+
+@pytest.mark.asyncio
+async def test_feed_performance_event_accepts_bounded_duration_and_surface(client: AsyncClient, db_session):
+    db_session.add(User(id="analytics-perf-student", email="analytics-perf@student.test", platform_role="USER"))
+    await db_session.commit()
+
+    response = await client.post(
+        "/api/v1/analytics/events",
+        json={"event_name": "feed_load_completed", "surface": "mentorship", "duration_ms": 423.456},
+        headers={"X-User-Id": "analytics-perf-student"},
+    )
+
+    assert response.status_code == 202
+    event = (await db_session.execute(
+        select(AnalyticsEvent).where(AnalyticsEvent.user_id == "analytics-perf-student")
+    )).scalar_one()
+    assert event.event_name == "feed_load_completed"
+    assert event.event_metadata == {"surface": "mentorship", "duration_ms": 423.46}
