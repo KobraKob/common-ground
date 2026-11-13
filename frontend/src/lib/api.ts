@@ -762,7 +762,6 @@ export async function updateMentorshipRequest(requestId: string, status: 'ACCEPT
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
-  if (status === 'ACCEPTED') void trackAnalyticsEvent('connection_created', 'mentorship');
   return updated;
 }
 
