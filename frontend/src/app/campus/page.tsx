@@ -60,9 +60,9 @@ const STARTER_CAMPUS_DISCUSSIONS: Record<string, any[]> = {
   ],
 };
 
-export default function CampusPage() {
+export default function CampusPage({ initialSlug = 'rvce' }: { initialSlug?: string }) {
   const [colleges, setColleges] = useState<College[]>(BENGALURU_COLLEGES);
-  const [selectedSlug, setSelectedSlug] = useState('rvce');
+  const [selectedSlug, setSelectedSlug] = useState(initialSlug);
   const [activeTab, setActiveTab] = useState<'overview' | 'departments' | 'announcements' | 'events'>('overview');
   const [loading, setLoading] = useState(false);
 
