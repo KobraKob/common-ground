@@ -119,6 +119,20 @@ async def list_opt_in_mentors(
 ):
     blocked_ids = select(UserBlock.blocked_id).where(UserBlock.blocker_id == user.id)
     blocked_by_ids = select(UserBlock.blocker_id).where(UserBlock.blocked_id == user.id)
+    requester_profile_result = await db.execute(
+        select(StudentProfile.college_id).where(StudentProfile.user_id == user.id)
+    )
+    requester_college_id = requester_profile_result.scalar_one_or_none()
+    requester_community_ids = select(CommunityMembership.community_id).where(
+        CommunityMembership.user_id == user.id
+    )
+    shared_community_users = select(CommunityMembership.user_id).where(
+        CommunityMembership.community_id.in_(requester_community_ids)
+    )
+    same_campus_or_community = [StudentProfile.user_id.in_(shared_community_users)]
+    if requester_college_id:
+        same_campus_or_community.append(StudentProfile.college_id == requester_college_id)
+
     query = (
         select(MentorshipProfile, StudentProfile, College.name)
         .join(StudentProfile, StudentProfile.user_id == MentorshipProfile.user_id)
@@ -126,7 +140,7 @@ async def list_opt_in_mentors(
         .where(
             MentorshipProfile.is_available.is_(True),
             StudentProfile.profile_visibility == "PUBLIC",
-            StudentProfile.dm_permission != "NONE",
+            or_(\n                StudentProfile.dm_permission == "EVERYONE",\n                and_(StudentProfile.dm_permission == "SAME_CAMPUS_OR_COMMUNITY", or_(*same_campus_or_community)),\n            ),
             MentorshipProfile.user_id != user.id,
             StudentProfile.user_id.notin_(blocked_ids),
             StudentProfile.user_id.notin_(blocked_by_ids),
