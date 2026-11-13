@@ -605,10 +605,10 @@ export async function getProjectTasks(projectId: string): Promise<TaskItem[]> {
   return await request<TaskItem[]>(`/projects/${projectId}/tasks`);
 }
 
-export async function createProjectTask(projectId: string, title: string): Promise<TaskItem> {
+export async function createProjectTask(projectId: string, title: string, assigneeId?: string): Promise<TaskItem> {
   return await request<TaskItem>(`/projects/${projectId}/tasks`, {
     method: 'POST',
-    body: JSON.stringify({ title, status: 'TODO' }),
+    body: JSON.stringify({ title, status: 'TODO', assignee_id: assigneeId }),
   });
 }
 
