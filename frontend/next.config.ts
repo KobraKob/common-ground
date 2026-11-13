@@ -2,6 +2,25 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  webpack(config) {
+    const currentIgnored = config.watchOptions?.ignored;
+    const ignored = Array.isArray(currentIgnored)
+      ? currentIgnored
+      : currentIgnored
+        ? [currentIgnored]
+        : [];
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: [
+        ...ignored,
+        /(^|[\\/])node_modules([\\/]|$)/,
+        /^C:[\\/]DumpStack\\.log\\.tmp$/i,
+        /^C:[\\/]swapfile\\.sys$/i,
+        /^C:[\\/]pagefile\\.sys$/i,
+      ],
+    };
+    return config;
+  },
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],

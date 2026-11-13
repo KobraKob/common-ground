@@ -25,7 +25,11 @@ const stories = [
   },
   {
     label: 'Q&A',
+<<<<<<< HEAD
     title: "Get answers from students who've been there.",
+=======
+    title: "Get answers from students who’ve been there.",
+>>>>>>> 02fcb9bac91aee3d92c20af8b3ed8fbe9f8f6a4f
     body: 'Accepted answers, notes and course discussions, free for every student.',
     href: '/commons',
     action: 'Visit Q&A',
