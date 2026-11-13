@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, Award, BookOpen, BriefcaseBusiness, CalendarCheck, GraduationCap, ShieldCheck, Sparkles, Users, UserRound } from 'lucide-react';
+import { ArrowUpRight, Award, BookOpen, BriefcaseBusiness, CalendarCheck, CheckCircle2, GraduationCap, ShieldCheck, Sparkles, Users, UserRound } from 'lucide-react';
 import { getMyContributions, getMyProfile, getMyProjects, isAuthenticated, type MyContributions } from '@/lib/api';
 import type { ProjectItem, StudentProfile } from '@/types';
 
@@ -51,6 +51,15 @@ export default function PassportPage() {
     { label: 'Useful answers', value: contributions.useful_answers, icon: BookOpen },
     { label: 'Tasks marked done', value: contributions.tasks_marked_done, icon: Award },
   ];
+  const milestones = [
+    { title: 'Institutionally verified', description: 'College identity confirmed by CommonGround review.', earned: profile.verification_stage === 'STAGE_3_INSTITUTIONAL_VERIFIED' },
+    { title: 'First collaboration', description: 'Accepted into a project team or created a project.', earned: projects.length > 0 },
+    { title: 'First event attended', description: 'An organiser confirmed your attendance.', earned: contributions.events_attended.length > 0 },
+    { title: 'Knowledge contributor', description: 'A contribution was marked as a useful answer.', earned: contributions.useful_answers > 0 },
+    { title: 'Community member', description: 'Joined a CommonGround community.', earned: contributions.communities.length > 0 },
+    { title: 'First task completed', description: 'A project team marked one of your tasks done.', earned: contributions.tasks_marked_done > 0 },
+    { title: 'Project shipped', description: 'A project in your portfolio reached the completed stage.', earned: projects.some((project) => project.stage === 'COMPLETED') },
+  ];
 
   return <div className="cg-page space-y-8">
     <header className="flex flex-wrap items-end justify-between gap-4">
@@ -75,6 +84,8 @@ export default function PassportPage() {
       <section className="cg-surface p-6"><div className="flex items-center gap-2"><GraduationCap className="text-[var(--cg-accent)]"/><h2 className="text-lg font-semibold">Student identity</h2></div><dl className="mt-5 space-y-3 text-sm"><div className="flex justify-between gap-4"><dt className="cg-muted">Institution</dt><dd className="text-right">{profile.college_name || 'Not provided'}</dd></div><div className="flex justify-between gap-4"><dt className="cg-muted">Course / branch</dt><dd className="text-right">{profile.course_branch || 'Not provided'}</dd></div><div className="flex justify-between gap-4"><dt className="cg-muted">Graduation year</dt><dd className="text-right">{profile.graduation_year || 'Not provided'}</dd></div></dl></section>
       <section className="cg-surface p-6"><div className="flex items-center gap-2"><Sparkles className="text-[var(--cg-accent)]"/><h2 className="text-lg font-semibold">Skills and interests</h2></div><p className="mt-4 text-xs cg-muted">These profile details help students find collaborators with relevant experience.</p><div className="mt-3 flex flex-wrap gap-2">{[...profile.skills,...profile.interests].map((item,index)=><span key={item+index} className="rounded-full bg-[var(--cg-elevated)] px-3 py-1.5 text-xs">{item}</span>)}</div>{profile.skills.length+profile.interests.length===0 && <p className="mt-3 text-sm cg-muted">No skills or interests added yet.</p>}</section>
     </div>
+
+    <section className="space-y-4"><div className="flex items-center gap-2"><Award className="text-[var(--cg-accent)]"/><h2 className="text-xl font-semibold">Milestones</h2></div><p className="text-sm cg-muted">Milestones are derived from platform records, not points or self-reported badges.</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{milestones.map((milestone)=><article key={milestone.title} className="cg-surface flex gap-3 p-4"><div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${milestone.earned ? 'bg-[var(--cg-accent-soft)] text-[var(--cg-accent)]' : 'bg-[var(--cg-elevated)] text-[var(--cg-subtle)]'}`}>{milestone.earned ? <CheckCircle2 size={18}/> : <Award size={18}/>}</div><div><p className="text-sm font-semibold">{milestone.title}</p><p className="mt-1 text-xs leading-5 cg-muted">{milestone.description}</p><p className="mt-2 text-[11px] font-semibold uppercase tracking-wide">{milestone.earned ? 'Earned' : 'In progress'}</p></div></article>)}</div></section>
 
     <section className="space-y-4"><div className="flex items-center gap-2"><BriefcaseBusiness className="text-[var(--cg-accent)]"/><h2 className="text-xl font-semibold">Project contributions</h2></div>
       {projects.length ? <div className="grid gap-3 sm:grid-cols-2">{projects.map((project)=><article key={project.id} className="cg-surface p-5"><p className="cg-eyebrow">{project.stage.replace(/_/g, ' ')}</p><h3 className="mt-2 font-semibold">{project.title}</h3><p className="mt-1 text-xs cg-muted">Your role: {project.my_role || (project.creator_id === profile.user_id ? 'Project creator' : 'Accepted collaborator')}</p><p className="mt-2 text-sm cg-muted">{project.pitch}</p></article>)}</div> : <div className="cg-surface p-6"><Award size={22} className="text-[var(--cg-subtle)]"/><p className="mt-3 font-medium">No accepted project contributions yet.</p><p className="mt-1 text-sm cg-muted">Create a project or request to join a team. Accepted memberships appear here.</p><Link href="/build" className="cg-link mt-3 inline-flex min-h-11 items-center text-sm">Explore Build <ArrowUpRight size={15} className="ml-1"/></Link></div>}
