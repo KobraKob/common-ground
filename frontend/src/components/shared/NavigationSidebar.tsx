@@ -15,17 +15,20 @@ const desktopItems = [
   { href: '/messages', label: 'Messages', icon: MessageSquare },
   { href: '/profile', label: 'Profile', icon: User },
 ];
-const mobileItems = desktopItems.filter((item) => ['/city','/campus','/commons','/messages','/profile'].includes(item.href));
+const mobileItems = desktopItems.filter((item) => ['/city','/discover','/build','/messages','/profile'].includes(item.href));
 
 export function NavigationSidebar() {
   const pathname = usePathname();
   const [isModerator, setIsModerator] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     let active = true;
     const cachedProfile = getActiveProfile();
     const cachedRole = cachedProfile?.platform_role;
-    if (!isAuthenticated()) {
+    const authenticated = isAuthenticated();
+    setIsLoggedIn(authenticated);
+    if (!authenticated) {
       setIsModerator(false);
     } else if (cachedRole) {
       setIsModerator(cachedRole === 'MODERATOR' || cachedRole === 'ADMIN');
@@ -39,6 +42,8 @@ export function NavigationSidebar() {
   }, [pathname]);
 
   const active = (href: string) => pathname === href || (href !== '/' && pathname.startsWith(href + '/'));
+  if (!isLoggedIn) return null;
+
   return (
     <>
       <nav aria-label="Primary navigation" className="hidden md:block border-b border-[var(--cg-border)] bg-[var(--cg-bg)]">
