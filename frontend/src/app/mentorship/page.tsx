@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, BookOpen, CalendarClock, Check, ShieldCheck, UserRound, Users } from 'lucide-react';
@@ -83,7 +84,7 @@ export default function MentorshipPage() {
     );
   }, [mentors, topicFilter]);
 
-  async function saveMentorshipProfile(event: React.FormEvent<HTMLFormElement>) {
+  async function saveMentorshipProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusyId('profile');
     setNotice('');
