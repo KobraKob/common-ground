@@ -9,7 +9,7 @@ from app.core.security import get_current_user
 from app.modules.identity.models import User, StudentProfile
 from app.modules.colleges.models import College
 from app.modules.projects.models import Project, ProjectMember, Task
-from app.modules.events.models import Event, EventRSVP
+from app.modules.events.models import Event, EventRSVP, EventAttendance
 from app.modules.analytics.models import AnalyticsEvent
 from app.modules.projects.schemas import (
     ProjectCreateRequest,
@@ -499,6 +499,77 @@ async def create_event(
         rsvp_count=event.rsvp_count,
         created_at=event.created_at,
     )
+
+
+@router.post("/events/{event_id}/attendance/{attendee_id}")
+async def mark_event_attendance(
+    event_id: str,
+    attendee_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    event_result = await db.execute(select(Event).where(Event.id == event_id))
+    event = event_result.scalar_one_or_none()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the event organizer can confirm attendance")
+
+    event_end = event.ends_at
+    if event_end.tzinfo is None:
+        from datetime import timezone
+        event_end = event_end.replace(tzinfo=timezone.utc)
+    if event_end > datetime.now(event_end.tzinfo):
+        raise HTTPException(status_code=409, detail="Attendance can only be confirmed after the event ends")
+
+    rsvp_result = await db.execute(
+        select(EventRSVP).where(
+            and_(EventRSVP.event_id == event_id, EventRSVP.user_id == attendee_id, EventRSVP.status == "GOING")
+        )
+    )
+    if not rsvp_result.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Only students with a GOING RSVP can be marked present")
+
+    existing_result = await db.execute(
+        select(EventAttendance).where(
+            and_(EventAttendance.event_id == event_id, EventAttendance.user_id == attendee_id)
+        )
+    )
+    attendance = existing_result.scalar_one_or_none()
+    if attendance:
+        return {"marked": True, "already_marked": True}
+
+    db.add(EventAttendance(event_id=event_id, user_id=attendee_id, marked_by=user.id))
+    await db.commit()
+    return {"marked": True, "already_marked": False}
+
+
+@router.get("/events/attendance/mine")
+async def list_my_event_attendance(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(EventAttendance, Event)
+        .join(Event, Event.id == EventAttendance.event_id)
+        .where(EventAttendance.user_id == user.id)
+        .order_by(EventAttendance.marked_at.desc())
+        .limit(100)
+    )
+    return [
+        {
+            "id": attendance.id,
+            "event_id": event.id,
+            "title": event.title,
+            "description": event.description,
+            "starts_at": event.starts_at,
+            "ends_at": event.ends_at,
+            "venue_or_link": event.venue_or_link,
+            "is_online": event.is_online,
+            "attended_at": attendance.marked_at,
+        }
+        for attendance, event in result.all()
+    ]
 
 
 @router.post("/events/{event_id}/rsvp")
