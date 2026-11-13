@@ -42,8 +42,17 @@ async def verify_can_dm(sender_id: str, recipient_id: str, db: AsyncSession):
     """
     await check_users_not_blocked(sender_id, recipient_id, db)
 
-    from app.modules.identity.models import StudentProfile
+    from app.modules.identity.models import StudentProfile, User
     from app.modules.communities.models import CommunityMembership
+
+    users_result = await db.execute(
+        select(User.id, User.is_suspended).where(User.id.in_([sender_id, recipient_id]))
+    )
+    suspended_by_id = {user_id: is_suspended for user_id, is_suspended in users_result.all()}
+    if sender_id not in suspended_by_id or suspended_by_id[sender_id]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sender account is unavailable")
+    if recipient_id not in suspended_by_id or suspended_by_id[recipient_id]:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipient not found")
 
     profiles_result = await db.execute(
         select(StudentProfile).where(StudentProfile.user_id.in_([sender_id, recipient_id]))
