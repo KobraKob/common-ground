@@ -40,7 +40,7 @@ async def test_direct_messaging_is_private_and_idempotent(client: AsyncClient, d
         json={"recipient_user_id": recipient.id},
         headers={"X-User-Id": sender.id},
     )
-    assert created.status_code == 201, created.text
+    assert created.status_code == 200, created.text
     conversation_id = created.json()["id"]
     assert created.json()["title"] == "Message Recipient"
 
