@@ -15,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen antialiased">
         <Providers>
+          <a className="cg-skip-link" href="#main-content">Skip to content</a>
           <GlobalHeader />
           <NavigationSidebar />
           <main id="main-content" className="w-full min-h-[calc(100vh-8rem)]">{children}</main>
