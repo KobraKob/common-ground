@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
+import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database import engine, Base
@@ -9,11 +11,14 @@ from app.core.monitoring import PerformanceMonitoringMiddleware, monitoring_rout
 
 # Import routers
 from app.modules.identity.router import router as identity_router, auth_router
+from app.modules.analytics.router import router as analytics_router
 from app.modules.colleges.router import router as colleges_router
 from app.modules.communities.router import router as communities_router
 from app.modules.commons.router import router as commons_router
 from app.modules.projects.router import router as projects_router
 from app.modules.moderation.router import router as moderation_router
+
+logger = logging.getLogger('commonground.api')
 
 
 @asynccontextmanager
@@ -67,15 +72,16 @@ async def lifespan(app: FastAPI):
                         try:
                             sync_conn.exec_driver_sql(idx_sql)
                         except Exception as idx_err:
-                            print(f"[Index Init Note] {idx_err}")
+                            logger.warning("SQLite index initialization skipped: %s", type(idx_err).__name__)
 
             await conn.run_sync(migrate_sqlite_columns_and_indices)
 
-    try:
-        from app.seed import init_college_directory
-        await init_college_directory()
-    except Exception as exc:
-        print(f"[Directory Init Warning] {type(exc).__name__}: {exc}")
+    if settings.ENVIRONMENT.lower() in {"development", "dev", "local", "test"}:
+        try:
+            from app.seed import init_college_directory
+            await init_college_directory()
+        except Exception as exc:
+            logger.warning("College directory initialization failed: %s", type(exc).__name__)
 
     yield
     await engine.dispose()
@@ -93,15 +99,15 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-User-Id"],
 )
 
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     # Avoid leaking SQL, credentials, and internal exception details.
-    print(f"[Unhandled API Error] {type(exc).__name__}: {exc}")
+    logger.error("Unhandled API error: %s %s (%s)", request.method, request.url.path, type(exc).__name__)
     return JSONResponse(
         status_code=500,
         content={"error": "Internal Server Error"},
@@ -117,10 +123,23 @@ async def health_check():
         "cluster": "Bengaluru Phase 1",
     }
 
+@app.get("/ready", tags=["System"])
+async def readiness_check():
+    try:
+        async with engine.connect() as connection:
+            await connection.execute(text("SELECT 1"))
+    except Exception:
+        logger.warning("Readiness probe failed: database unavailable")
+        return JSONResponse(status_code=503, content={"status": "not_ready", "dependency": "database"})
+    return {"status": "ready", "service": "CommonGround API"}
+
+
+
 
 app.include_router(monitoring_router, prefix=settings.API_V1_PREFIX)
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(identity_router, prefix=settings.API_V1_PREFIX)
+app.include_router(analytics_router, prefix=settings.API_V1_PREFIX)
 app.include_router(colleges_router, prefix=settings.API_V1_PREFIX)
 app.include_router(communities_router, prefix=settings.API_V1_PREFIX)
 app.include_router(commons_router, prefix=settings.API_V1_PREFIX)
