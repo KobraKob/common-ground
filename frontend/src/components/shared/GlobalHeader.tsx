@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { 
   Search, 
   Sparkles, 
-  UserCheck, 
   Moon, 
   Orbit, 
   X, 
@@ -18,13 +17,10 @@ import {
 } from 'lucide-react';
 import { 
   unifiedSearch, 
-  setActiveUser, 
-  getActiveUserId, 
   getActiveProfile, 
   clearAuthSession,
   isAuthenticated
 } from '@/lib/api';
-import { DEMO_USERS, SEED_COLLEGES } from '@/lib/mockData';
 import { TrustBadge } from './TrustBadge';
 
 export function GlobalHeader() {
@@ -34,8 +30,6 @@ export function GlobalHeader() {
   const [isSearching, setIsSearching] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isTwilight, setIsTwilight] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState(getActiveUserId());
-  const [selectedCollegeSlug, setSelectedCollegeSlug] = useState('rvce');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
@@ -77,20 +71,9 @@ export function GlobalHeader() {
     }
   };
 
-  const handlePersonaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newUid = e.target.value;
-    setActiveUser(newUid);
-    setCurrentUserId(newUid);
-    const prof = DEMO_USERS.find((u) => u.user_id === newUid);
-    if (prof && prof.college_id) {
-      const c = SEED_COLLEGES.find((col) => col.id === prof.college_id);
-      if (c) setSelectedCollegeSlug(c.slug);
-    }
-    window.location.reload();
-  };
-
   const handleSignOut = () => {
     clearAuthSession();
+    setIsLoggedIn(false);
     router.push('/');
     window.location.reload();
   };
@@ -171,13 +154,13 @@ export function GlobalHeader() {
                   <div className="space-y-1">
                     {searchResults.students.map((s: any) => (
                       <Link
-                        key={s.id}
+                        key={s.id || s.user_id}
                         href={`/profile`}
                         onClick={() => setSearchResults(null)}
                         className="flex items-center justify-between p-2 rounded-xl hover:bg-purple-900/30 text-xs font-mono transition-colors"
                       >
-                        <span className="font-semibold text-[#F8F7FF]">{s.name} <span className="text-[#7C6FA6]">(@{s.handle})</span></span>
-                        <TrustBadge stage={s.stage} size="sm" />
+                        <span className="font-semibold text-[#F8F7FF]">{s.name || s.display_name} <span className="text-[#7C6FA6]">(@{s.handle})</span></span>
+                        <TrustBadge stage={s.stage || s.verification_stage} size="sm" />
                       </Link>
                     ))}
                   </div>
@@ -224,32 +207,18 @@ export function GlobalHeader() {
                   </div>
                 </div>
               )}
+
+              {!searchResults.students?.length && !searchResults.commons_posts?.length && !searchResults.communities?.length && (
+                <div className="p-4 text-center text-xs font-mono text-[#7C6FA6]">
+                  No matching peers, notes, or communities found.
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Right Controls */}
         <div className="flex items-center gap-2">
-          {/* Quick Demo Persona Switcher */}
-          <div className="hidden lg:flex items-center gap-2 bg-[#120836]/80 border border-purple-400/30 rounded-full px-3 py-1 shadow-sm">
-            <UserCheck className="w-3.5 h-3.5 text-[#FBBF24]" />
-            <select
-              value={currentUserId}
-              onChange={handlePersonaChange}
-              className="bg-transparent text-[11px] font-mono text-[#F8F7FF] focus:outline-none cursor-pointer"
-            >
-              <option value="aaaa0001-0000-0000-0000-000000000001" className="bg-[#0B0524] text-white">
-                Aarav (RVCE • Verified)
-              </option>
-              <option value="aaaa0002-0000-0000-0000-000000000002" className="bg-[#0B0524] text-white">
-                Diya (PESU • Peer-Val)
-              </option>
-              <option value="aaaa0003-0000-0000-0000-000000000003" className="bg-[#0B0524] text-white">
-                Rohan (BMSCE • Provisional)
-              </option>
-            </select>
-          </div>
-
           {/* Auth Controls: Either Guest (Sign In / Join Free) OR Authenticated (Profile + Sign Out) */}
           {!isLoggedIn ? (
             <div className="flex items-center gap-2">
@@ -277,17 +246,17 @@ export function GlobalHeader() {
                 title="My student profile"
               >
                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-[#090420] flex items-center justify-center font-mono font-bold text-[11px] shadow-sm">
-                  {currentProfile.display_name.charAt(0)}
+                  {currentProfile?.display_name ? currentProfile.display_name.charAt(0) : 'U'}
                 </div>
                 <span className="text-xs font-mono font-medium hidden md:inline text-[#F8F7FF]">
-                  @{currentProfile.handle}
+                  @{currentProfile?.handle || 'me'}
                 </span>
               </Link>
 
               <button
                 onClick={handleSignOut}
                 className="p-1.5 rounded-full text-[#7C6FA6] hover:text-rose-400 transition-colors"
-                title="Sign out / reset session"
+                title="Sign out"
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>
@@ -345,7 +314,7 @@ export function GlobalHeader() {
                   <div className="space-y-1">
                     {searchResults.students.map((s: any) => (
                       <Link
-                        key={s.id}
+                        key={s.id || s.user_id}
                         href="/profile"
                         onClick={() => {
                           setSearchResults(null);
@@ -353,8 +322,8 @@ export function GlobalHeader() {
                         }}
                         className="flex items-center justify-between p-2 rounded-xl hover:bg-purple-900/30 text-xs font-mono transition-colors"
                       >
-                        <span className="font-semibold text-[#F8F7FF]">{s.name} <span className="text-[#7C6FA6]">(@{s.handle})</span></span>
-                        <TrustBadge stage={s.stage} size="sm" />
+                        <span className="font-semibold text-[#F8F7FF]">{s.name || s.display_name} (@{s.handle})</span>
+                        <TrustBadge stage={s.stage || s.verification_stage} size="sm" />
                       </Link>
                     ))}
                   </div>
@@ -381,6 +350,36 @@ export function GlobalHeader() {
                       </Link>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {searchResults.communities?.length > 0 && (
+                <div>
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#38BDF8] mb-1.5 flex items-center gap-1.5">
+                    <span>✦ Active Communities</span>
+                  </div>
+                  <div className="space-y-1">
+                    {searchResults.communities.map((c: any) => (
+                      <Link
+                        key={c.id}
+                        href="/messages"
+                        onClick={() => {
+                          setSearchResults(null);
+                          setIsMobileSearchOpen(false);
+                        }}
+                        className="flex items-center justify-between p-2 rounded-xl hover:bg-purple-900/30 text-xs font-mono transition-colors"
+                      >
+                        <span className="text-[#F8F7FF] font-medium">{c.name}</span>
+                        <span className="text-[10px] font-mono text-[#7C6FA6]">{c.member_count} members</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!searchResults.students?.length && !searchResults.commons_posts?.length && !searchResults.communities?.length && (
+                <div className="p-3 text-center text-xs font-mono text-[#7C6FA6]">
+                  No matching results found.
                 </div>
               )}
             </div>

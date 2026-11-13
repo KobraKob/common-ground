@@ -9,16 +9,16 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     PORT: int = 8000
     HOST: str = "0.0.0.0"
-    SECRET_KEY: str = "commonground-dev-secret-key-bengaluru-2026"
+    SECRET_KEY: str = "commonground-production-secret-key-bengaluru-2026"
     
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./commonground.db"
     
     # Supabase Settings
-    SUPABASE_URL: str = "http://localhost:54321"
-    SUPABASE_ANON_KEY: str = "dummy-anon-key"
-    SUPABASE_SERVICE_ROLE_KEY: str = "dummy-service-role-key"
-    SUPABASE_JWT_SECRET: str = "super-secret-jwt-token-with-at-least-32-characters-long"
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
+    SUPABASE_JWT_SECRET: str = ""
     
     # CORS
     CORS_ORIGINS: List[str] = [
@@ -26,6 +26,8 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "capacitor://localhost",
         "http://localhost",
+        "https://commonground.in",
+        "https://www.commonground.in",
     ]
 
     model_config = SettingsConfigDict(

@@ -22,11 +22,24 @@ import {
   ChevronRight,
   Play
 } from 'lucide-react';
-import { SEED_COLLEGES, DEMO_USERS, SEED_POSTS } from '@/lib/mockData';
+import { getColleges } from '@/lib/api';
+import { BENGALURU_COLLEGES } from '@/constants/colleges';
+import { College } from '@/types';
 import { TrustBadge } from '@/components/shared/TrustBadge';
 
 export default function LandingPage() {
   const [activeFeatureTab, setActiveFeatureTab] = useState<'pulse' | 'cohorts' | 'vault' | 'trust'>('pulse');
+  const [colleges, setColleges] = useState<College[]>(BENGALURU_COLLEGES);
+
+  React.useEffect(() => {
+    async function loadColleges() {
+      const data = await getColleges();
+      if (data && data.length > 0) {
+        setColleges(data);
+      }
+    }
+    loadColleges();
+  }, []);
 
   return (
     <div className="space-y-16 max-w-6xl mx-auto pb-16">
@@ -423,7 +436,7 @@ export default function LandingPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {SEED_COLLEGES.map((college) => (
+          {colleges.map((college) => (
             <div
               key={college.id}
               className="celestial-card p-5 flex flex-col justify-between hover:border-amber-400/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] transition-all group"
@@ -449,7 +462,7 @@ export default function LandingPage() {
 
               <div className="pt-3 border-t border-purple-500/20 flex items-center justify-between text-xs font-mono">
                 <span className="text-[#FDE68A] font-bold">
-                  {college.member_count} Students
+                  {college.member_count !== undefined ? `${college.member_count} Students` : 'Active Node'}
                 </span>
                 <Link
                   href={`/campus`}

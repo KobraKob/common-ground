@@ -97,7 +97,14 @@ export default function MessagesPage() {
 
           {/* Conversations List */}
           <div className="flex-1 overflow-y-auto divide-y divide-purple-500/10">
-            {conversations.map((conv) => {
+            {conversations.length === 0 ? (
+              <div className="p-6 text-center text-xs font-mono text-[#7C6FA6]">
+                <MessageSquare className="w-8 h-8 text-purple-400 mx-auto mb-2 opacity-40" />
+                <p>No active conversations yet.</p>
+                <p className="text-[10px] text-[#C4B5FD] mt-1">Join campus communities or message a classmate!</p>
+              </div>
+            ) : (
+              conversations.map((conv) => {
               const isSelected = conv.id === selectedConvId;
               const isAnnounce = conv.conversation_type === 'ANNOUNCEMENT_CHANNEL';
               const isDirect = conv.conversation_type === 'DIRECT';
@@ -142,7 +149,7 @@ export default function MessagesPage() {
                   </div>
                 </button>
               );
-            })}
+            }))}
           </div>
         </div>
 

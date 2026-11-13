@@ -370,3 +370,137 @@ async def test_unauthenticated_public_access_and_subdomain_verification(client: 
     signup_res = await client.post("/api/v1/auth/signup", json=subdomain_signup)
     assert signup_res.status_code == 200
     assert signup_res.json()["profile"]["verification_stage"] == "STAGE_3_INSTITUTIONAL_VERIFIED"
+
+
+@pytest.mark.asyncio
+async def test_private_group_isolation_and_search_block_filtering(client: AsyncClient, db_session):
+    # Setup users
+    user_alice = User(id="user-alice", email="alice@test.com", platform_role="USER")
+    user_bob = User(id="user-bob", email="bob@test.com", platform_role="USER")
+    db_session.add_all([user_alice, user_bob])
+
+    prof_alice = StudentProfile(
+        user_id="user-alice",
+        handle="alice_blr",
+        display_name="Alice",
+        profile_visibility="CAMPUS_ONLY",
+        onboarding_completed=True,
+    )
+    prof_bob = StudentProfile(
+        user_id="user-bob",
+        handle="bob_blr",
+        display_name="Bob",
+        profile_visibility="PUBLIC",
+        onboarding_completed=True,
+    )
+    db_session.add_all([prof_alice, prof_bob])
+
+    # Setup a private community
+    priv_comm = Community(
+        id="comm-secret-vault",
+        name="Secret Robotics Lab",
+        slug="secret-robotics",
+        description="Private invite only research team",
+        community_type="STUDENT_ORGANIZATION",
+        visibility="PRIVATE_INVITE_ONLY",
+    )
+    db_session.add(priv_comm)
+    await db_session.commit()
+
+    # Create post inside private community by Alice
+    priv_post = Post(
+        id="post-secret-01",
+        author_id="user-alice",
+        community_id="comm-secret-vault",
+        category="DISCUSSION",
+        title="Classified Drone Schematics",
+        body="Do not share outside the private robotics lab.",
+        is_cross_campus=True,
+    )
+    db_session.add(priv_post)
+    await db_session.commit()
+
+    # 1. Unauthenticated guest and non-member Bob cannot see the private post in city feed
+    feed_res = await client.get("/api/v1/posts?scope=city")
+    assert not any(p["id"] == "post-secret-01" for p in feed_res.json())
+
+    feed_bob_res = await client.get("/api/v1/posts?scope=city", headers={"X-User-Id": "user-bob"})
+    assert not any(p["id"] == "post-secret-01" for p in feed_bob_res.json())
+
+    # 2. Search for "Classified" does not leak the private post
+    search_res = await client.get("/api/v1/search?q=classified")
+    assert not any(p["id"] == "post-secret-01" for p in search_res.json().get("commons_posts", []))
+
+    # 3. Unauthenticated guest cannot view Alice's CAMPUS_ONLY profile -> 403 Forbidden
+    guest_prof_res = await client.get("/api/v1/profiles/alice_blr")
+    assert guest_prof_res.status_code == 403
+
+    # 4. Alice blocks Bob
+    await client.post("/api/v1/profiles/user-bob/block", headers={"X-User-Id": "user-alice"})
+
+    # Bob searches for "Alice" -> Alice is filtered out of students search results
+    bob_search_res = await client.get("/api/v1/search?q=alice", headers={"X-User-Id": "user-bob"})
+    assert not any(s["handle"] == "alice_blr" for s in bob_search_res.json().get("students", []))
+
+    # Bob attempts to react or comment on Alice's post -> 403 Forbidden
+    pub_post = Post(
+        id="post-alice-pub",
+        author_id="user-alice",
+        category="DISCUSSION",
+        title="Alice Public Post",
+        body="Public discussion.",
+        is_cross_campus=True,
+    )
+    db_session.add(pub_post)
+    await db_session.commit()
+
+    react_res = await client.post("/api/v1/posts/post-alice-pub/react", headers={"X-User-Id": "user-bob"})
+    assert react_res.status_code == 403
+
+    comment_res = await client.post(
+        "/api/v1/posts/post-alice-pub/comments",
+        json={"body": "Trying to comment while blocked"},
+        headers={"X-User-Id": "user-bob"},
+    )
+    assert comment_res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_list_profiles_and_skill_filtering(client: AsyncClient, db_session):
+    u1 = User(id="user-peer-1", email="peer1@test.com", platform_role="USER")
+    u2 = User(id="user-peer-2", email="peer2@test.com", platform_role="USER")
+    db_session.add_all([u1, u2])
+
+    p1 = StudentProfile(
+        user_id="user-peer-1",
+        handle="rust_dev",
+        display_name="Rust Dev",
+        skills=["Rust", "Systems"],
+        profile_visibility="PUBLIC",
+        onboarding_completed=True,
+    )
+    p2 = StudentProfile(
+        user_id="user-peer-2",
+        handle="figma_lead",
+        display_name="Figma Lead",
+        skills=["Figma", "UI/UX"],
+        profile_visibility="PUBLIC",
+        onboarding_completed=True,
+    )
+    db_session.add_all([p1, p2])
+    await db_session.commit()
+
+    # List all profiles
+    all_res = await client.get("/api/v1/profiles")
+    assert all_res.status_code == 200
+    all_profiles = all_res.json()
+    assert len(all_profiles) == 2
+
+    # Filter by skill
+    rust_res = await client.get("/api/v1/profiles?skill=Rust")
+    assert rust_res.status_code == 200
+    rust_profiles = rust_res.json()
+    assert len(rust_profiles) == 1
+    assert rust_profiles[0]["handle"] == "rust_dev"
+
+

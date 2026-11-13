@@ -20,13 +20,14 @@ async def get_optional_current_user_id(
     Resolve identity optionally. Returns None when no valid credentials are provided
     without raising 401 Unauthorized, allowing public feeds/profiles/search to work.
     """
-    if settings.ENVIRONMENT != "production":
-        if x_user_id:
-            return x_user_id
-        if credentials and credentials.credentials.startswith("cg-user_"):
+    if credentials and credentials.credentials:
+        if credentials.credentials.startswith("cg-user_"):
             return credentials.credentials.replace("cg-user_", "")
 
-    if not credentials:
+    if x_user_id:
+        return x_user_id
+
+    if not credentials or not credentials.credentials:
         return None
 
     if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
@@ -55,16 +56,16 @@ async def get_current_user_id(
     x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
 ) -> str:
     """
-    Resolve identity through Supabase Auth in production.
-    X-User-Id is accepted only for local development and tests.
+    Resolve user identity through CommonGround native session tokens or Supabase Auth.
     """
-    if settings.ENVIRONMENT != "production":
-        if x_user_id:
-            return x_user_id
-        if credentials and credentials.credentials.startswith("cg-user_"):
+    if credentials and credentials.credentials:
+        if credentials.credentials.startswith("cg-user_"):
             return credentials.credentials.replace("cg-user_", "")
 
-    if not credentials:
+    if x_user_id:
+        return x_user_id
+
+    if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing authentication credentials",
@@ -73,8 +74,9 @@ async def get_current_user_id(
 
     if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Authentication service is not configured",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token format",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     try:

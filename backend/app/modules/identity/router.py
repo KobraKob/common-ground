@@ -170,10 +170,8 @@ async def login(
     if user.is_suspended:
         raise HTTPException(status_code=403, detail="User account is suspended")
 
-    # If user has a password_hash, verify it. For seed users without set password, allow demo access
-    if user.password_hash:
-        if not verify_password(payload.password, user.password_hash):
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not user.password_hash or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     college_name = None
     if profile and profile.college_id:
@@ -248,6 +246,65 @@ async def auth_me(
 
 
 router = APIRouter(prefix="/profiles", tags=["Identity & Profiles"])
+
+
+@router.get("", response_model=List[StudentProfileResponse])
+async def list_profiles(
+    skill: Optional[str] = None,
+    college_id: Optional[str] = None,
+    current_user_id: Optional[str] = Depends(get_optional_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(StudentProfile).where(StudentProfile.profile_visibility == "PUBLIC")
+    if college_id:
+        query = query.where(StudentProfile.college_id == college_id)
+
+    if current_user_id:
+        block_query = select(UserBlock.blocked_id).where(UserBlock.blocker_id == current_user_id)
+        blocked_by_query = select(UserBlock.blocker_id).where(UserBlock.blocked_id == current_user_id)
+        query = query.where(
+            and_(
+                StudentProfile.user_id != current_user_id,
+                StudentProfile.user_id.notin_(block_query),
+                StudentProfile.user_id.notin_(blocked_by_query),
+            )
+        )
+
+    result = await db.execute(query.order_by(StudentProfile.created_at.desc()).limit(60))
+    profiles = result.scalars().all()
+
+    response = []
+    for p in profiles:
+        if skill and skill.upper() != "ALL":
+            if not any(skill.lower() == s.lower() for s in (p.skills or [])):
+                continue
+        college_name = None
+        if p.college_id:
+            c_res = await db.execute(select(College.name).where(College.id == p.college_id))
+            college_name = c_res.scalar_one_or_none()
+        response.append(
+            StudentProfileResponse(
+                user_id=p.user_id,
+                handle=p.handle,
+                display_name=p.display_name,
+                bio=p.bio,
+                avatar_url=p.avatar_url,
+                college_id=p.college_id,
+                college_name=college_name,
+                verification_stage=p.verification_stage,
+                course_branch=p.course_branch if p.show_course_year else None,
+                graduation_year=p.graduation_year if p.show_course_year else None,
+                skills=p.skills or [],
+                interests=p.interests or [],
+                collaboration_goals=p.collaboration_goals or [],
+                profile_visibility=p.profile_visibility,
+                show_course_year=p.show_course_year,
+                dm_permission=p.dm_permission,
+                onboarding_completed=p.onboarding_completed,
+                created_at=p.created_at,
+            )
+        )
+    return response
 
 
 @router.post("/onboarding", response_model=StudentProfileResponse)
@@ -459,9 +516,8 @@ async def get_profile_by_handle(
     if not profile:
         raise HTTPException(status_code=404, detail="Student profile not found")
 
-    # If current user is checking another profile, enforce block and privacy rules
+    # 1. Enforce block boundaries (returns 404 to avoid leaking existence of profile to blocked user)
     if current_user_id and current_user_id != profile.user_id:
-        # Check blocks
         block_query = select(UserBlock).where(
             or_(
                 and_(UserBlock.blocker_id == current_user_id, UserBlock.blocked_id == profile.user_id),
@@ -472,20 +528,28 @@ async def get_profile_by_handle(
         if b_res.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Student profile not found")
 
-        # Check visibility
-        if profile.profile_visibility == "CAMPUS_ONLY":
-            curr_prof_res = await db.execute(select(StudentProfile).where(StudentProfile.user_id == current_user_id))
-            curr_prof = curr_prof_res.scalar_one_or_none()
-            if not curr_prof or curr_prof.college_id != profile.college_id:
-                raise HTTPException(status_code=403, detail="Profile is only visible to campus peers")
-
-        elif profile.profile_visibility == "SHARED_COMMUNITIES_ONLY":
-            mem1 = await db.execute(select(CommunityMembership.community_id).where(CommunityMembership.user_id == current_user_id))
-            mem2 = await db.execute(select(CommunityMembership.community_id).where(CommunityMembership.user_id == profile.user_id))
-            s1 = set(mem1.scalars().all())
-            s2 = set(mem2.scalars().all())
-            if not s1.intersection(s2):
-                raise HTTPException(status_code=403, detail="Profile is only visible to members of shared communities")
+    # 2. Enforce profile visibility boundaries (guests must not bypass restricted visibility)
+    if profile.profile_visibility != "PUBLIC":
+        if not current_user_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Profile is restricted. Please sign in to view.",
+            )
+        if current_user_id != profile.user_id:
+            if profile.profile_visibility == "CAMPUS_ONLY":
+                curr_prof_res = await db.execute(select(StudentProfile).where(StudentProfile.user_id == current_user_id))
+                curr_prof = curr_prof_res.scalar_one_or_none()
+                if not curr_prof or curr_prof.college_id != profile.college_id:
+                    raise HTTPException(status_code=403, detail="Profile is only visible to campus peers")
+            elif profile.profile_visibility == "SHARED_COMMUNITIES_ONLY":
+                mem1 = await db.execute(select(CommunityMembership.community_id).where(CommunityMembership.user_id == current_user_id))
+                mem2 = await db.execute(select(CommunityMembership.community_id).where(CommunityMembership.user_id == profile.user_id))
+                s1 = set(mem1.scalars().all())
+                s2 = set(mem2.scalars().all())
+                if not s1.intersection(s2):
+                    raise HTTPException(status_code=403, detail="Profile is only visible to members of shared communities")
+            elif profile.profile_visibility == "PRIVATE":
+                raise HTTPException(status_code=403, detail="This profile is private")
 
     college_name = None
     if profile.college_id:

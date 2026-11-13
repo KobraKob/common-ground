@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.security import get_current_user, get_current_user_id, get_optional_current_user_id
+from app.core.permissions import check_users_not_blocked
 from app.modules.identity.models import User, StudentProfile, UserBlock, UserMute
 from app.modules.colleges.models import College
 from app.modules.communities.models import Community, CommunityMembership
@@ -67,6 +68,25 @@ async def list_posts(
     # Filter out blocked users
     if blocked_user_ids:
         query = query.where(~Post.author_id.in_(blocked_user_ids))
+
+    # Never leak private group content to non-members
+    private_comm_subquery = select(Community.id).where(Community.visibility == "PRIVATE_INVITE_ONLY")
+    if current_user_id:
+        member_comm_subquery = select(CommunityMembership.community_id).where(CommunityMembership.user_id == current_user_id)
+        query = query.where(
+            or_(
+                Post.community_id.is_(None),
+                ~Post.community_id.in_(private_comm_subquery),
+                Post.community_id.in_(member_comm_subquery),
+            )
+        )
+    else:
+        query = query.where(
+            or_(
+                Post.community_id.is_(None),
+                ~Post.community_id.in_(private_comm_subquery),
+            )
+        )
 
     if scope == "campus":
         if user_college_id:
@@ -262,6 +282,7 @@ async def create_post(
 @router.get("/posts/{post_id}/comments", response_model=List[CommentResponse])
 async def list_post_comments(
     post_id: str,
+    current_user_id: Optional[str] = Depends(get_optional_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     query = (
@@ -270,6 +291,15 @@ async def list_post_comments(
         .where(and_(Comment.post_id == post_id, Comment.is_hidden_by_mod == False))
         .order_by(Comment.is_useful_answer.desc(), Comment.created_at.asc())
     )
+    if current_user_id:
+        b_res = await db.execute(
+            select(UserBlock).where(
+                or_(UserBlock.blocker_id == current_user_id, UserBlock.blocked_id == current_user_id)
+            )
+        )
+        blocked_ids = {b.blocker_id if b.blocker_id != current_user_id else b.blocked_id for b in b_res.scalars().all()}
+        if blocked_ids:
+            query = query.where(~Comment.author_id.in_(blocked_ids))
     result = await db.execute(query)
     rows = result.all()
 
@@ -304,6 +334,8 @@ async def add_post_comment(
     post = p_res.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
+
+    await check_users_not_blocked(user.id, post.author_id, db)
 
     comment = Comment(
         post_id=post_id,
@@ -411,6 +443,8 @@ async def toggle_post_reaction(
     post = p_res.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
+
+    await check_users_not_blocked(user.id, post.author_id, db)
 
     reaction_type = payload.reaction_type if payload else "UPVOTE"
     existing = await db.execute(
@@ -560,19 +594,30 @@ async def unified_search(
 ):
     query_str = f"%{q.lower()}%"
 
-    # 1. Students (respecting profile visibility)
-    stud_res = await db.execute(
-        select(StudentProfile).where(
-            and_(
-                StudentProfile.profile_visibility == "PUBLIC",
-                or_(
-                    StudentProfile.handle.ilike(query_str),
-                    StudentProfile.display_name.ilike(query_str),
-                    StudentProfile.skills.ilike(query_str),
-                ),
+    blocked_user_ids = set()
+    if current_user_id:
+        b_res = await db.execute(
+            select(UserBlock).where(
+                or_(UserBlock.blocker_id == current_user_id, UserBlock.blocked_id == current_user_id)
             )
-        ).limit(10)
+        )
+        for b in b_res.scalars().all():
+            blocked_user_ids.add(b.blocker_id if b.blocker_id != current_user_id else b.blocked_id)
+
+    # 1. Students (respecting profile visibility and block boundaries)
+    stud_query = select(StudentProfile).where(
+        and_(
+            StudentProfile.profile_visibility == "PUBLIC",
+            or_(
+                StudentProfile.handle.ilike(query_str),
+                StudentProfile.display_name.ilike(query_str),
+                StudentProfile.skills.ilike(query_str),
+            ),
+        )
     )
+    if blocked_user_ids:
+        stud_query = stud_query.where(~StudentProfile.user_id.in_(blocked_user_ids))
+    stud_res = await db.execute(stud_query.limit(10))
     students = [
         {"id": s.user_id, "handle": s.handle, "name": s.display_name, "skills": s.skills, "stage": s.verification_stage}
         for s in stud_res.scalars().all()
@@ -592,29 +637,50 @@ async def unified_search(
         for c in comm_res.scalars().all()
     ]
 
-    # 3. Commons posts (public posts)
-    post_res = await db.execute(
-        select(Post).where(
-            and_(
-                Post.is_hidden_by_mod == False,
-                or_(Post.title.ilike(query_str), Post.body.ilike(query_str)),
-            )
-        ).limit(10)
+    # 3. Commons posts (public posts, excluding private community posts & blocked authors)
+    private_comm_subquery = select(Community.id).where(Community.visibility == "PRIVATE_INVITE_ONLY")
+    post_query = select(Post).where(
+        and_(
+            Post.is_hidden_by_mod == False,
+            or_(Post.title.ilike(query_str), Post.body.ilike(query_str)),
+        )
     )
+    if blocked_user_ids:
+        post_query = post_query.where(~Post.author_id.in_(blocked_user_ids))
+
+    if current_user_id:
+        member_comm_subquery = select(CommunityMembership.community_id).where(CommunityMembership.user_id == current_user_id)
+        post_query = post_query.where(
+            or_(
+                Post.community_id.is_(None),
+                ~Post.community_id.in_(private_comm_subquery),
+                Post.community_id.in_(member_comm_subquery),
+            )
+        )
+    else:
+        post_query = post_query.where(
+            or_(
+                Post.community_id.is_(None),
+                ~Post.community_id.in_(private_comm_subquery),
+            )
+        )
+
+    post_res = await db.execute(post_query.limit(10))
     commons_posts = [
         {"id": p.id, "title": p.title, "body": p.body[:150], "category": p.category, "upvotes": p.upvotes_count}
         for p in post_res.scalars().all()
     ]
 
-    # 4. Resources
-    res_res = await db.execute(
-        select(Resource).where(
-            and_(
-                Resource.is_public_commons == True,
-                or_(Resource.title.ilike(query_str), Resource.subject_tags.ilike(query_str)),
-            )
-        ).limit(10)
+    # 4. Resources (excluding blocked uploaders)
+    res_query = select(Resource).where(
+        and_(
+            Resource.is_public_commons == True,
+            or_(Resource.title.ilike(query_str), Resource.subject_tags.ilike(query_str)),
+        )
     )
+    if blocked_user_ids:
+        res_query = res_query.where(~Resource.uploader_id.in_(blocked_user_ids))
+    res_res = await db.execute(res_query.limit(10))
     resources = [
         {"id": r.id, "title": r.title, "tags": r.subject_tags, "file_url": r.file_url, "link": r.external_link}
         for r in res_res.scalars().all()

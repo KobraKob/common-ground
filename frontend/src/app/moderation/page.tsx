@@ -18,24 +18,7 @@ import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
 
 export default function ModerationPage() {
   const [reports, setReports] = useState<ReportItem[]>([]);
-  const [auditLog, setAuditLog] = useState<any[]>([
-    {
-      id: 'act-1',
-      actor: 'CommonGround Safety Bot',
-      action_type: 'VERIFY_AFFILIATION',
-      target: 'RVCE CSE 2026 Space',
-      notes: 'Verified representative credentials via institutional domain check.',
-      timestamp: '2 hours ago',
-    },
-    {
-      id: 'act-2',
-      actor: 'Mod Aarav',
-      action_type: 'HIDE_CONTENT',
-      target: 'Commercial spam post #4812',
-      notes: 'Violated non-commercial student commons guideline.',
-      timestamp: '1 day ago',
-    },
-  ]);
+  const [auditLog, setAuditLog] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -186,8 +169,15 @@ export default function ModerationPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-purple-500/10">
-              {auditLog.map((log) => (
-                <tr key={log.id} className="py-2.5">
+              {auditLog.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-[#7C6FA6]">
+                    No moderation actions logged in current session. All actions taken by moderators are logged here.
+                  </td>
+                </tr>
+              ) : (
+                auditLog.map((log) => (
+                  <tr key={log.id} className="py-2.5">
                   <td className="py-3 text-[#7C6FA6]">{log.timestamp}</td>
                   <td className="py-3 font-semibold text-[#F8F7FF]">{log.actor}</td>
                   <td className="py-3">
@@ -198,7 +188,7 @@ export default function ModerationPage() {
                   <td className="py-3 text-[#C4B5FD]">{log.target}</td>
                   <td className="py-3 text-[#7C6FA6] truncate max-w-xs">{log.notes}</td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

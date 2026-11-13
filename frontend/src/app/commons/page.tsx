@@ -15,7 +15,7 @@ import {
   Share2,
   Sparkles
 } from 'lucide-react';
-import { getPosts, createPost } from '@/lib/api';
+import { getPosts, createPost, getResources, uploadResource } from '@/lib/api';
 import { Post, ResourceItem } from '@/types';
 import { TrustBadge } from '@/components/shared/TrustBadge';
 import { ReportModal } from '@/components/shared/ReportModal';
@@ -24,6 +24,7 @@ import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
 export default function CommonsPage() {
   const [activeTab, setActiveTab] = useState<'qa' | 'resources' | 'tags'>('qa');
   const [posts, setPosts] = useState<Post[]>([]);
+  const [resources, setResources] = useState<ResourceItem[]>([]);
   const [searchFilter, setSearchFilter] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
@@ -41,8 +42,12 @@ export default function CommonsPage() {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const data = await getPosts('commons');
-      setPosts(data.filter((p) => p.category === 'QUESTION_QA' || p.category === 'DISCUSSION'));
+      const [postsData, resData] = await Promise.all([
+        getPosts('commons'),
+        getResources(),
+      ]);
+      setPosts(postsData.filter((p) => p.category === 'QUESTION_QA' || p.category === 'DISCUSSION'));
+      setResources(resData);
       setLoading(false);
     }
     loadData();
@@ -71,45 +76,6 @@ export default function CommonsPage() {
       setIsSubmitting(false);
     }
   };
-
-  const sampleResources: ResourceItem[] = [
-    {
-      id: 'r1',
-      uploader_id: 'aaaa0001-0000-0000-0000-000000000001',
-      uploader_name: 'Aarav Patel',
-      title: 'RVCE Data Structures & Algorithms Comprehensive Notes (Trees & Graphs)',
-      description: 'Handwritten summaries, AVL rotation dry-runs, and VTU/Autonomous question bank solutions.',
-      file_url: 'https://example.com/rvce-dsa-notes.pdf',
-      subject_tags: ['DSA', 'Algorithms', 'RVCE'],
-      is_pinned: true,
-      is_public_commons: true,
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'r2',
-      uploader_id: 'aaaa0002-0000-0000-0000-000000000002',
-      uploader_name: 'Diya Sharma',
-      title: 'PESU Design Systems & Interaction Heuristics Slide Deck',
-      description: 'Figma component token architecture, accessibility contrast ratios, and Y2K aesthetic teardowns.',
-      file_url: 'https://example.com/pesu-design-system.pdf',
-      subject_tags: ['UIUX', 'DesignSystems', 'Figma'],
-      is_pinned: false,
-      is_public_commons: true,
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'r3',
-      uploader_id: 'aaaa0003-0000-0000-0000-000000000003',
-      uploader_name: 'Rohan Kumar',
-      title: 'BMSCE 1st Year Engineering Math & Physics Cheatsheet',
-      description: 'Vector calculus identities, differential equations, and solved previous year midterms.',
-      file_url: 'https://example.com/bmsce-math.pdf',
-      subject_tags: ['Math', 'Academics', 'BMSCE'],
-      is_pinned: false,
-      is_public_commons: true,
-      created_at: new Date().toISOString(),
-    },
-  ];
 
   const popularTags = ['ALL', 'DSA', 'Academics', 'VTU', 'Hackathons', 'AI', 'UIUX', 'SystemDesign'];
 
@@ -187,7 +153,16 @@ export default function CommonsPage() {
 
           {/* Q&A Thread List */}
           <div className="space-y-4">
-            {filteredPosts.map((post) => {
+            {filteredPosts.length === 0 ? (
+              <div className="celestial-card p-12 text-center space-y-2">
+                <HelpCircle className="w-10 h-10 text-purple-400 mx-auto opacity-60" />
+                <h3 className="font-display text-base font-bold text-white">No academic questions found</h3>
+                <p className="text-xs font-mono text-[#C4B5FD]">
+                  Ask your question to peers across RVCE, PESU, BMSCE, Christ, MSRIT, and IIITB!
+                </p>
+              </div>
+            ) : (
+              filteredPosts.map((post) => {
               const isSolved = !!post.accepted_answer_comment_id;
               return (
                 <div
@@ -255,7 +230,7 @@ export default function CommonsPage() {
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
       )}
@@ -264,46 +239,60 @@ export default function CommonsPage() {
       {activeTab === 'resources' && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {sampleResources.map((res) => (
-              <div key={res.id} className="celestial-card p-5 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2.5">
-                    <span className="neo-badge text-[9px] bg-purple-900/60 text-[#C4B5FD] border-purple-400/30">
-                      VERIFIED STUDY RESOURCE
-                    </span>
-                    <span className="text-xs font-mono text-[#FDE68A]">PDF Document</span>
-                  </div>
-                  <h3 className="font-display text-base font-bold text-[#F8F7FF] mb-2">
-                    {res.title}
-                  </h3>
-                  <p className="text-xs text-[#C4B5FD] leading-relaxed mb-4">
-                    {res.description}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {res.subject_tags.map((t) => (
-                      <span key={t} className="neo-badge text-[9px] bg-purple-950/60 border-purple-400/30 text-purple-200">
-                        #{t}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-purple-500/20 flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-[#7C6FA6]">
-                    Shared by {res.uploader_name}
-                  </span>
-                  <a
-                    href={res.file_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn-campus-amber text-xs font-mono px-4 py-1.5"
-                  >
-                    <FolderDown className="w-3.5 h-3.5" />
-                    <span>Download PDF</span>
-                  </a>
-                </div>
+            {resources.length === 0 ? (
+              <div className="col-span-full py-16 text-center celestial-card border-dashed">
+                <BookOpen className="w-10 h-10 text-purple-400 mx-auto mb-3 opacity-40" />
+                <h3 className="font-display text-base font-bold text-[#F8F7FF] mb-1">
+                  No study resources uploaded yet
+                </h3>
+                <p className="text-xs font-mono text-[#C4B5FD] max-w-sm mx-auto mb-4">
+                  Upload course summaries, lecture notes, and exam formulas to help Bengaluru student peers!
+                </p>
               </div>
-            ))}
+            ) : (
+              resources.map((res) => (
+                <div key={res.id} className="celestial-card p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2.5">
+                      <span className="neo-badge text-[9px] bg-purple-900/60 text-[#C4B5FD] border-purple-400/30">
+                        VERIFIED STUDY RESOURCE
+                      </span>
+                      <span className="text-xs font-mono text-[#FDE68A]">Resource</span>
+                    </div>
+                    <h3 className="font-display text-base font-bold text-[#F8F7FF] mb-2">
+                      {res.title}
+                    </h3>
+                    <p className="text-xs text-[#C4B5FD] leading-relaxed mb-4">
+                      {res.description}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {res.subject_tags.map((t) => (
+                        <span key={t} className="neo-badge text-[9px] bg-purple-950/60 border-purple-400/30 text-purple-200">
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-purple-500/20 flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-[#7C6FA6]">
+                      Shared by {res.uploader_name}
+                    </span>
+                    {res.file_url && (
+                      <a
+                        href={res.file_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-campus-amber text-xs font-mono px-4 py-1.5 flex items-center gap-1"
+                      >
+                        <FolderDown className="w-3.5 h-3.5" />
+                        <span>Download</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

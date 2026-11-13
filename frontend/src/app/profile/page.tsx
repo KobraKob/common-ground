@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { 
   User, 
   ShieldCheck, 
@@ -39,9 +40,11 @@ export default function ProfilePage() {
     async function loadData() {
       setLoading(true);
       const prof = await getMyProfile();
-      setProfile(prof);
-      setVisibility(prof.profile_visibility);
-      setDmPermission(prof.dm_permission);
+      if (prof) {
+        setProfile(prof);
+        setVisibility(prof.profile_visibility);
+        setDmPermission(prof.dm_permission);
+      }
       setLoading(false);
     }
     loadData();
@@ -58,7 +61,7 @@ export default function ProfilePage() {
     }, 1200);
   };
 
-  if (loading || !profile) {
+  if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <div className="w-10 h-10 rounded-2xl bg-purple-900/40 border border-purple-500/40 flex items-center justify-center text-amber-300 animate-spin">
@@ -66,6 +69,26 @@ export default function ProfilePage() {
         </div>
         <div className="text-xs font-mono text-[#C4B5FD] animate-pulse">
           TUNING STUDENT IDENTITY // TRUST MATRIX...
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="max-w-md mx-auto py-16 text-center celestial-card p-8 border border-purple-400/30">
+        <User className="w-12 h-12 text-[#FBBF24] mx-auto mb-4" />
+        <h2 className="font-display text-xl font-bold text-white mb-2">Sign in to view your profile</h2>
+        <p className="text-xs font-mono text-[#C4B5FD] mb-6">
+          Access your verified credentials, course badges, and privacy controls.
+        </p>
+        <div className="flex gap-3 justify-center">
+          <Link href="/login" className="btn-campus-amber text-xs font-mono px-5 py-2">
+            Sign In
+          </Link>
+          <Link href="/signup" className="pill-glass text-xs font-mono px-5 py-2">
+            Join Free
+          </Link>
         </div>
       </div>
     );

@@ -7,17 +7,12 @@ import {
   KeyRound, 
   User, 
   ArrowRight, 
-  Sparkles, 
-  ShieldCheck, 
   Eye, 
   EyeOff, 
   CheckCircle2, 
-  AlertCircle,
-  Building2
+  AlertCircle
 } from 'lucide-react';
-import { loginUser, setActiveUser } from '@/lib/api';
-import { DEMO_USERS } from '@/lib/mockData';
-import { TrustBadge } from '@/components/shared/TrustBadge';
+import { loginUser } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -57,16 +52,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickDemoLogin = (userId: string) => {
-    const matched = DEMO_USERS.find((u) => u.user_id === userId);
-    if (!matched) return;
-    setActiveUser(userId);
-    setSuccessMsg(`Signed in as demo persona: ${matched.display_name}`);
-    setTimeout(() => {
-      router.push('/city');
-    }, 500);
-  };
-
   return (
     <div className="max-w-md mx-auto py-8 px-4">
       <div className="celestial-card p-6 sm:p-8 border border-purple-400/30 relative overflow-hidden shadow-2xl backdrop-blur-2xl">
@@ -86,35 +71,6 @@ export default function LoginPage() {
           <p className="text-xs font-mono text-[#C4B5FD] mt-1">
             Access Bengaluru's Cross-Campus Student Network
           </p>
-        </div>
-
-        {/* Quick Demo Switcher Strip */}
-        <div className="mb-6 p-3.5 rounded-2xl bg-purple-950/40 border border-purple-400/20">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-[#FDE68A] flex items-center gap-1.5 font-bold mb-2">
-            <Sparkles className="w-3 h-3 text-amber-400" />
-            <span>Instant 1-Click Demo Evaluation Login</span>
-          </div>
-          <div className="grid grid-cols-1 gap-1.5">
-            {DEMO_USERS.slice(0, 3).map((demo) => (
-              <button
-                key={demo.user_id}
-                type="button"
-                onClick={() => handleQuickDemoLogin(demo.user_id)}
-                className="flex items-center justify-between p-2 rounded-xl bg-purple-900/20 hover:bg-amber-500/15 border border-purple-400/20 hover:border-amber-400/40 text-left transition-all duration-150 text-xs font-mono"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center text-[10px] font-bold">
-                    {demo.display_name.charAt(0)}
-                  </span>
-                  <div>
-                    <span className="font-bold text-[#F8F7FF]">{demo.display_name}</span>
-                    <span className="text-[10px] text-[#7C6FA6] ml-1.5">@{demo.handle}</span>
-                  </div>
-                </div>
-                <TrustBadge stage={demo.verification_stage} size="sm" showLabel={false} />
-              </button>
-            ))}
-          </div>
         </div>
 
         {errorMsg && (
@@ -142,7 +98,7 @@ export default function LoginPage() {
                 type="text"
                 value={loginTerm}
                 onChange={(e) => setLoginTerm(e.target.value)}
-                placeholder="aarav_builder or student@rvce.edu.in"
+                placeholder="handle or student@rvce.edu.in"
                 className="celestial-input w-full text-xs font-mono py-2.5 pl-9 pr-3 text-[#F8F7FF]"
                 required
               />

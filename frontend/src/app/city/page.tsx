@@ -31,6 +31,7 @@ import {
 import { 
   getPosts, 
   getCommunities, 
+  getStudents,
   votePoll, 
   createPost, 
   reactToPost, 
@@ -40,45 +41,16 @@ import {
   getActiveProfile,
   isAuthenticated
 } from '@/lib/api';
-import { DEMO_USERS, SEED_COLLEGES } from '@/lib/mockData';
 import { Post, Community, StudentProfile, Comment } from '@/types';
 import { TrustBadge } from '@/components/shared/TrustBadge';
 import { ReportModal } from '@/components/shared/ReportModal';
 import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
 
-// Sample curated Bangalore campus media presets for quick demo/testing
-const SAMPLE_CAMPUS_MEDIA = [
-  {
-    type: 'IMAGE' as const,
-    label: 'RVCE 8th Mile Stage Lights',
-    url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1200',
-    tags: ['RVCE', '8thMile', 'NightVibes'],
-  },
-  {
-    type: 'VIDEO' as const,
-    label: 'PESU Drone Flight Test',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    tags: ['PESU', 'Robotics', 'DroneTech'],
-  },
-  {
-    type: 'IMAGE' as const,
-    label: 'BMSCE Canteen Dosa Roast',
-    url: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=1200',
-    tags: ['BMSCE', 'CanteenFood', 'Coffee'],
-  },
-  {
-    type: 'VIDEO' as const,
-    label: 'Namma Metro Purple Line Commute',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-    tags: ['NammaMetro', 'BangaloreCommute'],
-  },
-];
-
 export default function CityPage() {
   const [activeTab, setActiveTab] = useState<'pulse' | 'people' | 'clubs'>('pulse');
   const [posts, setPosts] = useState<Post[]>([]);
   const [communities, setCommunities] = useState<Community[]>([]);
-  const [students, setStudents] = useState<StudentProfile[]>(DEMO_USERS);
+  const [students, setStudents] = useState<StudentProfile[]>([]);
   const [selectedSkillFilter, setSelectedSkillFilter] = useState<string>('ALL');
   const [feedFilter, setFeedFilter] = useState<'ALL' | 'MEDIA' | 'POLLS' | 'DISCUSSIONS'>('ALL');
   const [sortOrder, setSortOrder] = useState<'LATEST' | 'POPULAR'>('LATEST');
@@ -123,12 +95,14 @@ export default function CityPage() {
     setIsLoggedIn(isAuthenticated());
     async function loadData() {
       setLoading(true);
-      const [pData, cData] = await Promise.all([
+      const [pData, cData, peers] = await Promise.all([
         getPosts('city'),
         getCommunities(),
+        getStudents(),
       ]);
       setPosts(pData);
       setCommunities(cData.filter((c) => c.community_type === 'CROSS_CAMPUS_INTEREST' || !c.college_id));
+      setStudents(peers);
       setLoading(false);
     }
     loadData();
@@ -176,17 +150,6 @@ export default function CityPage() {
     setMediaFileName(trimmed.split('/').pop()?.split('?')[0] || (isVideo ? 'Linked Video' : 'Linked Photo'));
     setShowUrlInput(false);
     setCustomUrlInput('');
-  };
-
-  const handleSelectPreset = (preset: typeof SAMPLE_CAMPUS_MEDIA[0]) => {
-    setMediaType(preset.type);
-    setMediaPreview(preset.url);
-    setMediaUrl(preset.url);
-    setMediaFileName(preset.label);
-    if (!pulseTitle) setPulseTitle(preset.label);
-    if (preset.tags.length > 0) {
-      setPulseTags(preset.tags.join(', '));
-    }
   };
 
   const handleClearMedia = () => {
@@ -628,35 +591,6 @@ export default function CityPage() {
                     <Vote className="w-3.5 h-3.5" />
                     <span>Poll</span>
                   </button>
-
-                  {/* Sample Bangalore Campus Media Dropdown Menu */}
-                  <div className="relative group">
-                    <button
-                      type="button"
-                      className="px-3 py-1.5 rounded-xl border border-purple-400/30 bg-[#120836]/70 hover:bg-purple-900/40 text-xs font-mono text-[#C4B5FD] hover:text-[#FDE68A] flex items-center gap-1.5 transition-all"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                      <span>Sample Campus Media</span>
-                    </button>
-                    <div className="absolute left-0 bottom-full mb-1 w-64 celestial-card p-2 shadow-2xl border border-purple-400/30 hidden group-hover:block z-30">
-                      <div className="text-[10px] font-mono text-[#FDE68A] uppercase font-bold p-1 border-b border-purple-500/20">
-                        Select Bangalore Demo Clip:
-                      </div>
-                      <div className="space-y-1 mt-1">
-                        {SAMPLE_CAMPUS_MEDIA.map((preset) => (
-                          <button
-                            key={preset.label}
-                            type="button"
-                            onClick={() => handleSelectPreset(preset)}
-                            className="w-full text-left p-1.5 rounded-lg hover:bg-purple-900/30 text-[11px] font-mono text-[#C4B5FD] hover:text-white flex items-center justify-between"
-                          >
-                            <span className="truncate">{preset.label}</span>
-                            <span className="text-[9px] text-amber-400 font-bold">{preset.type}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -945,7 +879,7 @@ export default function CityPage() {
                       {/* Comment Form */}
                       <form onSubmit={(e) => handleAddComment(post.id, e)} className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-amber-400 text-[#090420] flex items-center justify-center font-mono font-bold text-[10px] shrink-0">
-                          {getActiveProfile().display_name.charAt(0)}
+                          {getActiveProfile()?.display_name ? getActiveProfile()!.display_name.charAt(0) : 'U'}
                         </div>
                         <input
                           type="text"
@@ -1016,8 +950,22 @@ export default function CityPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredStudents.map((stud) => (
-              <div key={stud.user_id} className="celestial-card p-5 flex flex-col justify-between">
+            {filteredStudents.length === 0 ? (
+              <div className="col-span-full py-16 text-center celestial-card border-dashed">
+                <Users className="w-10 h-10 text-purple-400 mx-auto mb-3 opacity-40" />
+                <h3 className="font-display text-base font-bold text-[#F8F7FF] mb-1">
+                  No student peers found yet
+                </h3>
+                <p className="text-xs font-mono text-[#C4B5FD] max-w-sm mx-auto mb-4">
+                  Be among the first student builders from your campus to create a profile and showcase your skills!
+                </p>
+                <Link href="/signup" className="btn-campus-amber text-xs font-mono px-4 py-2 inline-flex items-center gap-1.5 font-bold">
+                  <span>Join CommonGround</span>
+                </Link>
+              </div>
+            ) : (
+              filteredStudents.map((stud) => (
+                <div key={stud.user_id} className="celestial-card p-5 flex flex-col justify-between">
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2.5">
@@ -1067,7 +1015,7 @@ export default function CityPage() {
                   </Link>
                 </div>
               </div>
-            ))}
+            )))}
           </div>
         </div>
       )}
@@ -1075,7 +1023,21 @@ export default function CityPage() {
       {/* Tab 3: Cross-Campus Clubs */}
       {activeTab === 'clubs' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {communities.map((comm) => (
+          {communities.length === 0 ? (
+            <div className="col-span-full py-16 text-center celestial-card border-dashed">
+              <Users className="w-10 h-10 text-purple-400 mx-auto mb-3 opacity-40" />
+              <h3 className="font-display text-base font-bold text-[#F8F7FF] mb-1">
+                No active cross-campus clubs yet
+              </h3>
+              <p className="text-xs font-mono text-[#C4B5FD] max-w-sm mx-auto mb-4">
+                Be the first to create a student-led collective connecting RVCE, PESU, BMSCE, Christ, MSRIT, and IIITB!
+              </p>
+              <Link href="/campus" className="btn-campus-amber text-xs font-mono px-4 py-2 inline-flex items-center gap-1.5 font-bold">
+                <span>Explore Campus Hubs</span>
+              </Link>
+            </div>
+          ) : (
+            communities.map((comm) => (
             <div key={comm.id} className="celestial-card p-5 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2.5">
@@ -1106,7 +1068,7 @@ export default function CityPage() {
                 </Link>
               </div>
             </div>
-          ))}
+          )))}
         </div>
       )}
 
