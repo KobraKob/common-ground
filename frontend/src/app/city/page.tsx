@@ -180,7 +180,13 @@ export default function CityPage() {
       setPosts((prev) =>
         prev.map((p) => (p.id === postId ? { ...p, poll: res.poll } : p))
       );
-    } catch {}
+    } catch {
+      setVotedPolls((prev) => {
+        const next = { ...prev };
+        delete next[postId];
+        return next;
+      });
+    }
   };
 
   const handleReaction = async (postId: string) => {
@@ -198,17 +204,7 @@ export default function CityPage() {
         )
       );
     } catch {
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                upvotes_count: p.liked_by_me ? p.upvotes_count - 1 : p.upvotes_count + 1,
-                liked_by_me: !p.liked_by_me,
-              }
-            : p
-        )
-      );
+      // Preserve server-confirmed counts when a reaction request fails.
     }
   };
 
@@ -279,7 +275,7 @@ export default function CityPage() {
       }
 
       const created = await createPost(postPayload);
-      setPosts([created, ...posts]);
+      setPosts((current) => [created, ...current]);
       setPostTitle('');
       setPostBody('');
       handleClearMedia();
