@@ -6,9 +6,9 @@ from app.modules.identity.models import StudentProfile, User, UserBlock
 
 @pytest.mark.asyncio
 async def test_direct_messaging_is_private_and_idempotent(client: AsyncClient, db_session):
-    sender = User(id="message-sender", email="sender@messages.test")
-    recipient = User(id="message-recipient", email="recipient@messages.test")
-    stranger = User(id="message-stranger", email="stranger@messages.test")
+    sender = User(id="10000000-0000-4000-8000-000000000001", email="sender@messages.test")
+    recipient = User(id="10000000-0000-4000-8000-000000000002", email="recipient@messages.test")
+    stranger = User(id="10000000-0000-4000-8000-000000000003", email="stranger@messages.test")
     db_session.add_all([sender, recipient, stranger])
     db_session.add_all([
         StudentProfile(
@@ -85,9 +85,9 @@ async def test_direct_messaging_is_private_and_idempotent(client: AsyncClient, d
 
 @pytest.mark.asyncio
 async def test_direct_messaging_respects_blocks_and_contact_permissions(client: AsyncClient, db_session):
-    requester = User(id="blocked-requester", email="requester@messages.test")
-    blocked_user = User(id="blocked-target", email="blocked@messages.test")
-    restricted_user = User(id="restricted-target", email="restricted@messages.test")
+    requester = User(id="20000000-0000-4000-8000-000000000001", email="requester@messages.test")
+    blocked_user = User(id="20000000-0000-4000-8000-000000000002", email="blocked@messages.test")
+    restricted_user = User(id="20000000-0000-4000-8000-000000000003", email="restricted@messages.test")
     db_session.add_all([requester, blocked_user, restricted_user])
     db_session.add_all([
         StudentProfile(
