@@ -127,3 +127,61 @@ async def test_task_assignment_and_status_permissions(client: AsyncClient, db_se
     assert allowed_update.status_code == 200
     assert lead_assignment.status_code == 200
     assert lead_assignment.json()["assignee_id"] == other_member.id
+
+
+@pytest.mark.asyncio
+async def test_only_project_lead_can_review_pending_join_requests(client: AsyncClient, db_session):
+    owner = User(id="join-review-owner", email="join-owner@project.test", platform_role="USER")
+    applicant = User(id="join-review-applicant", email="join-applicant@project.test", platform_role="USER")
+    db_session.add_all([owner, applicant])
+    db_session.add_all([
+        StudentProfile(user_id=owner.id, handle="joinowner", display_name="Project Lead"),
+        StudentProfile(user_id=applicant.id, handle="joinapplicant", display_name="Applicant"),
+    ])
+    db_session.add(Project(
+        id="join-requests-project",
+        creator_id=owner.id,
+        title="Join request review",
+        pitch="Review collaborator applications",
+        description="The project lead should be able to accept or decline applicants.",
+        stage="RECRUITING",
+        skills_needed=[],
+        open_roles=["Developer"],
+        is_cross_campus_open=True,
+    ))
+    db_session.add(ProjectMember(
+        id="pending-application",
+        project_id="join-requests-project",
+        user_id=applicant.id,
+        role_title="Developer",
+        status="PENDING_REQUEST",
+        pitch_note="I can contribute frontend development and accessibility testing.",
+    ))
+    await db_session.commit()
+
+    owner_response = await client.get(
+        "/api/v1/projects/join-requests-project/join-requests",
+        headers={"X-User-Id": owner.id},
+    )
+    applicant_response = await client.get(
+        "/api/v1/projects/join-requests-project/join-requests",
+        headers={"X-User-Id": applicant.id},
+    )
+    assert owner_response.status_code == 200
+    assert owner_response.json()[0]["member_id"] == "pending-application"
+    assert owner_response.json()[0]["pitch_note"].startswith("I can contribute")
+    assert applicant_response.status_code == 403
+
+    accepted = await client.patch(
+        "/api/v1/projects/join-requests-project/members/pending-application",
+        json={"status": "ACCEPTED"},
+        headers={"X-User-Id": owner.id},
+    )
+    assert accepted.status_code == 200
+
+    empty_queue = await client.get(
+        "/api/v1/projects/join-requests-project/join-requests",
+        headers={"X-User-Id": owner.id},
+    )
+    assert empty_queue.status_code == 200
+    assert empty_queue.json() == []
