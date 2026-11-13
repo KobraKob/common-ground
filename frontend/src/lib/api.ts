@@ -256,7 +256,7 @@ export async function requestVerificationClaim(payload: {
   claimed_stage?: string;
   institutional_email?: string;
 }): Promise<{ message: string; claim_id: string }> {
-  return await request<{ message: string; claim_id: string }>('/auth/verify/request', {
+  return await request<{ message: string; claim_id: string }>('/profiles/verify/request', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
