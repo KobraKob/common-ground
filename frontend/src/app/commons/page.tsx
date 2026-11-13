@@ -12,12 +12,14 @@ import {
   Send, 
   ExternalLink,
   Flag,
-  Share2
+  Share2,
+  Sparkles
 } from 'lucide-react';
 import { getPosts, createPost } from '@/lib/api';
 import { Post, ResourceItem } from '@/types';
 import { TrustBadge } from '@/components/shared/TrustBadge';
 import { ReportModal } from '@/components/shared/ReportModal';
+import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
 
 export default function CommonsPage() {
   const [activeTab, setActiveTab] = useState<'qa' | 'resources' | 'tags'>('qa');
@@ -119,38 +121,27 @@ export default function CommonsPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Commons Hero Card */}
-      <div className="neo-card p-6 bg-white dark:bg-[#151726] relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#CCCFFA] via-[#C5E17A] to-[#6366F1]" />
-
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="neo-badge bg-[#1A1C29] text-[#C5E17A] dark:bg-[#C5E17A] dark:text-[#0E0F1A]">
-                SEARCHABLE VAULT // 03
-              </span>
-              <span className="text-xs font-mono text-gray-500">Knowledge Layer</span>
-            </div>
-            <h1 className="neo-heading text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-              The <em>Commons</em>
-            </h1>
-            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 max-w-xl">
-              Answers that never die in ephemeral chat streams. Search solved questions, peer notes, and study resources across Bengaluru campuses.
-            </p>
-          </div>
-
+      {/* Commons Hero Banner */}
+      <CampusHeroBanner
+        title="The Commons Vault"
+        badgeText="SEARCHABLE KNOWLEDGE REPOSITORY • LIVE"
+        shortCode="VAULT // ARCHIVE"
+        subtitle="Answers that never expire in ephemeral chat streams. Search peer-verified notes, exam prep vaults, and code teardowns across Bengaluru campuses."
+        activeCount={890}
+        isOfficial={true}
+        actionSlot={
           <button
             onClick={() => setShowAskModal(true)}
-            className="neo-pill-btn neo-pill-btn-primary shrink-0 self-start md:self-auto"
+            className="btn-campus-amber text-xs font-mono px-4 py-2"
           >
             <Plus className="w-4 h-4" />
             <span>Ask a Question</span>
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Tabs Bar */}
-      <div className="flex border-b border-[#CCCFFA] dark:border-[#282C47] gap-2 overflow-x-auto pb-1">
+      <div className="flex border-b border-purple-500/20 gap-2 overflow-x-auto pb-1">
         {[
           { key: 'qa', label: 'Q&A Discussions', icon: HelpCircle },
           { key: 'resources', label: 'Study Resources Vault', icon: FolderDown },
@@ -162,13 +153,13 @@ export default function CommonsPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-mono rounded-t-md transition-all ${
+              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-mono rounded-t-xl transition-all duration-200 ${
                 isActive
-                  ? 'border-b-2 border-[#1A1C29] dark:border-[#C5E17A] text-[#1A1C29] dark:text-[#C5E17A] font-bold bg-white/70 dark:bg-[#151726]/70'
-                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
+                  ? 'border-b-2 border-amber-400 text-[#FDE68A] font-semibold bg-gradient-to-t from-purple-900/30 to-transparent shadow-[0_2px_12px_rgba(251,191,36,0.15)]'
+                  : 'text-[#C4B5FD] hover:text-[#F8F7FF] hover:bg-purple-900/20'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
+              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-[#FBBF24]' : 'text-[#7C6FA6]'}`} />
               <span>{tab.label}</span>
             </button>
           );
@@ -180,15 +171,13 @@ export default function CommonsPage() {
         <div className="space-y-5">
           {/* Tag Filter Pills */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            <span className="text-xs font-mono text-gray-500 shrink-0">Tags:</span>
+            <span className="text-xs font-mono text-[#C4B5FD] shrink-0">Tags:</span>
             {popularTags.map((tg) => (
               <button
                 key={tg}
                 onClick={() => setSelectedTag(tg)}
-                className={`neo-badge text-[10px] transition-colors ${
-                  selectedTag === tg
-                    ? 'bg-[#1A1C29] text-[#C5E17A] dark:bg-[#C5E17A] dark:text-[#0E0F1A]'
-                    : 'text-gray-600 dark:text-gray-400 hover:border-[#C5E17A]'
+                className={`pill-glass text-[10px] ${
+                  selectedTag === tg ? 'pill-glass-active' : ''
                 }`}
               >
                 #{tg}
@@ -198,67 +187,75 @@ export default function CommonsPage() {
 
           {/* Q&A Thread List */}
           <div className="space-y-4">
-            {filteredPosts.map((post) => (
-              <div key={post.id} className="neo-card p-5 bg-white dark:bg-[#151726]">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {post.accepted_answer_comment_id && (
-                      <span className="neo-badge text-[9px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/40">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                        <span>Solved Answer</span>
+            {filteredPosts.map((post) => {
+              const isSolved = !!post.accepted_answer_comment_id;
+              return (
+                <div
+                  key={post.id}
+                  className={isSolved ? 'celestial-card-amber p-5' : 'celestial-card p-5'}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {isSolved && (
+                        <span className="neo-badge text-[9px] bg-amber-500/20 text-[#FDE68A] border-amber-400/40 font-bold">
+                          <CheckCircle2 className="w-3 h-3 text-[#FBBF24]" />
+                          <span>✦ Solved Useful Answer</span>
+                        </span>
+                      )}
+                      <span className="neo-badge text-[9px] bg-purple-900/50 text-[#C4B5FD] border-purple-400/30">
+                        {post.category}
                       </span>
-                    )}
-                    <span className="neo-badge text-[9px] bg-indigo-500/10 text-indigo-700 dark:text-indigo-300">
-                      {post.category}
-                    </span>
-                    <span className="text-xs font-mono text-gray-400">
-                      Asked by @{post.author_handle} {post.college_name ? `(${post.college_name})` : ''}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => setReportTarget({ id: post.id, type: 'POST', title: post.title || post.body })}
-                    className="text-gray-400 hover:text-red-500 p-1"
-                  >
-                    <Flag className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <h3 className="neo-heading text-lg font-bold text-gray-900 dark:text-white mb-2">
-                  {post.title}
-                </h3>
-                <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-                  {post.body}
-                </p>
-
-                {/* Accepted Answer Highlight if present */}
-                {post.accepted_answer_comment_id && (
-                  <div className="my-3 p-3.5 rounded bg-emerald-500/5 border border-emerald-500/25">
-                    <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 mb-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Accepted Useful Answer:</span>
+                      <span className="text-xs font-mono text-[#7C6FA6]">
+                        Asked by @{post.author_handle} {post.college_name ? `(${post.college_name})` : ''}
+                      </span>
                     </div>
-                    <p className="text-xs text-gray-700 dark:text-gray-300">
-                      Focus on AVL tree rotations and Dijkstra graph implementations. Verified notes available in the Study Vault!
-                    </p>
-                  </div>
-                )}
 
-                <div className="flex items-center justify-between text-xs font-mono text-gray-500 pt-3 border-t border-gray-100 dark:border-gray-800">
-                  <div className="flex items-center gap-4">
-                    <span>▲ {post.upvotes_count} Upvotes</span>
-                    <span>💬 {post.comments_count} Answers</span>
+                    <button
+                      onClick={() => setReportTarget({ id: post.id, type: 'POST', title: post.title || post.body })}
+                      className="text-[#7C6FA6] hover:text-rose-400 p-1"
+                    >
+                      <Flag className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {post.tags.map((t) => (
-                      <span key={t} className="text-[10px] text-indigo-500 dark:text-indigo-400">
-                        #{t}
+
+                  <h3 className="font-display text-lg font-bold text-[#F8F7FF] mb-2">
+                    {post.title}
+                  </h3>
+                  <p className="text-xs text-[#C4B5FD] leading-relaxed mb-4">
+                    {post.body}
+                  </p>
+
+                  {/* Accepted Answer Highlight if present */}
+                  {post.accepted_answer_comment_id && (
+                    <div className="my-3.5 p-4 rounded-xl bg-amber-400/10 border border-amber-400/30 backdrop-blur-md">
+                      <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#FDE68A] mb-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-[#FBBF24]" />
+                        <span>Accepted Community Answer:</span>
+                      </div>
+                      <p className="text-xs text-amber-100 leading-relaxed">
+                        Focus on AVL tree rotations and Dijkstra graph implementations. Verified notes available in the Study Vault!
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between text-xs font-mono text-[#7C6FA6] pt-3 border-t border-purple-500/20">
+                    <div className="flex items-center gap-4">
+                      <span className="hover:text-[#FDE68A] cursor-pointer transition-colors">
+                        ▲ {post.upvotes_count} Upvotes
                       </span>
-                    ))}
+                      <span>💬 {post.comments_count} Answers</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {post.tags.map((t) => (
+                        <span key={t} className="text-[10px] text-purple-300 font-mono">
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -268,38 +265,38 @@ export default function CommonsPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {sampleResources.map((res) => (
-              <div key={res.id} className="neo-card p-5 bg-white dark:bg-[#151726] flex flex-col justify-between">
+              <div key={res.id} className="celestial-card p-5 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="neo-badge text-[9px] bg-[#C5E17A]/20 text-[#1A1C29] dark:text-[#C5E17A]">
+                  <div className="flex items-center justify-between gap-2 mb-2.5">
+                    <span className="neo-badge text-[9px] bg-purple-900/60 text-[#C4B5FD] border-purple-400/30">
                       VERIFIED STUDY RESOURCE
                     </span>
-                    <span className="text-xs font-mono text-gray-400">PDF Document</span>
+                    <span className="text-xs font-mono text-[#FDE68A]">PDF Document</span>
                   </div>
-                  <h3 className="neo-heading text-base font-bold text-gray-900 dark:text-white mb-2">
+                  <h3 className="font-display text-base font-bold text-[#F8F7FF] mb-2">
                     {res.title}
                   </h3>
-                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+                  <p className="text-xs text-[#C4B5FD] leading-relaxed mb-4">
                     {res.description}
                   </p>
-                  <div className="flex flex-wrap gap-1 mb-4">
+                  <div className="flex flex-wrap gap-1.5 mb-4">
                     {res.subject_tags.map((t) => (
-                      <span key={t} className="neo-badge text-[9px] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                      <span key={t} className="neo-badge text-[9px] bg-purple-950/60 border-purple-400/30 text-purple-200">
                         #{t}
                       </span>
                     ))}
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-gray-400">
+                <div className="pt-3 border-t border-purple-500/20 flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-[#7C6FA6]">
                     Shared by {res.uploader_name}
                   </span>
                   <a
                     href={res.file_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="neo-pill-btn neo-pill-btn-primary text-xs"
+                    className="btn-campus-amber text-xs font-mono px-4 py-1.5"
                   >
                     <FolderDown className="w-3.5 h-3.5" />
                     <span>Download PDF</span>
@@ -313,9 +310,10 @@ export default function CommonsPage() {
 
       {/* Tab 3: Topic Tags */}
       {activeTab === 'tags' && (
-        <div className="neo-card p-6 bg-white dark:bg-[#151726]">
-          <h3 className="neo-heading text-lg font-bold text-gray-900 dark:text-white mb-4">
-            Campus Topic Directory
+        <div className="celestial-card p-6">
+          <h3 className="font-display text-lg font-bold text-[#F8F7FF] mb-4 flex items-center gap-2">
+            <span>Campus Topic Directory</span>
+            <span className="text-[#FBBF24]">✦</span>
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
@@ -328,11 +326,11 @@ export default function CommonsPage() {
               { tag: '#BengaluruCommute', count: '76 Moments' },
               { tag: '#Hackathons', count: '112 Teammate Requests' },
             ].map((item) => (
-              <div key={item.tag} className="p-3 rounded border border-[#CCCFFA] dark:border-[#282C47] bg-[#F5F6FD] dark:bg-[#0E0F1A]">
-                <div className="text-xs font-mono font-bold text-[#6366F1] dark:text-[#C5E17A]">
+              <div key={item.tag} className="p-3.5 rounded-xl border border-purple-500/20 bg-purple-950/30 hover:border-amber-400/40 transition-colors">
+                <div className="text-xs font-mono font-bold text-[#FDE68A]">
                   {item.tag}
                 </div>
-                <div className="text-[10px] font-mono text-gray-500 mt-0.5">
+                <div className="text-[10px] font-mono text-[#7C6FA6] mt-1">
                   {item.count}
                 </div>
               </div>
@@ -343,18 +341,18 @@ export default function CommonsPage() {
 
       {/* Ask Question Modal */}
       {showAskModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="neo-card w-full max-w-lg p-6 bg-white dark:bg-[#151726] border border-[#CCCFFA] dark:border-[#282C47]">
-            <h3 className="neo-heading text-xl font-bold text-gray-900 dark:text-white mb-1">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="celestial-card w-full max-w-lg p-6 border border-purple-400/30 shadow-2xl">
+            <h3 className="font-display text-xl font-bold text-[#F8F7FF] mb-1">
               Ask the Bengaluru Commons
             </h3>
-            <p className="text-xs font-mono text-gray-500 mb-4">
-              Your question will be indexed and searchable by students across RVCE, PESU, BMSCE, and beyond.
+            <p className="text-xs font-mono text-[#C4B5FD] mb-4">
+              Your question will be indexed and searchable across RVCE, PESU, BMSCE, Christ, and beyond.
             </p>
 
-            <form onSubmit={handleAskQuestion} className="space-y-3">
+            <form onSubmit={handleAskQuestion} className="space-y-4">
               <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-gray-600 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1.5">
                   Question Title:
                 </label>
                 <input
@@ -362,12 +360,12 @@ export default function CommonsPage() {
                   value={qTitle}
                   onChange={(e) => setQTitle(e.target.value)}
                   placeholder="e.g., What are the best resources to prepare for 5th sem Operating Systems lab viva?"
-                  className="w-full text-xs font-mono p-2.5 rounded border border-[#CCCFFA] dark:border-[#282C47] bg-[#F5F6FD] dark:bg-[#0E0F1A] text-gray-900 dark:text-gray-100 focus:outline-none focus:border-[#C5E17A]"
+                  className="celestial-input w-full text-xs font-mono p-3"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-gray-600 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1.5">
                   Detailed Explanation:
                 </label>
                 <textarea
@@ -375,12 +373,12 @@ export default function CommonsPage() {
                   onChange={(e) => setQBody(e.target.value)}
                   placeholder="Provide context on your course, what you have tried, and what specifics you need help with..."
                   rows={4}
-                  className="w-full text-xs p-2.5 rounded border border-[#CCCFFA] dark:border-[#282C47] bg-[#F5F6FD] dark:bg-[#0E0F1A] text-gray-900 dark:text-gray-100 focus:outline-none focus:border-[#C5E17A]"
+                  className="celestial-input w-full text-xs p-3 leading-relaxed"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-gray-600 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1.5">
                   Topic Tags (comma-separated):
                 </label>
                 <input
@@ -388,22 +386,22 @@ export default function CommonsPage() {
                   value={qTags}
                   onChange={(e) => setQTags(e.target.value)}
                   placeholder="DSA, Academics, ExamPrep"
-                  className="w-full text-xs font-mono p-2.5 rounded border border-[#CCCFFA] dark:border-[#282C47] bg-[#F5F6FD] dark:bg-[#0E0F1A] text-gray-900 dark:text-gray-100 focus:outline-none focus:border-[#C5E17A]"
+                  className="celestial-input w-full text-xs font-mono p-3"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3">
+              <div className="flex justify-end gap-3 pt-3">
                 <button
                   type="button"
                   onClick={() => setShowAskModal(false)}
-                  className="neo-pill-btn bg-transparent"
+                  className="px-4 py-2 rounded-full text-xs font-mono text-[#C4B5FD] hover:text-[#F8F7FF] transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting || !qTitle.trim() || !qBody.trim()}
-                  className="neo-pill-btn neo-pill-btn-primary"
+                  className="btn-campus-amber text-xs font-mono px-5 py-2"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>{isSubmitting ? 'Submitting...' : 'Post Question'}</span>

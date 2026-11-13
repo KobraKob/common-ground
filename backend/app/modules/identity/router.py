@@ -1,10 +1,12 @@
+import hashlib
+import secrets
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, delete
 
 from app.core.database import get_db
-from app.core.security import get_current_user, get_current_user_id
+from app.core.security import get_current_user, get_current_user_id, get_optional_current_user_id
 from app.core.permissions import check_users_not_blocked
 from app.modules.identity.models import User, StudentProfile, AffiliationClaim, VerificationRecord, UserBlock, UserMute
 from app.modules.identity.schemas import (
@@ -14,9 +16,236 @@ from app.modules.identity.schemas import (
     BlockUserRequest,
     MuteTargetRequest,
     StudentProfileResponse,
+    SignUpRequest,
+    LoginRequest,
+    AuthResponse,
 )
 from app.modules.colleges.models import College
 from app.modules.communities.models import Community, CommunityMembership
+
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    key = hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
+    return f"{salt}${key}"
+
+
+def verify_password(plain_password: str, hashed_password: Optional[str]) -> bool:
+    if not hashed_password or "$" not in hashed_password:
+        return False
+    salt, key = hashed_password.split("$", 1)
+    test_key = hashlib.sha256((salt + plain_password).encode("utf-8")).hexdigest()
+    return secrets.compare_digest(key, test_key)
+
+
+auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+@auth_router.post("/signup", response_model=AuthResponse)
+async def signup(
+    payload: SignUpRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    clean_email = payload.email.lower().strip()
+    clean_handle = payload.handle.lower().strip().lstrip("@")
+
+    # 1. Check if email already exists
+    existing_email = await db.execute(select(User).where(User.email == clean_email))
+    if existing_email.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="An account with this email already exists")
+
+    # 2. Check if handle already exists
+    existing_handle = await db.execute(select(StudentProfile).where(StudentProfile.handle == clean_handle))
+    if existing_handle.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="This handle is already taken")
+
+    # 3. Determine verification stage
+    verification_stage = "STAGE_1_PROVISIONAL"
+    college_name = None
+    if payload.college_id:
+        c_res = await db.execute(select(College).where(College.id == payload.college_id))
+        college = c_res.scalar_one_or_none()
+        if college:
+            college_name = college.name
+            user_domain = clean_email.split("@")[-1]
+            if college.email_domains and any(
+                user_domain == d.lower() or user_domain.endswith("." + d.lower())
+                for d in college.email_domains
+            ):
+                verification_stage = "STAGE_3_INSTITUTIONAL_VERIFIED"
+
+    # 4. Create user
+    new_user = User(
+        email=clean_email,
+        password_hash=hash_password(payload.password),
+        platform_role="USER",
+        is_suspended=False,
+    )
+    db.add(new_user)
+    await db.flush()
+
+    # 5. Create student profile
+    profile = StudentProfile(
+        user_id=new_user.id,
+        handle=clean_handle,
+        display_name=payload.display_name.strip(),
+        bio=payload.bio,
+        college_id=payload.college_id,
+        verification_stage=verification_stage,
+        course_branch=payload.course_branch,
+        graduation_year=payload.graduation_year,
+        skills=payload.skills,
+        interests=payload.interests,
+        collaboration_goals=["Hackathons", "Side Projects"],
+        profile_visibility="PUBLIC",
+        dm_permission="SAME_CAMPUS_OR_COMMUNITY",
+        onboarding_completed=True,
+    )
+    db.add(profile)
+
+    # 6. Auto-join campus hub if college_id provided
+    if payload.college_id:
+        comm_res = await db.execute(
+            select(Community).where(
+                and_(
+                    Community.college_id == payload.college_id,
+                    Community.community_type == "CAMPUS_HUB",
+                )
+            )
+        )
+        hub = comm_res.scalar_one_or_none()
+        if hub:
+            db.add(CommunityMembership(community_id=hub.id, user_id=new_user.id, role="MEMBER"))
+            hub.member_count += 1
+
+    await db.commit()
+    await db.refresh(profile)
+
+    token = f"cg-user_{new_user.id}"
+    prof_resp = StudentProfileResponse(
+        user_id=profile.user_id,
+        handle=profile.handle,
+        display_name=profile.display_name,
+        bio=profile.bio,
+        avatar_url=profile.avatar_url,
+        college_id=profile.college_id,
+        college_name=college_name,
+        verification_stage=profile.verification_stage,
+        course_branch=profile.course_branch,
+        graduation_year=profile.graduation_year,
+        skills=profile.skills,
+        interests=profile.interests,
+        collaboration_goals=profile.collaboration_goals,
+        profile_visibility=profile.profile_visibility,
+        show_course_year=profile.show_course_year,
+        dm_permission=profile.dm_permission,
+        onboarding_completed=profile.onboarding_completed,
+        created_at=profile.created_at,
+    )
+
+    return AuthResponse(
+        token=token,
+        user_id=new_user.id,
+        email=new_user.email,
+        profile=prof_resp,
+    )
+
+
+@auth_router.post("/login", response_model=AuthResponse)
+async def login(
+    payload: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    login_term = payload.login.lower().strip().lstrip("@")
+    u_res = await db.execute(
+        select(User, StudentProfile)
+        .join(StudentProfile, User.id == StudentProfile.user_id, isouter=True)
+        .where(or_(User.email == login_term, StudentProfile.handle == login_term))
+    )
+    row = u_res.first()
+    if not row:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    user, profile = row
+    if user.is_suspended:
+        raise HTTPException(status_code=403, detail="User account is suspended")
+
+    # If user has a password_hash, verify it. For seed users without set password, allow demo access
+    if user.password_hash:
+        if not verify_password(payload.password, user.password_hash):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    college_name = None
+    if profile and profile.college_id:
+        c_res = await db.execute(select(College.name).where(College.id == profile.college_id))
+        college_name = c_res.scalar_one_or_none()
+
+    token = f"cg-user_{user.id}"
+    prof_resp = StudentProfileResponse(
+        user_id=profile.user_id if profile else user.id,
+        handle=profile.handle if profile else user.email.split("@")[0],
+        display_name=profile.display_name if profile else "Student",
+        bio=profile.bio if profile else None,
+        avatar_url=profile.avatar_url if profile else None,
+        college_id=profile.college_id if profile else None,
+        college_name=college_name,
+        verification_stage=profile.verification_stage if profile else "STAGE_1_PROVISIONAL",
+        course_branch=profile.course_branch if profile else None,
+        graduation_year=profile.graduation_year if profile else None,
+        skills=profile.skills if profile else [],
+        interests=profile.interests if profile else [],
+        collaboration_goals=profile.collaboration_goals if profile else [],
+        profile_visibility=profile.profile_visibility if profile else "PUBLIC",
+        show_course_year=profile.show_course_year if profile else True,
+        dm_permission=profile.dm_permission if profile else "SAME_CAMPUS_OR_COMMUNITY",
+        onboarding_completed=profile.onboarding_completed if profile else True,
+        created_at=profile.created_at if profile else user.created_at,
+    )
+
+    return AuthResponse(
+        token=token,
+        user_id=user.id,
+        email=user.email,
+        profile=prof_resp,
+    )
+
+
+@auth_router.get("/me", response_model=StudentProfileResponse)
+async def auth_me(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    res = await db.execute(select(StudentProfile).where(StudentProfile.user_id == user.id))
+    profile = res.scalar_one_or_none()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    college_name = None
+    if profile.college_id:
+        c_res = await db.execute(select(College.name).where(College.id == profile.college_id))
+        college_name = c_res.scalar_one_or_none()
+
+    return StudentProfileResponse(
+        user_id=profile.user_id,
+        handle=profile.handle,
+        display_name=profile.display_name,
+        bio=profile.bio,
+        avatar_url=profile.avatar_url,
+        college_id=profile.college_id,
+        college_name=college_name,
+        verification_stage=profile.verification_stage,
+        course_branch=profile.course_branch,
+        graduation_year=profile.graduation_year,
+        skills=profile.skills,
+        interests=profile.interests,
+        collaboration_goals=profile.collaboration_goals,
+        profile_visibility=profile.profile_visibility,
+        show_course_year=profile.show_course_year,
+        dm_permission=profile.dm_permission,
+        onboarding_completed=profile.onboarding_completed,
+        created_at=profile.created_at,
+    )
+
 
 router = APIRouter(prefix="/profiles", tags=["Identity & Profiles"])
 
@@ -222,7 +451,7 @@ async def update_my_profile(
 @router.get("/{handle}", response_model=StudentProfileResponse)
 async def get_profile_by_handle(
     handle: str,
-    current_user_id: Optional[str] = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Depends(get_optional_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     res = await db.execute(select(StudentProfile).where(StudentProfile.handle == handle))

@@ -110,6 +110,8 @@ export interface Post {
   title?: string;
   body: string;
   tags: string[];
+  media_url?: string;
+  media_type?: 'IMAGE' | 'VIDEO' | 'NONE';
   is_cross_campus: boolean;
   is_pinned: boolean;
   accepted_answer_comment_id?: string;
@@ -127,7 +129,34 @@ export interface Post {
   };
   upvotes_count: number;
   comments_count: number;
+  shares_count?: number;
+  liked_by_me?: boolean;
   created_at: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user_id: string;
+  email: string;
+  profile: StudentProfile;
+}
+
+export interface SignUpPayload {
+  email: string;
+  password: string;
+  handle: string;
+  display_name: string;
+  college_id?: string;
+  course_branch?: string;
+  graduation_year?: number;
+  bio?: string;
+  skills?: string[];
+  interests?: string[];
+}
+
+export interface LoginPayload {
+  login: string;
+  password: string;
 }
 
 export interface Comment {

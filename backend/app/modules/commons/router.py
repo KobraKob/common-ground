@@ -4,9 +4,10 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc, func
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.core.security import get_current_user, get_current_user_id
+from app.core.security import get_current_user, get_current_user_id, get_optional_current_user_id
 from app.modules.identity.models import User, StudentProfile, UserBlock, UserMute
 from app.modules.colleges.models import College
 from app.modules.communities.models import Community, CommunityMembership
@@ -18,6 +19,7 @@ from app.modules.commons.schemas import (
     CommentCreateRequest,
     CommentResponse,
     PollVoteRequest,
+    ReactionRequest,
     ResourceCreateRequest,
     ResourceResponse,
     UnifiedSearchResponse,
@@ -31,7 +33,7 @@ async def list_posts(
     scope: str = Query("city", pattern="^(campus|city|commons|opportunities)$"),
     tag: Optional[str] = None,
     limit: int = 50,
-    current_user_id: Optional[str] = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Depends(get_optional_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     blocked_user_ids = set()
@@ -60,7 +62,7 @@ async def list_posts(
         p_res = await db.execute(select(StudentProfile.college_id).where(StudentProfile.user_id == current_user_id))
         user_college_id = p_res.scalar_one_or_none()
 
-    query = select(Post).where(Post.is_hidden_by_mod == False)
+    query = select(Post).options(selectinload(Post.poll)).where(Post.is_hidden_by_mod == False)
 
     # Filter out blocked users
     if blocked_user_ids:
@@ -120,6 +122,19 @@ async def list_posts(
                 "expires_at": p.poll.expires_at.isoformat() if p.poll.expires_at else None,
             }
 
+        liked_by_me = False
+        if current_user_id:
+            r_res = await db.execute(
+                select(Reaction).where(
+                    and_(
+                        Reaction.user_id == current_user_id,
+                        Reaction.target_type == "POST",
+                        Reaction.target_id == p.id,
+                    )
+                )
+            )
+            liked_by_me = r_res.scalar_one_or_none() is not None
+
         response.append(
             PostResponse(
                 id=p.id,
@@ -136,6 +151,8 @@ async def list_posts(
                 title=p.title,
                 body=p.body,
                 tags=p.tags or [],
+                media_url=p.media_url,
+                media_type=p.media_type,
                 is_cross_campus=p.is_cross_campus,
                 is_pinned=p.is_pinned,
                 accepted_answer_comment_id=p.accepted_answer_comment_id,
@@ -143,6 +160,8 @@ async def list_posts(
                 poll=poll_dict,
                 upvotes_count=p.upvotes_count,
                 comments_count=p.comments_count,
+                shares_count=p.shares_count or 0,
+                liked_by_me=liked_by_me,
                 created_at=p.created_at,
             )
         )
@@ -170,6 +189,8 @@ async def create_post(
         title=payload.title,
         body=payload.body,
         tags=payload.tags,
+        media_url=payload.media_url,
+        media_type=payload.media_type,
         is_cross_campus=payload.is_cross_campus,
         is_pinned=payload.is_pinned if user.platform_role in ["ADMIN", "MODERATOR"] else False,
         opportunity_meta=payload.opportunity_meta,
@@ -223,6 +244,8 @@ async def create_post(
         title=post.title,
         body=post.body,
         tags=post.tags or [],
+        media_url=post.media_url,
+        media_type=post.media_type,
         is_cross_campus=post.is_cross_campus,
         is_pinned=post.is_pinned,
         accepted_answer_comment_id=post.accepted_answer_comment_id,
@@ -230,6 +253,8 @@ async def create_post(
         poll=poll_dict,
         upvotes_count=post.upvotes_count,
         comments_count=post.comments_count,
+        shares_count=post.shares_count or 0,
+        liked_by_me=False,
         created_at=post.created_at,
     )
 
@@ -375,6 +400,72 @@ async def vote_poll(
     return {"message": "Vote recorded successfully", "options": poll.options}
 
 
+@router.post("/posts/{post_id}/react")
+async def toggle_post_reaction(
+    post_id: str,
+    payload: Optional[ReactionRequest] = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    p_res = await db.execute(select(Post).where(Post.id == post_id))
+    post = p_res.scalar_one_or_none()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    reaction_type = payload.reaction_type if payload else "UPVOTE"
+    existing = await db.execute(
+        select(Reaction).where(
+            and_(
+                Reaction.user_id == user.id,
+                Reaction.target_type == "POST",
+                Reaction.target_id == post_id,
+            )
+        )
+    )
+    rec = existing.scalar_one_or_none()
+    if rec:
+        await db.delete(rec)
+        post.upvotes_count = max(0, post.upvotes_count - 1)
+        liked = False
+    else:
+        new_rec = Reaction(
+            user_id=user.id,
+            target_type="POST",
+            target_id=post_id,
+            reaction_type=reaction_type,
+        )
+        db.add(new_rec)
+        post.upvotes_count += 1
+        liked = True
+
+    await db.commit()
+    return {
+        "post_id": post_id,
+        "upvotes_count": post.upvotes_count,
+        "liked_by_me": liked,
+        "message": "Reaction updated successfully",
+    }
+
+
+@router.post("/posts/{post_id}/share")
+async def share_post(
+    post_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    p_res = await db.execute(select(Post).where(Post.id == post_id))
+    post = p_res.scalar_one_or_none()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    post.shares_count = (post.shares_count or 0) + 1
+    await db.commit()
+    return {
+        "post_id": post_id,
+        "shares_count": post.shares_count,
+        "share_url": f"/city#post-{post_id}",
+    }
+
+
 # ----------------------------------------------------
 # Resources Endpoints
 # ----------------------------------------------------
@@ -464,7 +555,7 @@ async def create_resource(
 @router.get("/search", response_model=UnifiedSearchResponse)
 async def unified_search(
     q: str = Query(..., min_length=2),
-    current_user_id: Optional[str] = Depends(get_current_user_id),
+    current_user_id: Optional[str] = Depends(get_optional_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     query_str = f"%{q.lower()}%"

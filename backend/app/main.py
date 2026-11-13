@@ -7,7 +7,7 @@ from app.core.config import settings
 from app.core.database import engine, Base
 
 # Import routers
-from app.modules.identity.router import router as identity_router
+from app.modules.identity.router import router as identity_router, auth_router
 from app.modules.colleges.router import router as colleges_router
 from app.modules.communities.router import router as communities_router
 from app.modules.commons.router import router as commons_router
@@ -23,6 +23,23 @@ async def lifespan(app: FastAPI):
         from app.seed import run_seed
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+
+            def migrate_sqlite_columns(sync_conn):
+                if sync_conn.dialect.name == "sqlite":
+                    existing_posts_cols = [r[1] for r in sync_conn.exec_driver_sql("PRAGMA table_info(posts)").fetchall()]
+                    if "media_url" not in existing_posts_cols:
+                        sync_conn.exec_driver_sql("ALTER TABLE posts ADD COLUMN media_url TEXT;")
+                    if "media_type" not in existing_posts_cols:
+                        sync_conn.exec_driver_sql("ALTER TABLE posts ADD COLUMN media_type TEXT;")
+                    if "shares_count" not in existing_posts_cols:
+                        sync_conn.exec_driver_sql("ALTER TABLE posts ADD COLUMN shares_count INTEGER DEFAULT 0;")
+
+                    existing_users_cols = [r[1] for r in sync_conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()]
+                    if "password_hash" not in existing_users_cols:
+                        sync_conn.exec_driver_sql("ALTER TABLE users ADD COLUMN password_hash TEXT;")
+
+            await conn.run_sync(migrate_sqlite_columns)
+
         try:
             await run_seed()
         except Exception as exc:
@@ -67,6 +84,7 @@ async def health_check():
     }
 
 
+app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(identity_router, prefix=settings.API_V1_PREFIX)
 app.include_router(colleges_router, prefix=settings.API_V1_PREFIX)
 app.include_router(communities_router, prefix=settings.API_V1_PREFIX)

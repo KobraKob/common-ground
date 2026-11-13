@@ -69,3 +69,28 @@ class StudentProfileResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class SignUpRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+    handle: str = Field(..., min_length=3, max_length=50)
+    display_name: str = Field(..., min_length=2, max_length=100)
+    college_id: Optional[str] = None
+    course_branch: Optional[str] = None
+    graduation_year: Optional[int] = None
+    bio: Optional[str] = None
+    skills: List[str] = []
+    interests: List[str] = []
+
+
+class LoginRequest(BaseModel):
+    login: str  # Email or handle
+    password: str
+
+
+class AuthResponse(BaseModel):
+    token: str
+    user_id: str
+    email: str
+    profile: StudentProfileResponse

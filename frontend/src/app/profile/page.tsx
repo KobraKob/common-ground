@@ -11,7 +11,8 @@ import {
   UserX, 
   AlertTriangle,
   Send,
-  Flag
+  Flag,
+  Sparkles
 } from 'lucide-react';
 import { getMyProfile, blockUser } from '@/lib/api';
 import { StudentProfile } from '@/types';
@@ -59,9 +60,12 @@ export default function ProfilePage() {
 
   if (loading || !profile) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-xs font-mono animate-pulse text-gray-500">
-          Loading Student Profile...
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <div className="w-10 h-10 rounded-2xl bg-purple-900/40 border border-purple-500/40 flex items-center justify-center text-amber-300 animate-spin">
+          ✦
+        </div>
+        <div className="text-xs font-mono text-[#C4B5FD] animate-pulse">
+          TUNING STUDENT IDENTITY // TRUST MATRIX...
         </div>
       </div>
     );
@@ -70,25 +74,23 @@ export default function ProfilePage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Profile Header Card */}
-      <div className="neo-card p-6 bg-white dark:bg-[#151726] relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#CCCFFA] via-[#C5E17A] to-[#CCCFFA]" />
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-[#1A1C29] text-[#C5E17A] flex items-center justify-center font-mono font-bold text-2xl border-2 border-[#C5E17A]">
+      <div className="celestial-card p-6 md:p-8 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#2E1065] to-[#120836] text-[#FBBF24] flex items-center justify-center font-display font-extrabold text-3xl border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.35)] shrink-0">
               {profile.display_name.charAt(0)}
             </div>
             <div>
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <h1 className="neo-heading text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+                <h1 className="font-display text-2xl md:text-3xl font-extrabold text-[#F8F7FF]">
                   {profile.display_name}
                 </h1>
                 <TrustBadge stage={profile.verification_stage} />
               </div>
-              <p className="text-xs font-mono text-gray-500">
+              <p className="text-xs font-mono text-[#C4B5FD]">
                 @{profile.handle} • {profile.college_name || 'RV College of Engineering'}
               </p>
-              <p className="text-xs font-mono text-[#6366F1] dark:text-[#C5E17A] mt-0.5">
+              <p className="text-xs font-mono text-[#FDE68A] mt-1 font-semibold">
                 {profile.course_branch} (Graduating {profile.graduation_year})
               </p>
             </div>
@@ -97,7 +99,7 @@ export default function ProfilePage() {
           {profile.verification_stage !== 'STAGE_3_INSTITUTIONAL_VERIFIED' && (
             <button
               onClick={() => setShowVerifyModal(true)}
-              className="neo-pill-btn neo-pill-btn-primary shrink-0 text-xs"
+              className="btn-campus-amber shrink-0 text-xs font-mono px-4 py-2"
             >
               <Mail className="w-3.5 h-3.5" />
               <span>Verify College Email</span>
@@ -106,31 +108,35 @@ export default function ProfilePage() {
         </div>
 
         {profile.bio && (
-          <p className="text-xs text-gray-700 dark:text-gray-300 mt-4 leading-relaxed max-w-2xl">
+          <p className="text-xs text-[#C4B5FD] mt-5 leading-relaxed max-w-2xl bg-purple-950/30 p-3.5 rounded-xl border border-purple-500/20">
             {profile.bio}
           </p>
         )}
 
         {/* Skills and Goals */}
-        <div className="mt-4 pt-4 border-t border-[#CCCFFA]/50 dark:border-[#282C47]/50 flex flex-wrap gap-2">
+        <div className="mt-5 pt-4 border-t border-purple-500/20 flex flex-wrap gap-2">
           {profile.skills.map((s) => (
-            <span key={s} className="neo-badge text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+            <span
+              key={s}
+              className="neo-badge text-[10px] bg-purple-950/60 border-purple-400/30 text-purple-200"
+            >
               {s}
             </span>
           ))}
         </div>
       </div>
 
-      {/* 4-Stage Trust Architecture Visualizer (Section 3.1) */}
-      <div className="neo-card p-6 bg-white dark:bg-[#151726]">
-        <h3 className="neo-heading text-lg font-bold text-gray-900 dark:text-white mb-2">
-          The 4-Stage Trust Architecture
+      {/* 4-Stage Trust Architecture Visualizer */}
+      <div className="celestial-card p-6 md:p-8">
+        <h3 className="font-display text-lg font-bold text-[#F8F7FF] mb-1 flex items-center gap-2">
+          <span>The 4-Stage Trust Architecture</span>
+          <span className="text-[#FBBF24]">✦</span>
         </h3>
-        <p className="text-xs text-gray-500 font-mono mb-4">
+        <p className="text-xs text-[#C4B5FD] font-mono mb-5">
           CommonGround enforces strict honesty in student affiliations to protect cross-campus trust.
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
           {[
             {
               stage: 'STAGE_1_PROVISIONAL' as const,
@@ -163,24 +169,24 @@ export default function ProfilePage() {
           ].map((item) => (
             <div
               key={item.title}
-              className={`p-3.5 rounded border transition-all ${
+              className={`p-4 rounded-2xl border transition-all ${
                 item.active
-                  ? 'border-[#C5E17A] bg-[#C5E17A]/10 shadow-sm'
-                  : 'border-[#CCCFFA]/60 dark:border-[#282C47]/60 bg-gray-50/50 dark:bg-[#0E0F1A]/50'
+                  ? 'border-amber-400/80 bg-amber-500/15 shadow-[0_0_20px_rgba(245,158,11,0.2)]'
+                  : 'border-purple-500/20 bg-purple-950/25'
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-2.5">
                 <TrustBadge stage={item.stage} size="sm" showLabel={false} />
                 {item.active && (
-                  <span className="neo-badge text-[8px] bg-[#C5E17A] text-[#0E0F1A] font-bold">
+                  <span className="neo-badge text-[8px] bg-amber-400 text-[#090420] font-bold">
                     CURRENT
                   </span>
                 )}
               </div>
-              <div className="text-xs font-mono font-bold text-gray-900 dark:text-white mb-1">
+              <div className="text-xs font-mono font-bold text-[#F8F7FF] mb-1">
                 {item.title}
               </div>
-              <p className="text-[11px] text-gray-500 leading-relaxed">
+              <p className="text-[11px] text-[#C4B5FD] leading-relaxed">
                 {item.desc}
               </p>
             </div>
@@ -188,52 +194,52 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Privacy & Safety Controls (Rule 3.3) */}
-      <div className="neo-card p-6 bg-white dark:bg-[#151726]">
-        <h3 className="neo-heading text-lg font-bold text-gray-900 dark:text-white mb-4">
+      {/* Privacy & Safety Controls */}
+      <div className="celestial-card p-6 md:p-8">
+        <h3 className="font-display text-lg font-bold text-[#F8F7FF] mb-4">
           Privacy Visibility & Direct Message Governance
         </h3>
 
         <div className="space-y-4">
           {/* Profile Visibility */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded border border-[#CCCFFA]/60 dark:border-[#282C47]/60">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-purple-500/20 bg-purple-950/20">
             <div>
-              <div className="text-xs font-mono font-bold text-gray-900 dark:text-white">
+              <div className="text-xs font-mono font-bold text-[#F8F7FF]">
                 Profile Visibility
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[#C4B5FD] mt-0.5">
                 Control who can view your course branch, graduation year, and skills in directory search.
               </p>
             </div>
             <select
               value={visibility}
               onChange={(e) => setVisibility(e.target.value)}
-              className="neo-pill-btn text-xs font-mono bg-white dark:bg-[#0E0F1A]"
+              className="celestial-input text-xs font-mono py-1.5 px-3 cursor-pointer shrink-0"
             >
-              <option value="PUBLIC">Public (All Bengaluru Students)</option>
-              <option value="CAMPUS_ONLY">Campus Only (My College Peers)</option>
-              <option value="SHARED_COMMUNITIES_ONLY">Shared Communities Only</option>
+              <option value="PUBLIC" className="bg-[#0B0524] text-white">Public (All Bengaluru Students)</option>
+              <option value="CAMPUS_ONLY" className="bg-[#0B0524] text-white">Campus Only (My College Peers)</option>
+              <option value="SHARED_COMMUNITIES_ONLY" className="bg-[#0B0524] text-white">Shared Communities Only</option>
             </select>
           </div>
 
           {/* DM Permission */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded border border-[#CCCFFA]/60 dark:border-[#282C47]/60">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-purple-500/20 bg-purple-950/20">
             <div>
-              <div className="text-xs font-mono font-bold text-gray-900 dark:text-white">
+              <div className="text-xs font-mono font-bold text-[#F8F7FF]">
                 Direct Message (1-to-1) Permission
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[#C4B5FD] mt-0.5">
                 Server-side enforcement of who can initiate new private conversations with you.
               </p>
             </div>
             <select
               value={dmPermission}
               onChange={(e) => setDmPermission(e.target.value)}
-              className="neo-pill-btn text-xs font-mono bg-white dark:bg-[#0E0F1A]"
+              className="celestial-input text-xs font-mono py-1.5 px-3 cursor-pointer shrink-0"
             >
-              <option value="EVERYONE">Everyone across Bengaluru</option>
-              <option value="SAME_CAMPUS_OR_COMMUNITY">Same Campus or Shared Clubs</option>
-              <option value="NONE">No Incoming Direct Messages</option>
+              <option value="EVERYONE" className="bg-[#0B0524] text-white">Everyone across Bengaluru</option>
+              <option value="SAME_CAMPUS_OR_COMMUNITY" className="bg-[#0B0524] text-white">Same Campus or Shared Clubs</option>
+              <option value="NONE" className="bg-[#0B0524] text-white">No Incoming Direct Messages</option>
             </select>
           </div>
         </div>
@@ -241,23 +247,23 @@ export default function ProfilePage() {
 
       {/* Verify Institutional Email Modal */}
       {showVerifyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="neo-card w-full max-w-md p-6 bg-white dark:bg-[#151726] border border-[#CCCFFA] dark:border-[#282C47]">
-            <h3 className="neo-heading text-xl font-bold text-gray-900 dark:text-white mb-1">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="celestial-card w-full max-w-md p-6 border border-purple-400/30 shadow-2xl">
+            <h3 className="font-display text-xl font-bold text-[#F8F7FF] mb-1">
               Verify Institutional Email
             </h3>
-            <p className="text-xs font-mono text-gray-500 mb-4">
+            <p className="text-xs font-mono text-[#C4B5FD] mb-4">
               Enter your college email address ending in .edu.in or .ac.in to unlock the Stage 3 Verified Student badge.
             </p>
 
             {verifySubmitted ? (
-              <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded text-center text-xs font-mono">
+              <div className="p-4 bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 rounded-xl text-center text-xs font-mono">
                 Verification link dispatched. Please check your student inbox!
               </div>
             ) : (
-              <form onSubmit={handleRequestVerification} className="space-y-3">
+              <form onSubmit={handleRequestVerification} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-mono uppercase text-gray-600 dark:text-gray-300 mb-1">
+                  <label className="block text-xs font-mono uppercase text-[#C4B5FD] mb-1">
                     College Email Address:
                   </label>
                   <input
@@ -265,21 +271,21 @@ export default function ProfilePage() {
                     value={instEmail}
                     onChange={(e) => setInstEmail(e.target.value)}
                     placeholder="e.g., student.name@rvce.edu.in"
-                    className="w-full text-xs font-mono p-2.5 rounded border border-[#CCCFFA] dark:border-[#282C47] bg-[#F5F6FD] dark:bg-[#0E0F1A] text-gray-900 dark:text-gray-100 focus:outline-none focus:border-[#C5E17A]"
+                    className="celestial-input w-full text-xs font-mono p-3"
                   />
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2">
+                <div className="flex justify-end gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => setShowVerifyModal(false)}
-                    className="neo-pill-btn bg-transparent text-xs"
+                    className="px-4 py-2 rounded-full text-xs font-mono text-[#C4B5FD] hover:text-[#F8F7FF] transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="neo-pill-btn neo-pill-btn-primary text-xs"
+                    className="btn-campus-amber text-xs font-mono px-4 py-2"
                   >
                     Send OTP Verification
                   </button>

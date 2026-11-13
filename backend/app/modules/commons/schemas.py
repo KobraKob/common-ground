@@ -8,6 +8,8 @@ class PostCreateRequest(BaseModel):
     title: Optional[str] = None
     body: str = Field(..., min_length=1)
     tags: List[str] = []
+    media_url: Optional[str] = None
+    media_type: Optional[str] = None  # IMAGE, VIDEO, NONE
     community_id: Optional[str] = None
     college_id: Optional[str] = None
     is_cross_campus: bool = False
@@ -24,6 +26,10 @@ class CommentCreateRequest(BaseModel):
 
 class PollVoteRequest(BaseModel):
     option_id: str
+
+
+class ReactionRequest(BaseModel):
+    reaction_type: str = "UPVOTE"
 
 
 class CommentResponse(BaseModel):
@@ -58,6 +64,8 @@ class PostResponse(BaseModel):
     title: Optional[str] = None
     body: str
     tags: List[str] = []
+    media_url: Optional[str] = None
+    media_type: Optional[str] = None
     is_cross_campus: bool
     is_pinned: bool
     accepted_answer_comment_id: Optional[str] = None
@@ -65,6 +73,8 @@ class PostResponse(BaseModel):
     poll: Optional[dict] = None
     upvotes_count: int
     comments_count: int
+    shares_count: int = 0
+    liked_by_me: bool = False
     created_at: datetime
 
     class Config:

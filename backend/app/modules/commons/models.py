@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 from datetime import datetime, timezone
 from sqlalchemy import String, Boolean, Integer, Text, DateTime, ForeignKey, UniqueConstraint, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -21,12 +22,15 @@ class Post(Base):
     title: Mapped[str] = mapped_column(String(300), nullable=True)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     tags: Mapped[list] = mapped_column(JSONList, default=list)
+    media_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    media_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     is_cross_campus: Mapped[bool] = mapped_column(Boolean, default=False)
     is_pinned: Mapped[bool] = mapped_column(Boolean, default=False)
     accepted_answer_comment_id: Mapped[str] = mapped_column(GUID, nullable=True)
     opportunity_meta: Mapped[dict] = mapped_column(JSON, nullable=True)
     upvotes_count: Mapped[int] = mapped_column(Integer, default=0)
     comments_count: Mapped[int] = mapped_column(Integer, default=0)
+    shares_count: Mapped[int] = mapped_column(Integer, default=0)
     is_hidden_by_mod: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)

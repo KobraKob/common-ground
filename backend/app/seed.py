@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.core.database import AsyncSessionLocal, engine, Base
 from app.modules.colleges.models import College
 from app.modules.identity.models import User, StudentProfile
+from app.modules.identity.router import hash_password
 from app.modules.communities.models import Community, CommunityMembership
 from app.modules.messaging.models import Conversation, ConversationMember, Message
 from app.modules.commons.models import Post, Comment, Resource
@@ -56,7 +57,7 @@ async def run_seed():
         for uid, email, role, handle, dname, col_id, stage, course, yr, skills, interests, goals in users_data:
             existing_u = await db.execute(select(User).where(User.id == uid))
             if not existing_u.scalar_one_or_none():
-                db.add(User(id=uid, email=email, platform_role=role))
+                db.add(User(id=uid, email=email, platform_role=role, password_hash=hash_password("campus123")))
                 db.add(StudentProfile(
                     user_id=uid,
                     handle=handle,
@@ -183,6 +184,42 @@ async def run_seed():
                     "external_url": "https://bengaluru-fellowship.org",
                 },
                 upvotes_count=88,
+            ))
+
+        p5_id = "p0000005-0000-0000-0000-000000000005"
+        existing_p5 = await db.execute(select(Post).where(Post.id == p5_id))
+        if not existing_p5.scalar_one_or_none():
+            db.add(Post(
+                id=p5_id,
+                author_id="aaaa0001-0000-0000-0000-000000000001",
+                category="HANGOUT_MEME",
+                title="RVCE 8th Mile Stage Production Soundcheck 🎸",
+                body="3 AM soundcheck done for the battle of bands. Bass is vibrating the entire mechanical block! Who is pulling an all-nighter for prep?",
+                tags=["RVCE", "8thMile", "BangaloreNights", "FestVibes"],
+                media_url="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1200",
+                media_type="IMAGE",
+                is_cross_campus=True,
+                upvotes_count=134,
+                comments_count=18,
+                shares_count=22,
+            ))
+
+        p6_id = "p0000006-0000-0000-0000-000000000006"
+        existing_p6 = await db.execute(select(Post).where(Post.id == p6_id))
+        if not existing_p6.scalar_one_or_none():
+            db.add(Post(
+                id=p6_id,
+                author_id="aaaa0002-0000-0000-0000-000000000002",
+                category="DISCUSSION",
+                title="Autonomous drone obstacle test at PESU EC Lawn 🚁",
+                body="First outdoor flight test of our custom ROS2 vision navigation stack. Successfully cleared tree barriers and held altitude despite wind gusts!",
+                tags=["Robotics", "ROS2", "PESU", "DroneTech"],
+                media_url="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                media_type="VIDEO",
+                is_cross_campus=True,
+                upvotes_count=192,
+                comments_count=27,
+                shares_count=45,
             ))
 
         # Project

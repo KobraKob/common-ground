@@ -12,6 +12,44 @@ from app.core.database import get_db
 security_scheme = HTTPBearer(auto_error=False)
 
 
+async def get_optional_current_user_id(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+) -> Optional[str]:
+    """
+    Resolve identity optionally. Returns None when no valid credentials are provided
+    without raising 401 Unauthorized, allowing public feeds/profiles/search to work.
+    """
+    if settings.ENVIRONMENT != "production":
+        if x_user_id:
+            return x_user_id
+        if credentials and credentials.credentials.startswith("cg-user_"):
+            return credentials.credentials.replace("cg-user_", "")
+
+    if not credentials:
+        return None
+
+    if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
+        return None
+
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            response = await client.get(
+                f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/user",
+                headers={
+                    "apikey": settings.SUPABASE_ANON_KEY,
+                    "Authorization": f"Bearer {credentials.credentials}",
+                },
+            )
+        if response.status_code != 200:
+            return None
+        payload = response.json()
+        user_id = payload.get("id")
+        return str(user_id) if user_id else None
+    except httpx.RequestError:
+        return None
+
+
 async def get_current_user_id(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
     x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
@@ -20,8 +58,11 @@ async def get_current_user_id(
     Resolve identity through Supabase Auth in production.
     X-User-Id is accepted only for local development and tests.
     """
-    if settings.ENVIRONMENT != "production" and x_user_id:
-        return x_user_id
+    if settings.ENVIRONMENT != "production":
+        if x_user_id:
+            return x_user_id
+        if credentials and credentials.credentials.startswith("cg-user_"):
+            return credentials.credentials.replace("cg-user_", "")
 
     if not credentials:
         raise HTTPException(

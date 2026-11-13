@@ -4,6 +4,7 @@ from app.modules.identity.models import User, StudentProfile
 from app.modules.colleges.models import College
 from app.modules.communities.models import Community, CommunityMembership
 from app.modules.messaging.models import Conversation, ConversationMember, Message
+from app.modules.commons.models import Post
 
 
 @pytest.mark.asyncio
@@ -153,3 +154,219 @@ async def test_moderation_queue_restricted_to_moderators(client: AsyncClient, db
     # Moderator views queue -> 200 OK
     mod_res = await client.get("/api/v1/moderation/queue", headers={"X-User-Id": "mod-user"})
     assert mod_res.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_auth_signup_and_login_flow(client: AsyncClient, db_session):
+    college = College(
+        id="col-pesu-auth-test",
+        name="PES University",
+        slug="pesu-auth-test",
+        short_name="PESU",
+        email_domains=["pes.edu"],
+    )
+    db_session.add(college)
+    await db_session.commit()
+
+    # 1. Signup with personal email -> Stage 1 Provisional
+    signup_payload_provisional = {
+        "email": "ankit.dev@gmail.com",
+        "password": "strongPassword123!",
+        "handle": "ankit_builds",
+        "display_name": "Ankit Sharma",
+        "college_id": "col-pesu-auth-test",
+        "course_branch": "B.Tech AI & Data",
+        "graduation_year": 2027,
+        "skills": ["Python", "PyTorch"],
+        "interests": ["LLMs", "Hackathons"],
+    }
+    res1 = await client.post("/api/v1/auth/signup", json=signup_payload_provisional)
+    assert res1.status_code == 200
+    data1 = res1.json()
+    assert data1["profile"]["handle"] == "ankit_builds"
+    assert data1["profile"]["verification_stage"] == "STAGE_1_PROVISIONAL"
+    assert data1["token"].startswith("cg-user_")
+
+    # 2. Signup with institutional domain -> Stage 3 Verified
+    signup_payload_verified = {
+        "email": "riya@pes.edu",
+        "password": "collegeSecure999!",
+        "handle": "riya_pes",
+        "display_name": "Riya V",
+        "college_id": "col-pesu-auth-test",
+        "course_branch": "B.E. Computer Science",
+        "graduation_year": 2026,
+    }
+    res2 = await client.post("/api/v1/auth/signup", json=signup_payload_verified)
+    assert res2.status_code == 200
+    data2 = res2.json()
+    assert data2["profile"]["verification_stage"] == "STAGE_3_INSTITUTIONAL_VERIFIED"
+
+    # 3. Login with email
+    login_res = await client.post(
+        "/api/v1/auth/login",
+        json={"login": "ankit.dev@gmail.com", "password": "strongPassword123!"},
+    )
+    assert login_res.status_code == 200
+    login_data = login_res.json()
+    assert login_data["profile"]["handle"] == "ankit_builds"
+
+    # 4. Login with handle
+    login_handle_res = await client.post(
+        "/api/v1/auth/login",
+        json={"login": "ankit_builds", "password": "strongPassword123!"},
+    )
+    assert login_handle_res.status_code == 200
+
+    # 5. Invalid password -> 401
+    bad_login_res = await client.post(
+        "/api/v1/auth/login",
+        json={"login": "ankit_builds", "password": "wrongPassword"},
+    )
+    assert bad_login_res.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_city_pulse_media_and_interactions(client: AsyncClient, db_session):
+    # Setup author
+    author = User(id="pulse-author-01", email="pulseauthor@rvce.edu.in", platform_role="USER")
+    db_session.add(author)
+    p_author = StudentProfile(
+        user_id="pulse-author-01",
+        handle="pulse_creator",
+        display_name="Pulse Creator",
+        verification_stage="STAGE_3_INSTITUTIONAL_VERIFIED",
+        onboarding_completed=True,
+    )
+    db_session.add(p_author)
+    await db_session.commit()
+
+    # 1. Create a post with photo media
+    post_payload = {
+        "category": "HANGOUT_MEME",
+        "title": "8th Mile Fest RVCE 2026 Stage Lights!",
+        "body": "Night vibes at the cultural amphitheater! Drop your best snapshots.",
+        "tags": ["RVCE", "CampusLife", "BangaloreNight"],
+        "media_url": "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800",
+        "media_type": "IMAGE",
+        "is_cross_campus": True,
+    }
+    create_res = await client.post(
+        "/api/v1/posts",
+        json=post_payload,
+        headers={"X-User-Id": "pulse-author-01"},
+    )
+    assert create_res.status_code == 200
+    post_data = create_res.json()
+    post_id = post_data["id"]
+    assert post_data["media_type"] == "IMAGE"
+    assert post_data["media_url"] == post_payload["media_url"]
+    assert post_data["upvotes_count"] == 0
+
+    # 2. Like/react to post
+    react_res = await client.post(
+        f"/api/v1/posts/{post_id}/react",
+        json={"reaction_type": "UPVOTE"},
+        headers={"X-User-Id": "pulse-author-01"},
+    )
+    assert react_res.status_code == 200
+    assert react_res.json()["liked_by_me"] is True
+    assert react_res.json()["upvotes_count"] == 1
+
+    # 3. Add comment
+    comment_res = await client.post(
+        f"/api/v1/posts/{post_id}/comments",
+        json={"body": "Insane lighting! Was that during the Battle of the Bands?"},
+        headers={"X-User-Id": "pulse-author-01"},
+    )
+    assert comment_res.status_code == 200
+    assert comment_res.json()["body"] == "Insane lighting! Was that during the Battle of the Bands?"
+
+    # 4. Share post
+    share_res = await client.post(f"/api/v1/posts/{post_id}/share")
+    assert share_res.status_code == 200
+    assert share_res.json()["shares_count"] == 1
+
+    # 5. Verify in list_posts
+    feed_res = await client.get("/api/v1/posts?scope=city", headers={"X-User-Id": "pulse-author-01"})
+    assert feed_res.status_code == 200
+    feed_posts = feed_res.json()
+    matched = next((p for p in feed_posts if p["id"] == post_id), None)
+    assert matched is not None
+    assert matched["media_type"] == "IMAGE"
+    assert matched["liked_by_me"] is True
+    assert matched["upvotes_count"] == 1
+    assert matched["comments_count"] == 1
+    assert matched["shares_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_public_access_and_subdomain_verification(client: AsyncClient, db_session):
+    # Setup test college with domain
+    college = College(
+        id="col-rvce-public-test",
+        name="RV College of Engineering",
+        slug="rvce-public-test",
+        short_name="RVCE",
+        email_domains=["rvce.edu.in"],
+    )
+    db_session.add(college)
+
+    # Setup public student profile and post
+    user = User(id="user-pub-01", email="author@rvce.edu.in", platform_role="USER")
+    db_session.add(user)
+    prof = StudentProfile(
+        user_id="user-pub-01",
+        handle="public_star",
+        display_name="Public Star",
+        college_id="col-rvce-public-test",
+        verification_stage="STAGE_3_INSTITUTIONAL_VERIFIED",
+        profile_visibility="PUBLIC",
+        onboarding_completed=True,
+    )
+    db_session.add(prof)
+
+    post = Post(
+        id="post-public-01",
+        author_id="user-pub-01",
+        category="DISCUSSION",
+        title="Public Bengaluru Hackathon Kickoff",
+        body="Open to all campuses across the city!",
+        tags=["Bengaluru", "Hackathon"],
+        is_cross_campus=True,
+    )
+    db_session.add(post)
+    await db_session.commit()
+
+    # 1. Unauthenticated visitor calls GET /api/v1/posts?scope=city -> 200 OK (liked_by_me=False)
+    unauth_feed_res = await client.get("/api/v1/posts?scope=city")
+    assert unauth_feed_res.status_code == 200
+    posts = unauth_feed_res.json()
+    matched = next((p for p in posts if p["id"] == "post-public-01"), None)
+    assert matched is not None
+    assert matched["liked_by_me"] is False
+
+    # 2. Unauthenticated visitor searches -> 200 OK
+    unauth_search_res = await client.get("/api/v1/search?q=public")
+    assert unauth_search_res.status_code == 200
+    search_data = unauth_search_res.json()
+    assert any(s["handle"] == "public_star" for s in search_data.get("students", []))
+
+    # 3. Unauthenticated visitor views public profile by handle -> 200 OK
+    unauth_prof_res = await client.get("/api/v1/profiles/public_star")
+    assert unauth_prof_res.status_code == 200
+    assert unauth_prof_res.json()["handle"] == "public_star"
+
+    # 4. Signup with institutional subdomain (e.g. student.rvce.edu.in) -> STAGE_3_INSTITUTIONAL_VERIFIED
+    subdomain_signup = {
+        "email": "student123@cse.rvce.edu.in",
+        "password": "campusSecret123!",
+        "handle": "subdomain_builder",
+        "display_name": "Subdomain Student",
+        "college_id": "col-rvce-public-test",
+        "course_branch": "B.E. CSE",
+        "graduation_year": 2027,
+    }
+    signup_res = await client.post("/api/v1/auth/signup", json=subdomain_signup)
+    assert signup_res.status_code == 200
+    assert signup_res.json()["profile"]["verification_stage"] == "STAGE_3_INSTITUTIONAL_VERIFIED"

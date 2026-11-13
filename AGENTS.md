@@ -1,10 +1,10 @@
 # AGENTS.md — CommonGround AI Coding Agent Guide
 
-## Aesthetic Direction: Neo-Y2K Editorial
-- Base theme: `neoY2kTheme` extending `@astryxdesign/theme-y2k`.
-- Typography: Use Crimson Text for hero/section display titles, Poppins for body copy, and uppercase JetBrains Mono for badges, metrics, and secondary labels.
-- Surfaces: Keep layouts spacious with 24px+ section gaps; prefer 1px hairline borders (`#CCCFFA` light / `#282C47` dark) over heavy drop shadows.
-- Accents: Reserve neon green (`#C5E17A`) and periwinkle (`#CCCFFA`) for primary CTAs, active indicators, and focus states.
+## Aesthetic Direction: Neon Celestial Campus Nightscape
+- Base theme: `celestialTheme` / `neoY2kTheme` extending `@astryxdesign/theme-y2k`.
+- Typography: Use Outfit (`--font-display`) for hero/section display titles, Plus Jakarta Sans (`--font-sans`) for body copy, and uppercase JetBrains Mono (`--font-mono`) for badges, metrics, and secondary labels.
+- Surfaces: Deep frosted indigo/cosmos glass (`backdrop-filter: blur(20px) saturate(165%)`, `--bg-glass-card`) over wet-pavement reflections with 1px specular top borders (`--border-specular-top`).
+- Accents: Reserve warm lit campus window gold/amber (`#F59E0B`, `#FBBF24`, `#FDE68A`) for primary CTAs (`.btn-campus-amber`), active window navigation indicators, and verified badges; use ultraviolet/nebula purple (`#7C3AED`, `#A855F7`, `#C084FC`) for orbital links and secondary pills.
 
 ## Product Architecture & Principles
 1. **Product Identity**: CommonGround is a Bengaluru-first cross-campus student network, communication layer, and collaboration platform connecting students across RVCE, PESU, BMSCE, Christ, MSRIT, IIITB, and citywide.

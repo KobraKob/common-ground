@@ -1,147 +1,322 @@
-@import url('https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=JetBrains+Mono:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --color-bg: #F5F6FD;
-  --color-surface: #FFFFFF;
-  --color-accent: #1A1C29;
-  --color-border: #CCCFFA;
-  --color-neon: #C5E17A;
-  --color-muted: #686D8C;
-  --font-display: 'Crimson Text', serif;
-  --font-sans: 'Poppins', sans-serif;
+  --bg-void: #050214;
+  --bg-cosmos: #0B0524;
+  --bg-nebula: #160B3E;
+  --bg-horizon: #2E1065;
+  --bg-glass-card: rgba(16, 9, 42, 0.68);
+  --bg-glass-elevated: rgba(26, 14, 64, 0.82);
+  --bg-glass-input: rgba(8, 4, 24, 0.78);
+
+  --accent-amber-core: #F59E0B;
+  --accent-amber-bright: #FBBF24;
+  --accent-amber-soft: #FDE68A;
+  --accent-violet-core: #7C3AED;
+  --accent-violet-bright: #A855F7;
+  --accent-orchid-glow: #C084FC;
+
+  --text-starlight: #F8F7FF;
+  --text-nebula-sec: #C4B5FD;
+  --text-cosmos-muted: #7C6FA6;
+
+  --border-hairline: rgba(168, 85, 247, 0.22);
+  --border-specular-top: rgba(192, 132, 252, 0.42);
+  --border-amber-glow: rgba(251, 191, 36, 0.45);
+
+  --font-display: 'Outfit', sans-serif;
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+
+  /* Legacy variables aliased to Celestial Theme */
+  --color-bg: #050214;
+  --color-surface: rgba(16, 9, 42, 0.68);
+  --color-accent: #FBBF24;
+  --color-border: rgba(168, 85, 247, 0.22);
+  --color-neon: #FBBF24;
+  --color-muted: #7C6FA6;
 }
 
 .dark {
-  --color-bg: #0E0F1A;
-  --color-surface: #151726;
-  --color-accent: #C5E17A;
-  --color-border: #282C47;
-  --color-neon: #C5E17A;
-  --color-muted: #8D92B5;
+  --color-bg: #050214;
+  --color-surface: rgba(16, 9, 42, 0.68);
+  --color-accent: #FBBF24;
+  --color-border: rgba(168, 85, 247, 0.22);
+  --color-neon: #FBBF24;
+  --color-muted: #7C6FA6;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+html,
 body {
-  background-color: var(--color-bg);
-  color: var(--color-accent);
+  background-color: var(--bg-void);
+  color: var(--text-starlight);
   font-family: var(--font-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
 }
 
-/* Neo-Y2K Architectural Hairline Card */
-.neo-card {
-  border-radius: 6px;
-  border-width: 1px;
-  border-style: solid;
-  border-color: var(--color-border);
-  background-color: var(--color-surface);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+h1, h2, h3, h4, .font-display, .neo-heading {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }
 
-.dark .neo-card {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+.neo-heading em {
+  font-style: normal;
+  background: linear-gradient(135deg, #FDE68A 0%, #FBBF24 50%, #F59E0B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-/* Tactile Pill Controls */
-.neo-pill-btn {
-  border-radius: 9999px;
+.font-mono-badge {
   font-family: var(--font-mono);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  font-size: 0.75rem;
-  font-weight: 600;
+}
+
+/* Starlight Gradient Heading Text */
+.text-celestial-gradient {
+  background: linear-gradient(135deg, #FFFFFF 0%, #E9D5FF 55%, #FDE68A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Wet-Pavement Glassmorphic Card (Replaces legacy .neo-card) */
+.neo-card,
+.celestial-card {
+  background: linear-gradient(
+    165deg,
+    rgba(30, 17, 72, 0.72) 0%,
+    rgba(14, 8, 36, 0.78) 60%,
+    rgba(20, 11, 48, 0.82) 100%
+  );
+  backdrop-filter: blur(20px) saturate(165%);
+  -webkit-backdrop-filter: blur(20px) saturate(165%);
+  border: 1px solid var(--border-hairline);
+  border-top: 1px solid var(--border-specular-top);
+  border-radius: 18px;
+  box-shadow:
+    0 14px 40px -10px rgba(3, 1, 12, 0.75),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.14);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+.neo-card:hover,
+.celestial-card:hover {
+  border-color: rgba(192, 132, 252, 0.45);
+  box-shadow:
+    0 18px 45px -10px rgba(88, 28, 135, 0.35),
+    inset 0 1px 0 0 rgba(253, 230, 138, 0.22);
+}
+
+/* Warm Lit Campus Window Card Variant (For Pinned / Featured / Active Items) */
+.celestial-card-amber {
+  background: linear-gradient(
+    165deg,
+    rgba(45, 24, 66, 0.76) 0%,
+    rgba(18, 10, 42, 0.82) 70%,
+    rgba(48, 28, 18, 0.55) 100%
+  );
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  border-top: 1px solid rgba(253, 230, 138, 0.65);
+  border-radius: 18px;
+  box-shadow:
+    0 12px 36px -8px rgba(245, 158, 11, 0.18),
+    inset 0 1px 12px rgba(251, 191, 36, 0.08);
+}
+
+/* Primary CTA: Warm Campus Window Gold Button (Replaces .neo-pill-btn) */
+.neo-pill-btn,
+.btn-campus-amber,
+.neo-pill-btn-primary {
+  background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 60%, #FDE68A 100%);
+  color: #090420 !important;
+  font-family: var(--font-display);
+  font-weight: 700;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 251, 235, 0.65);
+  box-shadow:
+    0 0 20px rgba(251, 191, 36, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition: all 0.18s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   padding: 0.5rem 1.25rem;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-accent);
-  transition: all 0.15s ease-out;
   cursor: pointer;
   user-select: none;
 }
 
-.neo-pill-btn:hover {
-  border-color: var(--color-neon);
-  filter: brightness(0.98);
+.neo-pill-btn:hover,
+.btn-campus-amber:hover,
+.neo-pill-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 28px rgba(251, 191, 36, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  filter: brightness(1.05);
 }
 
-.neo-pill-btn:active {
+.neo-pill-btn:active,
+.btn-campus-amber:active,
+.neo-pill-btn-primary:active {
   transform: translateY(1px);
 }
 
-.neo-pill-btn-primary {
-  background: #1A1C29;
-  color: #C5E17A;
-  border-color: #1A1C29;
+/* Secondary CTA: Nebula Ultraviolet Pill Button */
+.btn-nebula-violet {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.85) 0%, rgba(168, 85, 247, 0.85) 100%);
+  color: #F8F7FF;
+  font-family: var(--font-display);
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid rgba(216, 180, 254, 0.45);
+  box-shadow: 0 0 18px rgba(139, 92, 246, 0.35);
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  cursor: pointer;
 }
 
-.dark .neo-pill-btn-primary {
-  background: #C5E17A;
-  color: #0E0F1A;
-  border-color: #C5E17A;
+.btn-nebula-violet:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.95) 0%, rgba(192, 132, 252, 0.95) 100%);
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.55);
+  transform: translateY(-1px);
 }
 
-.neo-pill-btn-primary:hover {
-  box-shadow: 0 0 12px rgba(197, 225, 122, 0.4);
+/* Ghost / Filter Pill (Wet Pavement Glass Pill) */
+.pill-glass {
+  background: rgba(20, 11, 52, 0.65);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  color: var(--text-nebula-sec);
+  border-radius: 9999px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
 }
 
-/* Technical Badges and Monospace Chips */
+.pill-glass:hover,
+.pill-glass-active {
+  background: rgba(124, 58, 237, 0.28);
+  border-color: rgba(251, 191, 36, 0.6);
+  color: #FDE68A;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.2);
+}
+
+/* Monospace Badges */
 .neo-badge {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 0.2rem 0.6rem;
+  padding: 0.2rem 0.65rem;
   border-radius: 9999px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border-hairline);
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
   font-weight: 600;
+  background: rgba(22, 11, 62, 0.6);
+  color: var(--text-nebula-sec);
+  backdrop-filter: blur(8px);
 }
 
-/* Editorial display typography */
-.neo-heading {
-  font-family: var(--font-display);
-  letter-spacing: -0.015em;
-}
-
-.neo-heading em {
-  font-style: italic;
-  font-family: var(--font-display);
-  color: #6366F1;
-}
-
-.dark .neo-heading em {
-  color: #C5E17A;
-}
-
-/* Chat Composer rounded style */
+/* Recessed Astral Inputs & Chat Composer */
+.celestial-input,
 .neo-composer {
+  background: var(--bg-glass-input);
+  border: 1px solid rgba(139, 92, 246, 0.28);
   border-radius: 16px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
+  color: var(--text-starlight);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Custom scrollbars */
+.celestial-input::placeholder,
+.neo-composer::placeholder {
+  color: var(--text-cosmos-muted);
+}
+
+.celestial-input:focus,
+.neo-composer:focus {
+  outline: none;
+  border-color: var(--accent-amber-bright);
+  box-shadow:
+    0 0 0 3px rgba(251, 191, 36, 0.15),
+    inset 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+/* Twinkling Star Animation */
+@keyframes starPulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+.animate-star-twinkle {
+  animation: starPulse 3.6s ease-in-out infinite;
+}
+
+@keyframes shootingStar {
+  0% {
+    transform: translate(0, 0) rotate(45deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  30% {
+    transform: translate(320px, 320px) rotate(45deg);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-shooting-star-1 {
+  animation: shootingStar 11s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+}
+
+.animate-shooting-star-2 {
+  animation: shootingStar 16s cubic-bezier(0.25, 1, 0.5, 1) 4s infinite;
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #050214;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: #2E1065;
   border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #7C3AED;
 }

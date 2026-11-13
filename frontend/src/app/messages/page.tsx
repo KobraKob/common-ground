@@ -13,7 +13,8 @@ import {
   Pin,
   CheckCircle2,
   Clock,
-  Flag
+  Flag,
+  Sparkles
 } from 'lucide-react';
 import { getConversations, getMessages, sendMessage, getMyProfile } from '@/lib/api';
 import { Conversation, MessageItem, StudentProfile } from '@/types';
@@ -81,21 +82,21 @@ export default function MessagesPage() {
 
   return (
     <div className="max-w-6xl mx-auto h-[calc(100vh-6.5rem)] flex flex-col">
-      <div className="neo-card flex-1 flex flex-col md:flex-row overflow-hidden bg-white dark:bg-[#151726]">
+      <div className="celestial-card flex-1 flex flex-col md:flex-row overflow-hidden border border-purple-500/30">
         {/* Left: Channels & Direct Messages Sidebar */}
-        <div className="w-full md:w-80 border-r border-[#CCCFFA] dark:border-[#282C47] flex flex-col shrink-0 bg-white dark:bg-[#0E0F1A]">
+        <div className="w-full md:w-80 border-r border-purple-500/20 flex flex-col shrink-0 bg-[#0B0524]/85 backdrop-blur-xl">
           {/* Header */}
-          <div className="p-3.5 border-b border-[#CCCFFA] dark:border-[#282C47] flex items-center justify-between">
-            <span className="text-xs font-mono uppercase tracking-wider font-bold text-gray-900 dark:text-white">
-              Communication Layer
+          <div className="p-3.5 border-b border-purple-500/20 flex items-center justify-between">
+            <span className="text-xs font-mono uppercase tracking-wider font-bold text-[#F8F7FF] flex items-center gap-1.5">
+              <span>✦ Communication Layer</span>
             </span>
-            <span className="neo-badge text-[9px] bg-[#C5E17A]/20 text-[#1A1C29] dark:text-[#C5E17A]">
-              BLR CHAT
+            <span className="neo-badge text-[9px] bg-purple-900/60 text-[#FDE68A] border-purple-400/30">
+              BLR ACTIVE
             </span>
           </div>
 
           {/* Conversations List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+          <div className="flex-1 overflow-y-auto divide-y divide-purple-500/10">
             {conversations.map((conv) => {
               const isSelected = conv.id === selectedConvId;
               const isAnnounce = conv.conversation_type === 'ANNOUNCEMENT_CHANNEL';
@@ -105,26 +106,37 @@ export default function MessagesPage() {
                 <button
                   key={conv.id}
                   onClick={() => handleSelectConv(conv.id)}
-                  className={`w-full text-left p-3.5 transition-colors flex items-start gap-3 ${
+                  className={`relative w-full text-left p-3.5 transition-all flex items-start gap-3 ${
                     isSelected
-                      ? 'bg-[#F5F6FD] dark:bg-[#151726] border-l-4 border-l-[#C5E17A]'
-                      : 'hover:bg-gray-50 dark:hover:bg-[#151726]/50'
+                      ? 'bg-gradient-to-r from-amber-500/15 via-purple-600/15 to-transparent text-[#FDE68A]'
+                      : 'hover:bg-purple-900/20 text-[#C4B5FD]'
                   }`}
                 >
-                  <div className="w-8 h-8 rounded-full bg-[#1A1C29] dark:bg-gray-800 text-[#C5E17A] flex items-center justify-center shrink-0 text-xs font-mono font-bold">
-                    {isAnnounce ? <Megaphone className="w-3.5 h-3.5" /> : isDirect ? '@' : '#'}
+                  {/* Lit Window Indicator */}
+                  {isSelected && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-[#FDE68A] via-[#FBBF24] to-[#F59E0B] rounded-r-full shadow-[0_0_12px_#FBBF24]" />
+                  )}
+
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-mono font-bold border transition-colors ${
+                    isSelected
+                      ? 'bg-gradient-to-br from-[#2E1065] to-[#120836] border-amber-400/50 text-[#FBBF24] shadow-[0_0_10px_rgba(251,191,36,0.3)]'
+                      : 'bg-purple-950/60 border-purple-400/30 text-purple-300'
+                  }`}>
+                    {isAnnounce ? <Megaphone className="w-3.5 h-3.5 text-amber-300" /> : isDirect ? '@' : '#'}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
-                      <span className="text-xs font-mono font-bold truncate text-gray-900 dark:text-white">
+                      <span className={`text-xs font-mono font-bold truncate ${
+                        isSelected ? 'text-[#F8F7FF]' : 'text-[#C4B5FD]'
+                      }`}>
                         {conv.title || 'Conversation'}
                       </span>
-                      <span className="text-[9px] font-mono text-gray-400 shrink-0 ml-1">
+                      <span className="text-[9px] font-mono text-[#7C6FA6] shrink-0 ml-1">
                         {new Date(conv.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <p className="text-[11px] text-gray-500 truncate">
+                    <p className="text-[11px] text-[#7C6FA6] truncate">
                       {conv.last_message || conv.description || 'No recent messages'}
                     </p>
                   </div>
@@ -135,43 +147,41 @@ export default function MessagesPage() {
         </div>
 
         {/* Right: Message Stream & Sub-Tabs */}
-        <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#151726]">
+        <div className="flex-1 flex flex-col min-w-0 bg-[#07031A]/90 backdrop-blur-xl">
           {currentConv ? (
             <>
               {/* Header with Title and 3 Sub-Tabs */}
-              <div className="p-4 border-b border-[#CCCFFA] dark:border-[#282C47] bg-[#F5F6FD]/50 dark:bg-[#0E0F1A]/50">
+              <div className="p-4 border-b border-purple-500/20 bg-purple-950/20">
                 <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                   <div className="flex items-center gap-2">
-                    <h2 className="neo-heading text-lg font-bold text-gray-900 dark:text-white truncate">
+                    <h2 className="font-display text-lg font-bold text-[#F8F7FF] truncate">
                       {currentConv.title}
                     </h2>
-                    <span className="neo-badge text-[9px] bg-indigo-500/10 text-indigo-700 dark:text-indigo-300">
+                    <span className="neo-badge text-[9px] bg-purple-900/60 text-[#C4B5FD] border-purple-400/30">
                       {currentConv.conversation_type}
                     </span>
                   </div>
 
                   {/* Message Search */}
                   <div className="relative">
-                    <Search className="w-3 h-3 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <Search className="w-3 h-3 text-[#7C6FA6] absolute left-2.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       value={messageSearch}
                       onChange={(e) => setMessageSearch(e.target.value)}
                       placeholder="Search messages..."
-                      className="text-[11px] font-mono py-1 pl-7 pr-3 rounded-full border border-[#CCCFFA] dark:border-[#282C47] bg-white dark:bg-[#151726] text-gray-900 dark:text-gray-100 focus:outline-none w-36 sm:w-48"
+                      className="celestial-input text-[11px] font-mono py-1 pl-7 pr-3 rounded-full w-36 sm:w-48"
                     />
                   </div>
                 </div>
 
-                {/* 3 Clean Sub-Tabs for Group Communication (Section 6.4) */}
+                {/* 3 Clean Sub-Tabs for Group Communication */}
                 {currentConv.conversation_type !== 'DIRECT' && (
                   <div className="flex gap-2">
                     <button
                       onClick={() => setActiveGroupSubTab('announcements')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono transition-all ${
-                        activeGroupSubTab === 'announcements'
-                          ? 'bg-[#1A1C29] text-[#C5E17A] dark:bg-[#C5E17A] dark:text-[#0E0F1A] font-bold'
-                          : 'border border-[#CCCFFA] dark:border-[#282C47] text-gray-600 dark:text-gray-400 hover:border-[#C5E17A]'
+                      className={`pill-glass text-xs ${
+                        activeGroupSubTab === 'announcements' ? 'pill-glass-active' : ''
                       }`}
                     >
                       <Megaphone className="w-3 h-3" />
@@ -180,10 +190,8 @@ export default function MessagesPage() {
 
                     <button
                       onClick={() => setActiveGroupSubTab('chat')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono transition-all ${
-                        activeGroupSubTab === 'chat'
-                          ? 'bg-[#1A1C29] text-[#C5E17A] dark:bg-[#C5E17A] dark:text-[#0E0F1A] font-bold'
-                          : 'border border-[#CCCFFA] dark:border-[#282C47] text-gray-600 dark:text-gray-400 hover:border-[#C5E17A]'
+                      className={`pill-glass text-xs ${
+                        activeGroupSubTab === 'chat' ? 'pill-glass-active' : ''
                       }`}
                     >
                       <MessageSquare className="w-3 h-3" />
@@ -192,10 +200,8 @@ export default function MessagesPage() {
 
                     <button
                       onClick={() => setActiveGroupSubTab('vault')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono transition-all ${
-                        activeGroupSubTab === 'vault'
-                          ? 'bg-[#1A1C29] text-[#C5E17A] dark:bg-[#C5E17A] dark:text-[#0E0F1A] font-bold'
-                          : 'border border-[#CCCFFA] dark:border-[#282C47] text-gray-600 dark:text-gray-400 hover:border-[#C5E17A]'
+                      className={`pill-glass text-xs ${
+                        activeGroupSubTab === 'vault' ? 'pill-glass-active' : ''
                       }`}
                     >
                       <Pin className="w-3 h-3" />
@@ -208,50 +214,67 @@ export default function MessagesPage() {
               {/* Message Stream */}
               <div className="flex-1 p-4 overflow-y-auto space-y-3">
                 {activeGroupSubTab === 'vault' ? (
-                  <div className="p-6 text-center text-xs font-mono text-gray-500">
-                    <Pin className="w-8 h-8 mx-auto mb-2 text-[#C5E17A]" />
-                    <p className="font-bold text-gray-800 dark:text-gray-200 mb-1">Pinned Resource Vault</p>
-                    <p>All syllabus guides, exam papers, and shared project links pinned in this space are permanently preserved here.</p>
+                  <div className="p-8 text-center text-xs font-mono text-[#C4B5FD] celestial-card m-4">
+                    <Pin className="w-8 h-8 mx-auto mb-3 text-[#FBBF24] drop-shadow-[0_0_10px_#FBBF24]" />
+                    <p className="font-bold text-base text-[#F8F7FF] mb-1 font-display">
+                      Pinned Resource Vault
+                    </p>
+                    <p className="max-w-md mx-auto text-[#7C6FA6] leading-relaxed">
+                      All syllabus guides, exam papers, and shared project links pinned in this space are permanently preserved here for students.
+                    </p>
                   </div>
                 ) : (
-                  filteredMessages.map((msg) => (
-                    <div key={msg.id} className="p-3 rounded-lg border border-[#CCCFFA]/50 dark:border-[#282C47]/50 bg-[#F5F6FD]/40 dark:bg-[#0E0F1A]/40">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono font-bold text-gray-900 dark:text-white">
-                            {msg.sender_name || 'Student'}
-                          </span>
-                          <span className="text-[10px] font-mono text-gray-400">
-                            @{msg.sender_handle || 'user'} • {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          {msg.is_announcement && (
-                            <span className="neo-badge text-[8px] bg-red-500/10 text-red-500 border-red-500/30">
-                              ANNOUNCEMENT
+                  filteredMessages.map((msg) => {
+                    const isMe = msg.sender_id === myProfile?.user_id;
+
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`p-3.5 rounded-2xl max-w-xl transition-all ${
+                          msg.is_announcement
+                            ? 'celestial-card-amber mx-auto w-full max-w-2xl'
+                            : isMe
+                            ? 'ml-auto bg-gradient-to-br from-purple-600/90 to-indigo-800/90 border border-purple-400/40 text-white shadow-[0_4px_20px_rgba(124,58,237,0.25)]'
+                            : 'mr-auto bg-[#160B3E]/60 border border-purple-500/25 text-[#F8F7FF]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5 gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-bold text-[#F8F7FF]">
+                              {msg.sender_name || 'Student'}
                             </span>
-                          )}
+                            <span className="text-[10px] font-mono text-[#C4B5FD]/75">
+                              @{msg.sender_handle || 'user'} • {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {msg.is_announcement && (
+                              <span className="neo-badge text-[8px] bg-amber-500/20 text-[#FDE68A] border-amber-400/40 font-bold">
+                                ✦ ANNOUNCEMENT
+                              </span>
+                            )}
+                          </div>
+
+                          <button
+                            onClick={() => setReportTarget({ id: msg.id, type: 'MESSAGE', title: msg.body })}
+                            className="text-[#7C6FA6] hover:text-rose-400 p-1"
+                          >
+                            <Flag className="w-3 h-3" />
+                          </button>
                         </div>
 
-                        <button
-                          onClick={() => setReportTarget({ id: msg.id, type: 'MESSAGE', title: msg.body })}
-                          className="text-gray-400 hover:text-red-500 p-1"
-                        >
-                          <Flag className="w-3 h-3" />
-                        </button>
+                        <p className="text-xs text-[#F8F7FF] leading-relaxed">
+                          {msg.body}
+                        </p>
                       </div>
-
-                      <p className="text-xs text-gray-800 dark:text-gray-200 leading-relaxed">
-                        {msg.body}
-                      </p>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 
               {/* Chat Composer */}
-              <div className="p-3 border-t border-[#CCCFFA] dark:border-[#282C47] bg-[#F5F6FD]/50 dark:bg-[#0E0F1A]/50">
+              <div className="p-3.5 border-t border-purple-500/20 bg-purple-950/20">
                 {isAnnouncementOnly && myProfile?.verification_stage === 'STAGE_1_PROVISIONAL' ? (
-                  <div className="p-2.5 rounded bg-gray-100 dark:bg-gray-800 text-center text-xs font-mono text-gray-500 flex items-center justify-center gap-2">
-                    <Lock className="w-3.5 h-3.5 text-gray-400" />
+                  <div className="p-3 rounded-xl bg-purple-950/50 border border-purple-500/20 text-center text-xs font-mono text-[#C4B5FD] flex items-center justify-center gap-2">
+                    <Lock className="w-3.5 h-3.5 text-[#FBBF24]" />
                     <span>Only class/club representatives can publish official announcements.</span>
                   </div>
                 ) : (
@@ -261,12 +284,12 @@ export default function MessagesPage() {
                       value={messageInput}
                       onChange={(e) => setMessageInput(e.target.value)}
                       placeholder={`Message ${currentConv.title}...`}
-                      className="flex-1 text-xs font-mono p-2.5 rounded-full border border-[#CCCFFA] dark:border-[#282C47] bg-white dark:bg-[#151726] text-gray-900 dark:text-gray-100 focus:outline-none focus:border-[#C5E17A]"
+                      className="celestial-input flex-1 text-xs font-mono p-3 rounded-full"
                     />
                     <button
                       type="submit"
                       disabled={!messageInput.trim()}
-                      className="neo-pill-btn neo-pill-btn-primary py-2 px-4"
+                      className="btn-campus-amber text-xs font-mono py-2.5 px-5 rounded-full"
                     >
                       <Send className="w-3.5 h-3.5" />
                       <span>Send</span>
@@ -276,7 +299,7 @@ export default function MessagesPage() {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-xs font-mono text-gray-400">
+            <div className="flex-1 flex items-center justify-center text-xs font-mono text-[#7C6FA6]">
               Select a conversation to start chatting
             </div>
           )}

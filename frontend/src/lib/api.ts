@@ -2,14 +2,18 @@ import {
   College, 
   StudentProfile, 
   Post, 
+  Comment,
   Community, 
   Conversation, 
   MessageItem, 
   ProjectItem, 
   TaskItem, 
   EventItem,
-  ResourceItem,
-  ReportItem 
+  ResourceItem, 
+  ReportItem,
+  AuthResponse,
+  SignUpPayload,
+  LoginPayload
 } from '@/types';
 import { 
   SEED_COLLEGES, 
@@ -23,37 +27,203 @@ import {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-// Active simulated user for interactive demo
-let activeUserId = 'aaaa0001-0000-0000-0000-000000000001'; // Default: Aarav Patel
+export class ApiError extends Error {
+  status: number;
+  detail: string;
+
+  constructor(status: number, detail: string) {
+    super(detail);
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+// Active simulated user for interactive demo & authentication
+let activeUserId = '';
+let activeAuthToken: string | null = null;
+let cachedUserProfile: StudentProfile | null = null;
+
+if (typeof window !== 'undefined') {
+  const storedId = localStorage.getItem('cg_active_user_id');
+  if (storedId) activeUserId = storedId;
+  activeAuthToken = localStorage.getItem('cg_auth_token');
+  const storedProf = localStorage.getItem('cg_user_profile');
+  if (storedProf) {
+    try {
+      cachedUserProfile = JSON.parse(storedProf);
+    } catch {}
+  }
+}
+
+export function isAuthenticated(): boolean {
+  if (typeof window !== 'undefined') {
+    return !!localStorage.getItem('cg_active_user_id') || !!localStorage.getItem('cg_auth_token');
+  }
+  return !!activeAuthToken || (!!activeUserId && activeUserId !== '');
+}
 
 export function setActiveUser(userId: string) {
   activeUserId = userId;
+  activeAuthToken = `cg-user_${userId}`;
+  const matched = DEMO_USERS.find((u) => u.user_id === userId);
+  if (matched) {
+    cachedUserProfile = matched;
+  }
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('cg_active_user_id', userId);
+    localStorage.setItem('cg_auth_token', `cg-user_${userId}`);
+    if (matched) {
+      localStorage.setItem('cg_user_profile', JSON.stringify(matched));
+    }
+  }
 }
 
 export function getActiveUserId(): string {
-  return activeUserId;
+  return activeUserId || DEMO_USERS[0].user_id;
+}
+
+export function setAuthSession(auth: AuthResponse) {
+  activeUserId = auth.user_id;
+  activeAuthToken = auth.token;
+  cachedUserProfile = auth.profile;
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('cg_active_user_id', auth.user_id);
+    localStorage.setItem('cg_auth_token', auth.token);
+    localStorage.setItem('cg_user_profile', JSON.stringify(auth.profile));
+  }
+}
+
+export function clearAuthSession() {
+  activeUserId = '';
+  activeAuthToken = null;
+  cachedUserProfile = null;
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('cg_active_user_id');
+    localStorage.removeItem('cg_auth_token');
+    localStorage.removeItem('cg_user_profile');
+  }
+}
+
+export function getActiveProfile(): StudentProfile {
+  if (cachedUserProfile && cachedUserProfile.user_id === activeUserId) {
+    return cachedUserProfile;
+  }
+  if (activeUserId) {
+    const found = DEMO_USERS.find((u) => u.user_id === activeUserId);
+    if (found) return found;
+  }
+  return DEMO_USERS[0];
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const headers = {
     'Content-Type': 'application/json',
-    'X-User-Id': activeUserId,
+    ...(activeUserId ? { 'X-User-Id': activeUserId } : {}),
+    ...(activeAuthToken ? { 'Authorization': `Bearer ${activeAuthToken}` } : {}),
     ...(options.headers || {}),
   };
 
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!res.ok) {
+    let errDetail = `HTTP ${res.status}: ${res.statusText}`;
+    try {
+      const errJson = await res.json();
+      if (errJson) {
+        errDetail = errJson.detail || errJson.message || errJson.error || errDetail;
+      }
+    } catch {}
+    throw new ApiError(res.status, errDetail);
+  }
+
+  return await res.json();
+}
+
+// ----------------------------------------------------
+// Authentication & Accounts
+// ----------------------------------------------------
+
+export async function signupUser(payload: SignUpPayload): Promise<AuthResponse> {
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers,
+    const res = await request<AuthResponse>('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    setAuthSession(res);
+    return res;
+  } catch (err: any) {
+    // If backend returned a real HTTP error response (e.g. 400 Duplicate Email or Taken Handle), rethrow
+    if (err instanceof ApiError) {
+      throw err;
     }
-    return await res.json();
-  } catch (err) {
-    // Graceful fallback for mock mode if backend is unreachable
-    console.warn(`[API Client] Falling back to local data for ${endpoint}:`, err);
-    throw err;
+    // Only fall back to local mock session if backend is completely unreachable (network failure)
+    console.warn('[API Client] Backend offline, falling back to local signup mock:', err);
+    const newId = `u-${Date.now()}`;
+    const selectedCol = SEED_COLLEGES.find((c) => c.id === payload.college_id);
+    const mockProfile: StudentProfile = {
+      user_id: newId,
+      handle: payload.handle.replace('@', ''),
+      display_name: payload.display_name,
+      bio: payload.bio || '',
+      college_id: payload.college_id,
+      college_name: selectedCol ? selectedCol.name : 'Bengaluru Student',
+      verification_stage: payload.email.endsWith('.edu.in') || payload.email.endsWith('.ac.in')
+        ? 'STAGE_3_INSTITUTIONAL_VERIFIED'
+        : 'STAGE_1_PROVISIONAL',
+      course_branch: payload.course_branch || 'Engineering',
+      graduation_year: payload.graduation_year || 2028,
+      skills: payload.skills || ['Python'],
+      interests: payload.interests || ['Hackathons'],
+      collaboration_goals: ['Hackathons', 'Side Projects'],
+      profile_visibility: 'PUBLIC',
+      show_course_year: true,
+      dm_permission: 'SAME_CAMPUS_OR_COMMUNITY',
+      onboarding_completed: true,
+      created_at: new Date().toISOString(),
+    };
+    const mockAuth: AuthResponse = {
+      token: `cg-user_${newId}`,
+      user_id: newId,
+      email: payload.email,
+      profile: mockProfile,
+    };
+    setAuthSession(mockAuth);
+    return mockAuth;
+  }
+}
+
+export async function loginUser(payload: LoginPayload): Promise<AuthResponse> {
+  try {
+    const res = await request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    setAuthSession(res);
+    return res;
+  } catch (err: any) {
+    // If backend returned a real HTTP error response (e.g. 401 Invalid credentials), rethrow
+    if (err instanceof ApiError) {
+      throw err;
+    }
+    // Only fall back to offline demo simulation if backend is completely unreachable
+    console.warn('[API Client] Backend offline, checking local demo persona login:', err);
+    const term = payload.login.toLowerCase().replace('@', '');
+    const matched = DEMO_USERS.find((u) => u.handle.toLowerCase() === term || u.display_name.toLowerCase().includes(term));
+    if (!matched) {
+      throw new ApiError(401, 'Invalid credentials');
+    }
+    const mockAuth: AuthResponse = {
+      token: `cg-user_${matched.user_id}`,
+      user_id: matched.user_id,
+      email: `${matched.handle}@commonground.in`,
+      profile: matched,
+    };
+    setAuthSession(mockAuth);
+    return mockAuth;
   }
 }
 
@@ -95,7 +265,7 @@ export async function getMyProfile(): Promise<StudentProfile> {
   try {
     return await request<StudentProfile>('/profiles/me');
   } catch {
-    return DEMO_USERS.find((u) => u.user_id === activeUserId) || DEMO_USERS[0];
+    return getActiveProfile();
   }
 }
 
@@ -106,7 +276,7 @@ export async function completeOnboarding(payload: Partial<StudentProfile>): Prom
       body: JSON.stringify(payload),
     });
   } catch {
-    const existing = DEMO_USERS.find((u) => u.user_id === activeUserId) || DEMO_USERS[0];
+    const existing = getActiveProfile();
     const updated = { ...existing, ...payload, onboarding_completed: true, verification_stage: 'STAGE_1_PROVISIONAL' as const };
     return updated;
   }
@@ -146,20 +316,28 @@ export async function createPost(payload: any): Promise<Post> {
       body: JSON.stringify(payload),
     });
   } catch {
+    const cur = getActiveProfile();
     const newPost: Post = {
       id: `p-${Date.now()}`,
-      author_id: activeUserId,
-      author_name: 'Aarav Patel',
-      author_handle: 'aarav_builder',
-      author_verification: 'STAGE_3_INSTITUTIONAL_VERIFIED',
+      author_id: cur.user_id,
+      author_name: cur.display_name,
+      author_handle: cur.handle,
+      author_avatar: cur.avatar_url,
+      author_verification: cur.verification_stage,
+      college_id: cur.college_id,
+      college_name: cur.college_name,
       category: payload.category,
       title: payload.title,
       body: payload.body,
       tags: payload.tags || [],
-      is_cross_campus: payload.is_cross_campus || false,
+      media_url: payload.media_url,
+      media_type: payload.media_type,
+      is_cross_campus: payload.is_cross_campus ?? true,
       is_pinned: false,
       upvotes_count: 0,
       comments_count: 0,
+      shares_count: 0,
+      liked_by_me: false,
       opportunity_meta: payload.opportunity_meta,
       poll: payload.poll_question ? {
         id: `poll-${Date.now()}`,
@@ -180,6 +358,71 @@ export async function votePoll(postId: string, optionId: string): Promise<any> {
     });
   } catch {
     return { message: 'Vote recorded' };
+  }
+}
+
+export async function reactToPost(postId: string, reactionType = 'UPVOTE'): Promise<{ post_id: string; upvotes_count: number; liked_by_me: boolean }> {
+  try {
+    return await request<{ post_id: string; upvotes_count: number; liked_by_me: boolean }>(`/posts/${postId}/react`, {
+      method: 'POST',
+      body: JSON.stringify({ reaction_type: reactionType }),
+    });
+  } catch {
+    return { post_id: postId, upvotes_count: 1, liked_by_me: true };
+  }
+}
+
+export async function sharePost(postId: string): Promise<{ post_id: string; shares_count: number; share_url: string }> {
+  try {
+    return await request<{ post_id: string; shares_count: number; share_url: string }>(`/posts/${postId}/share`, {
+      method: 'POST',
+    });
+  } catch {
+    return { post_id: postId, shares_count: 1, share_url: `/city#post-${postId}` };
+  }
+}
+
+export async function getPostComments(postId: string): Promise<Comment[]> {
+  try {
+    return await request<Comment[]>(`/posts/${postId}/comments`);
+  } catch {
+    return [
+      {
+        id: `c-${postId}-1`,
+        post_id: postId,
+        author_id: 'aaaa0001-0000-0000-0000-000000000001',
+        author_name: 'Aarav Patel',
+        author_handle: 'aarav_builder',
+        body: 'Great pulse drop! Excited to collaborate on this across campuses.',
+        is_useful_answer: false,
+        upvotes_count: 2,
+        created_at: new Date(Date.now() - 1800000).toISOString(),
+      },
+    ];
+  }
+}
+
+export async function addComment(postId: string, body: string, parentCommentId?: string): Promise<Comment> {
+  try {
+    return await request<Comment>(`/posts/${postId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body, parent_comment_id: parentCommentId }),
+    });
+  } catch {
+    const cur = getActiveProfile();
+    return {
+      id: `c-${Date.now()}`,
+      post_id: postId,
+      author_id: cur.user_id,
+      author_name: cur.display_name,
+      author_handle: cur.handle,
+      author_avatar: cur.avatar_url,
+      parent_comment_id: parentCommentId,
+      body,
+      is_useful_answer: false,
+      upvotes_count: 0,
+      created_at: new Date().toISOString(),
+    };
   }
 }
 
@@ -285,12 +528,13 @@ export async function sendMessage(conversationId: string, body: string): Promise
       body: JSON.stringify({ body }),
     });
   } catch {
+    const cur = getActiveProfile();
     return {
       id: `msg-${Date.now()}`,
       conversation_id: conversationId,
-      sender_id: activeUserId,
-      sender_name: 'Aarav Patel',
-      sender_handle: 'aarav_builder',
+      sender_id: cur.user_id,
+      sender_name: cur.display_name,
+      sender_handle: cur.handle,
       body,
       attachments: [],
       is_announcement: false,
@@ -319,11 +563,12 @@ export async function createProject(payload: any): Promise<ProjectItem> {
       body: JSON.stringify(payload),
     });
   } catch {
+    const cur = getActiveProfile();
     const newProj: ProjectItem = {
       id: `proj-${Date.now()}`,
-      creator_id: activeUserId,
-      creator_name: 'Aarav Patel',
-      creator_college_name: 'RV College of Engineering',
+      creator_id: cur.user_id,
+      creator_name: cur.display_name,
+      creator_college_name: cur.college_name || 'Bengaluru College',
       title: payload.title,
       pitch: payload.pitch,
       description: payload.description,
