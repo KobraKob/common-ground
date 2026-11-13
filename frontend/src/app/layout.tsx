@@ -3,6 +3,7 @@ import './globals.css';
 import { GlobalHeader } from '@/components/shared/GlobalHeader';
 import { NavigationSidebar } from '@/components/shared/NavigationSidebar';
 import { Providers } from '@/app/providers';
+import { GlobalFooter } from '@/components/shared/GlobalFooter';
 
 export const metadata: Metadata = {
   title: 'CommonGround — Meet beyond your campus',
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <GlobalHeader />
           <NavigationSidebar />
           <main id="main-content" className="w-full min-h-[calc(100vh-8rem)]">{children}</main>
+          <GlobalFooter />
         </Providers>
       </body>
     </html>
