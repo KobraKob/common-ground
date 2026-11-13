@@ -300,6 +300,8 @@ async def update_project_member_status(
     member = m_res.scalar_one_or_none()
     if not member or member.project_id != project_id:
         raise HTTPException(status_code=404, detail="Member record not found")
+    if member.status != "PENDING_REQUEST":
+        raise HTTPException(status_code=409, detail="Only pending join requests can be reviewed")
 
     member.status = payload.status
 
