@@ -24,6 +24,7 @@ from app.modules.colleges.models import College
 from app.modules.communities.models import Community, CommunityMembership
 from app.modules.commons.models import Post, Comment
 from app.modules.events.models import Event, EventAttendance
+from app.modules.projects.models import Task
 
 
 def hash_password(password: str) -> str:
@@ -562,6 +563,9 @@ async def get_my_contributions(
     useful_answers = await db.execute(
         select(func.count(Comment.id)).where(Comment.author_id == user.id, Comment.is_useful_answer.is_(True))
     )
+    tasks_marked_done = await db.execute(
+        select(func.count(Task.id)).where(Task.assignee_id == user.id, Task.status == "DONE")
+    )
 
     membership_result = await db.execute(
         select(Community, CommunityMembership.joined_at)
@@ -582,6 +586,7 @@ async def get_my_contributions(
         "posts_created": int(posts_created.scalar() or 0),
         "questions_asked": int(questions_asked.scalar() or 0),
         "useful_answers": int(useful_answers.scalar() or 0),
+        "tasks_marked_done": int(tasks_marked_done.scalar() or 0),
         "communities": [
             {"id": community.id, "name": community.name, "slug": community.slug, "joined_at": joined_at}
             for community, joined_at in membership_result.all()
