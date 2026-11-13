@@ -586,6 +586,21 @@ export async function requestToJoinProject(projectId: string, payload: { pitch_n
   });
 }
 
+export async function getProjectMembers(projectId: string): Promise<ProjectMemberItem[]> {
+  return await request<ProjectMemberItem[]>(`/projects/${projectId}/members`);
+}
+
+export async function updateProjectTask(
+  projectId: string,
+  taskId: string,
+  changes: { title?: string; status?: TaskItem['status']; assignee_id?: string | null }
+): Promise<TaskItem> {
+  return await request<TaskItem>(`/projects/${projectId}/tasks/${taskId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(changes),
+  });
+}
+
 export async function getProjectTasks(projectId: string): Promise<TaskItem[]> {
   return await request<TaskItem[]>(`/projects/${projectId}/tasks`);
 }
