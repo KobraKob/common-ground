@@ -1,4 +1,4 @@
-'use client';
+'use client';\n\nimport type { FormEvent } from 'react';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -52,7 +52,7 @@ export default function DiscoverPage() {
     finally { setBusyId(''); }
   }
 
-  async function handleCreateCircle(event: React.FormEvent<HTMLFormElement>) {
+  async function handleCreateCircle(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const cleanName = circleName.trim();
     const cleanDescription = circleDescription.trim();
@@ -109,7 +109,7 @@ export default function DiscoverPage() {
 
           {section === 'projects' && <section className="grid gap-3 lg:grid-cols-2">
             {projects.map((project) => <article key={project.id} className="cg-surface p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2"><span className="cg-eyebrow">{project.stage.replaceAll('_',' ')}</span>{project.is_cross_campus_open && <span className="text-xs text-[var(--cg-success)]">Open across campuses</span>}</div>
+              <div className="flex flex-wrap items-center justify-between gap-2"><span className="cg-eyebrow">{project.stage.replace(/_/g, ' ')}</span>{project.is_cross_campus_open && <span className="text-xs text-[var(--cg-success)]">Open across campuses</span>}</div>
               <h2 className="mt-3 text-xl font-semibold">{project.title}</h2><p className="mt-2 text-sm cg-muted">{project.pitch}</p>
               <div className="mt-4 flex flex-wrap gap-2">{project.skills_needed.slice(0,5).map((skill) => <span key={skill} className="rounded-full bg-[var(--cg-elevated)] px-3 py-1 text-xs">{skill}</span>)}</div>
               {project.open_roles.length > 0 && <p className="mt-4 text-sm"><strong>Looking for:</strong> {project.open_roles.join(', ')}</p>}
