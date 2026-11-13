@@ -21,7 +21,8 @@ import {
   unifiedSearch, 
   getActiveProfile, 
   clearAuthSession,
-  isAuthenticated
+  isAuthenticated,
+  trackAnalyticsEvent
 } from '@/lib/api';
 import { TrustBadge } from './TrustBadge';
 
