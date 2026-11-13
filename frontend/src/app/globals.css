@@ -278,3 +278,5 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
 :root[data-theme="light"] [class*="text-slate-300"],
 :root[data-theme="light"] [class*="text-slate-400"],
 :root[data-theme="light"] [class*="text-slate-500"] { color: var(--cg-muted) !important; }
+
+.cg-skip-link{position:fixed;left:16px;top:8px;z-index:1000;transform:translateY(-160%);padding:12px 16px;border-radius:8px;background:var(--cg-surface);color:var(--cg-text);border:2px solid var(--cg-accent);font-size:14px;font-weight:600}.cg-skip-link:focus{transform:translateY(0);outline:3px solid var(--cg-accent);outline-offset:3px}
