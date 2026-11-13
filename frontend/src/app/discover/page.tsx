@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Building2, CalendarDays, Compass, ExternalLink, Layers3, MapPin, Users } from 'lucide-react';
+import { Building2, CalendarDays, ExternalLink, Layers3, MapPin, Users } from 'lucide-react';
 import { getColleges, getCommunities, getEvents, getProjects, getMyProfile, getPosts, joinCommunity, createCommunity, rsvpEvent } from '@/lib/api';
 import type { College, Community, EventItem, Post, ProjectItem, StudentProfile } from '@/types';
 
