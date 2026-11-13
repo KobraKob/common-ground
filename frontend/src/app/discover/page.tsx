@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Building2, CalendarDays, ExternalLink, Layers3, MapPin, Users } from 'lucide-react';
 import { getColleges, getCommunities, getEvents, getProjects, getMyProfile, getPosts, joinCommunity, createCommunity, rsvpEvent } from '@/lib/api';
 import type { College, Community, EventItem, Post, ProjectItem, StudentProfile } from '@/types';
+import { CampusNetworkMap } from '@/components/discover/CampusNetworkMap';
 
 type Section = 'campuses' | 'circles' | 'projects' | 'events' | 'opportunities';
 
@@ -110,13 +111,16 @@ export default function DiscoverPage() {
       {notice && <p role="status" className="rounded-xl border border-[var(--cg-border)] bg-[var(--cg-surface)] px-4 py-3 text-sm">{notice}</p>}
       {loading ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Loading discovery"><div className="h-36 animate-pulse rounded-2xl bg-[var(--cg-elevated)]"/><div className="h-36 animate-pulse rounded-2xl bg-[var(--cg-elevated)]"/><div className="h-36 animate-pulse rounded-2xl bg-[var(--cg-elevated)]"/></div> : (
         <>
-          {section === 'campuses' && <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {section === 'campuses' && <section className="space-y-4">
+            <CampusNetworkMap colleges={colleges}/>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {colleges.map((campus) => <article key={campus.id} className="cg-surface p-5 space-y-4">
               <div className="flex items-start justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--cg-elevated)] text-[var(--cg-accent)]"><Building2 size={20}/></span>{campus.is_official_partner && <span className="text-xs text-[var(--cg-success)]">Official partner</span>}</div>
               <div><h2 className="text-lg font-semibold">{campus.name}</h2><p className="mt-1 flex items-center gap-1 text-sm cg-muted"><MapPin size={14}/>{campus.city}, {campus.state}</p></div>
               <div className="flex gap-4 text-xs cg-muted"><span>{campus.member_count ?? '—'} students</span><span>{campus.community_count ?? '—'} communities</span></div>
               <div className="flex flex-wrap gap-4"><Link className="cg-link inline-flex min-h-11 items-center text-sm font-medium" href={`/campus?college=${encodeURIComponent(campus.slug)}`}>Explore campus <ExternalLink size={14} className="ml-2"/></Link><a className="cg-link inline-flex min-h-11 items-center text-sm font-medium" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(campus.name + ', ' + campus.city)}`} target="_blank" rel="noreferrer">Open map <ExternalLink size={14} className="ml-2"/></a></div>
             </article>)}
+            </div>
           </section>}
 
           {section === 'circles' && <section className="space-y-4">
@@ -133,8 +137,10 @@ export default function DiscoverPage() {
             </div>
           </section>}
 
-          {section === 'projects' && <section className="grid gap-3 lg:grid-cols-2">
-            {projects.map((project) => <article key={project.id} className="cg-surface p-5">
+          {section === 'projects' && <section className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">Projects that need collaborators</h2><p className="text-sm cg-muted">Match project skill requirements against the skills on your profile.</p></div><button type="button" aria-pressed={matchSkillsOnly} onClick={() => setMatchSkillsOnly(!matchSkillsOnly)} className={`min-h-11 rounded-full px-4 text-sm font-medium ${matchSkillsOnly ? 'bg-[var(--cg-accent)] text-white' : 'bg-[var(--cg-elevated)]'}`}>{matchSkillsOnly ? 'Showing skill matches' : 'Match my skills'} ({matchingProjects.length})</button></div>
+            <div className="grid gap-3 lg:grid-cols-2">
+            {visibleProjects.map((project) => <article key={project.id} className="cg-surface p-5">
               <div className="flex flex-wrap items-center justify-between gap-2"><span className="cg-eyebrow">{project.stage.replace(/_/g, ' ')}</span>{project.is_cross_campus_open && <span className="text-xs text-[var(--cg-success)]">Open across campuses</span>}</div>
               <h2 className="mt-3 text-xl font-semibold">{project.title}</h2><p className="mt-2 text-sm cg-muted">{project.pitch}</p>
               <div className="mt-4 flex flex-wrap gap-2">{project.skills_needed.slice(0,5).map((skill) => <span key={skill} className="rounded-full bg-[var(--cg-elevated)] px-3 py-1 text-xs">{skill}</span>)}</div>
@@ -143,6 +149,7 @@ export default function DiscoverPage() {
               <Link href="/build" className="cg-link mt-4 inline-flex min-h-11 items-center text-sm font-medium">View collaboration space <ExternalLink size={14} className="ml-2"/></Link>
             </article>)}
             {visibleProjects.length === 0 && <Empty title={matchSkillsOnly ? "No direct skill matches yet" : "No projects recruiting right now"} body={matchSkillsOnly ? "Add skills to your profile or browse all projects to discover more." : "New student projects will show up here when teams open roles."}/>}
+            </div>
           </section>}
 
 
