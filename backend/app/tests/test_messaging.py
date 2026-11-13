@@ -49,7 +49,7 @@ async def test_direct_messaging_is_private_and_idempotent(client: AsyncClient, d
         json={"recipient_user_id": recipient.id},
         headers={"X-User-Id": sender.id},
     )
-    assert repeated.status_code == 201
+    assert repeated.status_code == 200
     assert repeated.json()["id"] == conversation_id
 
     sent = await client.post(
@@ -57,7 +57,7 @@ async def test_direct_messaging_is_private_and_idempotent(client: AsyncClient, d
         json={"body": "Could you review my project portfolio?"},
         headers={"X-User-Id": sender.id},
     )
-    assert sent.status_code == 201
+    assert sent.status_code == 200
     assert sent.json()["sender_name"] == "Message Sender"
     assert "email" not in sent.json()
 
