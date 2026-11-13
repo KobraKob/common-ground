@@ -134,7 +134,7 @@ export default function BuildPage() {
   }
 
   return <div className="cg-page space-y-8">
-    <header className="flex flex-wrap items-end justify-between gap-4">
+    <header className="cg-page-hero flex flex-wrap items-end justify-between gap-4">
       <div><p className="cg-eyebrow">CROSS-CAMPUS COLLABORATION</p><h1 className="mt-2 text-4xl font-semibold">Build together.</h1><p className="mt-2 max-w-2xl text-sm leading-6 cg-muted">Find teams, recruit collaborators and turn student ideas into shipped work. Every project listing comes from the live project service.</p></div>
       <button onClick={() => setShowCreate(!showCreate)} className="btn-campus-amber inline-flex min-h-11 items-center gap-2 rounded-full px-5"><Plus size={17}/>{showCreate ? 'Close form' : 'Create a project'}</button>
     </header>
