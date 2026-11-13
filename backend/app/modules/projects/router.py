@@ -17,6 +17,7 @@ from app.modules.projects.schemas import (
     ProjectJoinRequest,
     MemberStatusUpdateRequest,
     TaskCreateRequest,
+    TaskUpdateRequest,
     TaskResponse,
     EventCreateRequest,
     EventResponse,
@@ -58,45 +59,69 @@ async def list_projects(
     response.headers["X-Offset"] = str(offset)
     response.headers["X-Limit"] = str(limit)
 
+    creator_ids = {project.creator_id for project in projects}
+    profiles = {}
+    if creator_ids:
+        profiles = {
+            profile.user_id: profile
+            for profile in (await db.execute(select(StudentProfile).where(StudentProfile.user_id.in_(creator_ids)))).scalars().all()
+        }
+    college_ids = {profile.college_id for profile in profiles.values() if profile.college_id}
+    college_names = {}
+    if college_ids:
+        college_names = dict((await db.execute(select(College.id, College.name).where(College.id.in_(college_ids)))).all())
+    project_ids = [project.id for project in projects]
+    member_counts = {}
+    if project_ids:
+        member_counts = dict((await db.execute(
+            select(ProjectMember.project_id, func.count(ProjectMember.id))
+            .where(ProjectMember.project_id.in_(project_ids), ProjectMember.status == "ACCEPTED")
+            .group_by(ProjectMember.project_id)
+        )).all())
+
     resp = []
-    for p in projects:
-        # Creator profile
-        c_res = await db.execute(select(StudentProfile).where(StudentProfile.user_id == p.creator_id))
-        creator_prof = c_res.scalar_one_or_none()
-
-        col_name = None
-        if creator_prof and creator_prof.college_id:
-            col_res = await db.execute(select(College.name).where(College.id == creator_prof.college_id))
-            col_name = col_res.scalar_one_or_none()
-
-        # Members count
-        m_count_res = await db.execute(
-            select(func.count(ProjectMember.id)).where(
-                and_(ProjectMember.project_id == p.id, ProjectMember.status == "ACCEPTED")
-            )
-        )
-        m_count = m_count_res.scalar() or 1
-
-        resp.append(
-            ProjectResponse(
-                id=p.id,
-                creator_id=p.creator_id,
-                creator_name=creator_prof.display_name if creator_prof else "Student",
-                creator_college_name=col_name,
-                college_id=p.college_id,
-                title=p.title,
-                pitch=p.pitch,
-                description=p.description,
-                stage=p.stage,
-                skills_needed=p.skills_needed or [],
-                open_roles=p.open_roles or [],
-                is_cross_campus_open=p.is_cross_campus_open,
-                repo_or_demo_links=p.repo_or_demo_links or [],
-                members_count=m_count,
-                created_at=p.created_at,
-            )
-        )
+    for project in projects:
+        creator = profiles.get(project.creator_id)
+        resp.append(ProjectResponse(
+            id=project.id,
+            creator_id=project.creator_id,
+            creator_name=creator.display_name if creator else "Student",
+            creator_college_name=college_names.get(creator.college_id) if creator and creator.college_id else None,
+            college_id=project.college_id,
+            title=project.title,
+            pitch=project.pitch,
+            description=project.description,
+            stage=project.stage,
+            skills_needed=project.skills_needed or [],
+            open_roles=project.open_roles or [],
+            is_cross_campus_open=project.is_cross_campus_open,
+            repo_or_demo_links=project.repo_or_demo_links or [],
+            members_count=member_counts.get(project.id, 1),
+            created_at=project.created_at,
+        ))
     return resp
+
+
+@router.get("/projects/{project_id}", response_model=ProjectResponse)
+async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
+    project = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    creator = (await db.execute(select(StudentProfile).where(StudentProfile.user_id == project.creator_id))).scalar_one_or_none()
+    college_name = None
+    if creator and creator.college_id:
+        college_name = (await db.execute(select(College.name).where(College.id == creator.college_id))).scalar_one_or_none()
+    member_count = (await db.execute(select(func.count(ProjectMember.id)).where(ProjectMember.project_id == project.id, ProjectMember.status == "ACCEPTED"))).scalar() or 1
+    return ProjectResponse(
+        id=project.id, creator_id=project.creator_id,
+        creator_name=creator.display_name if creator else "Student",
+        creator_college_name=college_name, college_id=project.college_id,
+        title=project.title, pitch=project.pitch, description=project.description,
+        stage=project.stage, skills_needed=project.skills_needed or [],
+        open_roles=project.open_roles or [], is_cross_campus_open=project.is_cross_campus_open,
+        repo_or_demo_links=project.repo_or_demo_links or [], members_count=max(member_count, 1),
+        created_at=project.created_at,
+    )
 
 
 @router.post("/projects", response_model=ProjectResponse)
@@ -131,6 +156,7 @@ async def create_project(
         status="ACCEPTED",
     )
     db.add(member)
+    db.add(AnalyticsEvent(user_id=user.id, event_name='project_created', college_id=project.college_id))
     await db.commit()
     await db.refresh(project)
 
@@ -223,25 +249,40 @@ async def update_project_member_status(
         col2 = c2.scalar_one_or_none()
 
         is_cross = bool(col1 and col2 and col1 != col2)
-        analytics = AnalyticsEvent(
+        db.add(AnalyticsEvent(
             user_id=user.id,
-            event_name="cross_campus_project_connection",
+            event_name="cross_campus_project_connection" if is_cross else "project_member_accepted",
             college_id=col1,
             is_cross_campus_interaction=is_cross,
             event_metadata={"project_id": project_id, "collaborator_id": member.user_id},
-        )
-        db.add(analytics)
+        ))
 
     await db.commit()
     return {"message": f"Member status updated to {payload.status}"}
 
 
+async def _require_project_member(db: AsyncSession, project_id: str, user_id: str) -> Project:
+    project = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    membership = (await db.execute(select(ProjectMember.id).where(
+        ProjectMember.project_id == project_id,
+        ProjectMember.user_id == user_id,
+        ProjectMember.status == "ACCEPTED",
+    ))).scalar_one_or_none()
+    if not membership:
+        raise HTTPException(status_code=403, detail="Project workspace is limited to accepted members")
+    return project
+
+
 @router.get("/projects/{project_id}/tasks", response_model=List[TaskResponse])
 async def list_project_tasks(
     project_id: str,
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Task).where(Task.project_id == project_id).order_by(Task.created_at.asc()))
+    await _require_project_member(db, project_id, user.id)
+    result = await db.execute(select(Task).where(Task.project_id == project_id).order_by(Task.created_at.asc(), Task.id.asc()))
     return result.scalars().all()
 
 
@@ -252,13 +293,50 @@ async def create_project_task(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    task = Task(
-        project_id=project_id,
-        title=payload.title,
-        status=payload.status,
-        assignee_id=payload.assignee_id or user.id,
-    )
+    await _require_project_member(db, project_id, user.id)
+    assignee_id = payload.assignee_id or user.id
+    if assignee_id != user.id:
+        allowed = (await db.execute(select(ProjectMember.id).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == assignee_id,
+            ProjectMember.status == "ACCEPTED",
+        ))).scalar_one_or_none()
+        if not allowed:
+            raise HTTPException(status_code=400, detail="Assignee must be an accepted project member")
+    if payload.status not in {"TODO", "IN_PROGRESS", "DONE"}:
+        raise HTTPException(status_code=400, detail="Invalid task status")
+    task = Task(project_id=project_id, title=payload.title, status=payload.status, assignee_id=assignee_id)
     db.add(task)
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+
+@router.patch("/projects/{project_id}/tasks/{task_id}", response_model=TaskResponse)
+async def update_project_task(
+    project_id: str,
+    task_id: str,
+    payload: TaskUpdateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _require_project_member(db, project_id, user.id)
+    task = (await db.execute(select(Task).where(Task.id == task_id, Task.project_id == project_id))).scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if payload.status is not None:
+        if payload.status not in {"TODO", "IN_PROGRESS", "DONE"}:
+            raise HTTPException(status_code=400, detail="Invalid task status")
+        task.status = payload.status
+    if payload.assignee_id is not None:
+        allowed = (await db.execute(select(ProjectMember.id).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == payload.assignee_id,
+            ProjectMember.status == "ACCEPTED",
+        ))).scalar_one_or_none()
+        if not allowed:
+            raise HTTPException(status_code=400, detail="Assignee must be an accepted project member")
+        task.assignee_id = payload.assignee_id
     await db.commit()
     await db.refresh(task)
     return task
@@ -270,43 +348,38 @@ async def create_project_task(
 
 @router.get("/events", response_model=List[EventResponse])
 async def list_events(
+    response: Response,
     college_id: Optional[str] = None,
     is_cross_campus: Optional[bool] = None,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Event).order_by(Event.starts_at.asc())
+    query = select(Event)
     if college_id:
         query = query.where(Event.college_id == college_id)
     if is_cross_campus is not None:
         query = query.where(Event.is_cross_campus == is_cross_campus)
-
-    result = await db.execute(query)
-    events = result.scalars().all()
-
-    resp = []
-    for e in events:
-        o_res = await db.execute(select(StudentProfile.display_name).where(StudentProfile.user_id == e.organizer_id))
-        org_name = o_res.scalar_one_or_none() or "Organizer"
-        resp.append(
-            EventResponse(
-                id=e.id,
-                organizer_id=e.organizer_id,
-                organizer_name=org_name,
-                community_id=e.community_id,
-                college_id=e.college_id,
-                title=e.title,
-                description=e.description,
-                starts_at=e.starts_at,
-                ends_at=e.ends_at,
-                is_online=e.is_online,
-                venue_or_link=e.venue_or_link,
-                is_cross_campus=e.is_cross_campus,
-                safety_notes=e.safety_notes,
-                rsvp_count=e.rsvp_count,
-                created_at=e.created_at,
-            )
-        )
-    return resp
+    count_query = query.order_by(None).subquery()
+    total = (await db.execute(select(func.count()).select_from(count_query))).scalar() or 0
+    events = (await db.execute(query.order_by(Event.starts_at.asc(), Event.id.asc()).offset(offset).limit(limit))).scalars().all()
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["X-Has-More"] = "true" if offset + len(events) < total else "false"
+    response.headers["X-Offset"] = str(offset)
+    response.headers["X-Limit"] = str(limit)
+    organizer_ids = {event.organizer_id for event in events}
+    organizers = {}
+    if organizer_ids:
+        organizers = dict((await db.execute(select(StudentProfile.user_id, StudentProfile.display_name).where(StudentProfile.user_id.in_(organizer_ids)))).all())
+    return [EventResponse(
+        id=event.id, organizer_id=event.organizer_id,
+        organizer_name=organizers.get(event.organizer_id) or "Organizer",
+        community_id=event.community_id, college_id=event.college_id,
+        title=event.title, description=event.description, starts_at=event.starts_at,
+        ends_at=event.ends_at, is_online=event.is_online, venue_or_link=event.venue_or_link,
+        is_cross_campus=event.is_cross_campus, safety_notes=event.safety_notes,
+        rsvp_count=event.rsvp_count, created_at=event.created_at,
+    ) for event in events]
 
 
 @router.post("/events", response_model=EventResponse)
@@ -335,6 +408,8 @@ async def create_event(
     # Auto RSVP organizer
     rsvp = EventRSVP(event_id=event.id, user_id=user.id, status="GOING")
     db.add(rsvp)
+    db.add(AnalyticsEvent(user_id=user.id, event_name='event_created', college_id=event.college_id))
+    db.add(AnalyticsEvent(user_id=user.id, event_name='event_rsvp', college_id=event.college_id))
 
     await db.commit()
     await db.refresh(event)
@@ -383,6 +458,7 @@ async def rsvp_event(
         rsvp = EventRSVP(event_id=event_id, user_id=user.id, status=status_choice)
         db.add(rsvp)
         event.rsvp_count += 1
+        db.add(AnalyticsEvent(user_id=user.id, event_name='event_rsvp', college_id=event.college_id))
 
     await db.commit()
     return {"message": f"RSVP recorded as {status_choice}", "rsvp_count": event.rsvp_count}
