@@ -1,8 +1,8 @@
 import { College } from '@/types';
 
 /**
- * Accredited Bengaluru College Cluster Directory.
- * Official platform institutional reference data.
+ * Initial Bengaluru campus directory.
+ * Approximate map coordinates and source links are documented in docs/CAMPUS_COORDINATE_SOURCES.md.
  */
 export const BENGALURU_COLLEGES: College[] = [
   {
