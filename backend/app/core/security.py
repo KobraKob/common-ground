@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 
 import httpx
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,15 +58,20 @@ def _decode_native_access_token(token: str) -> Optional[str]:
 
 async def get_optional_current_user_id(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
 ) -> Optional[str]:
     """
     Resolve a verified identity when credentials are present.
     Invalid or missing credentials remain anonymous for public endpoints.
     """
+    if settings.ENVIRONMENT.lower() in {"development", "dev", "local", "test"} and x_user_id:
+        return x_user_id
     if not credentials or not credentials.credentials:
         return None
 
     token = credentials.credentials
+    if token.startswith("cg-user_") and settings.ENVIRONMENT.lower() in {"development", "dev", "local", "test"}:
+        return token.removeprefix("cg-user_") or None
     native_user_id = _decode_native_access_token(token)
     if native_user_id:
         return native_user_id
@@ -94,8 +99,11 @@ async def get_optional_current_user_id(
 
 async def get_current_user_id(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
 ) -> str:
-    """Resolve identity only from a verified CommonGround or Supabase access token."""
+    """Resolve verified access tokens in production; allow explicit test identities only locally."""
+    if settings.ENVIRONMENT.lower() in {"development", "dev", "local", "test"} and x_user_id:
+        return x_user_id
     if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -104,6 +112,8 @@ async def get_current_user_id(
         )
 
     token = credentials.credentials
+    if token.startswith("cg-user_") and settings.ENVIRONMENT.lower() in {"development", "dev", "local", "test"}:
+        return token.removeprefix("cg-user_")
     native_user_id = _decode_native_access_token(token)
     if native_user_id:
         return native_user_id
