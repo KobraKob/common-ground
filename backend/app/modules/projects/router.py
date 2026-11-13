@@ -332,44 +332,61 @@ async def create_project_task(
 
 @router.get("/events", response_model=List[EventResponse])
 async def list_events(
+    response: Response,
     college_id: Optional[str] = None,
     is_cross_campus: Optional[bool] = None,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Event).order_by(Event.starts_at.asc())
+    base_query = select(Event)
+    if college_id:
+        base_query = base_query.where(Event.college_id == college_id)
+    if is_cross_campus is not None:
+        base_query = base_query.where(Event.is_cross_campus == is_cross_campus)
+
+    count_result = await db.execute(
+        select(func.count()).select_from(base_query.order_by(None).subquery())
+    )
+    total_count = count_result.scalar() or 0
+
+    query = select(Event, StudentProfile.display_name).outerjoin(
+        StudentProfile, StudentProfile.user_id == Event.organizer_id
+    )
     if college_id:
         query = query.where(Event.college_id == college_id)
     if is_cross_campus is not None:
         query = query.where(Event.is_cross_campus == is_cross_campus)
 
-    result = await db.execute(query)
-    events = result.scalars().all()
+    result = await db.execute(
+        query.order_by(Event.starts_at.asc()).offset(offset).limit(limit)
+    )
+    rows = result.all()
+    response.headers["X-Total-Count"] = str(total_count)
+    response.headers["X-Has-More"] = "true" if offset + len(rows) < total_count else "false"
+    response.headers["X-Offset"] = str(offset)
+    response.headers["X-Limit"] = str(limit)
 
-    resp = []
-    for e in events:
-        o_res = await db.execute(select(StudentProfile.display_name).where(StudentProfile.user_id == e.organizer_id))
-        org_name = o_res.scalar_one_or_none() or "Organizer"
-        resp.append(
-            EventResponse(
-                id=e.id,
-                organizer_id=e.organizer_id,
-                organizer_name=org_name,
-                community_id=e.community_id,
-                college_id=e.college_id,
-                title=e.title,
-                description=e.description,
-                starts_at=e.starts_at,
-                ends_at=e.ends_at,
-                is_online=e.is_online,
-                venue_or_link=e.venue_or_link,
-                is_cross_campus=e.is_cross_campus,
-                safety_notes=e.safety_notes,
-                rsvp_count=e.rsvp_count,
-                created_at=e.created_at,
-            )
+    return [
+        EventResponse(
+            id=event.id,
+            organizer_id=event.organizer_id,
+            organizer_name=organizer_name or "Organizer",
+            community_id=event.community_id,
+            college_id=event.college_id,
+            title=event.title,
+            description=event.description,
+            starts_at=event.starts_at,
+            ends_at=event.ends_at,
+            is_online=event.is_online,
+            venue_or_link=event.venue_or_link,
+            is_cross_campus=event.is_cross_campus,
+            safety_notes=event.safety_notes,
+            rsvp_count=event.rsvp_count,
+            created_at=event.created_at,
         )
-    return resp
-
+        for event, organizer_name in rows
+    ]
 
 @router.post("/events", response_model=EventResponse)
 async def create_event(
