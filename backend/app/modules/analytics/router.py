@@ -12,7 +12,7 @@ from app.core.security import get_current_user
 from app.modules.analytics.models import AnalyticsEvent
 from app.modules.commons.models import Post
 from app.modules.communities.models import Community
-from app.modules.events.models import Event
+from app.modules.events.models import Event, EventRSVP
 from app.modules.identity.models import StudentProfile, User
 from app.modules.projects.models import Project
 
@@ -102,11 +102,8 @@ async def analytics_summary(
     )
     projects_created = await scalar(select(func.count(Project.id)).where(Project.created_at >= since))
     events_created = await scalar(select(func.count(Event.id)).where(Event.created_at >= since))
-    event_rsvps = await scalar(
-        select(func.count(AnalyticsEvent.id)).where(
-            AnalyticsEvent.created_at >= since,
-            AnalyticsEvent.event_name == "event_rsvp",
-        )
+    event_registrations = await scalar(
+        select(func.count(EventRSVP.id)).where(EventRSVP.created_at >= since)
     )
     connections_created = await scalar(
         select(func.count(AnalyticsEvent.id)).where(
@@ -144,6 +141,38 @@ async def analytics_summary(
         round(len(search_users.intersection(profile_open_users)) / len(search_users) * 100, 1)
         if search_users else None
     )
+    connection_users_result = await db.execute(
+        select(AnalyticsEvent.user_id).where(
+            AnalyticsEvent.created_at >= since,
+            AnalyticsEvent.event_name == "connection_created",
+            AnalyticsEvent.user_id.is_not(None),
+        ).distinct()
+    )
+    connection_users = set(connection_users_result.scalars().all())
+    search_to_connection_rate = (
+        round(len(search_users.intersection(connection_users)) / len(search_users) * 100, 1)
+        if search_users else None
+    )
+
+    retention_cohort_result = await db.execute(
+        select(AnalyticsEvent.user_id).where(
+            AnalyticsEvent.created_at >= now - timedelta(days=14),
+            AnalyticsEvent.created_at < week_ago,
+            AnalyticsEvent.user_id.is_not(None),
+        ).distinct()
+    )
+    recent_active_result = await db.execute(
+        select(AnalyticsEvent.user_id).where(
+            AnalyticsEvent.created_at >= week_ago,
+            AnalyticsEvent.user_id.is_not(None),
+        ).distinct()
+    )
+    retention_cohort = set(retention_cohort_result.scalars().all())
+    recent_active = set(recent_active_result.scalars().all())
+    weekly_retention_rate = (
+        round(len(retention_cohort.intersection(recent_active)) / len(retention_cohort) * 100, 1)
+        if retention_cohort else None
+    )
 
     feed_samples_result = await db.execute(
         select(AnalyticsEvent.event_metadata).where(
@@ -159,6 +188,10 @@ async def analytics_summary(
         and 0 <= float(metadata["duration_ms"]) <= 120000
     ]
     average_feed_load_ms = round(sum(feed_durations) / len(feed_durations), 1) if feed_durations else None
+    feed_load_p75_ms = (
+        sorted(feed_durations)[min(len(feed_durations) - 1, int((len(feed_durations) - 1) * 0.75))]
+        if feed_durations else None
+    )
 
     profiles_result = await db.execute(
         select(StudentProfile.skills, StudentProfile.interests).where(
@@ -207,15 +240,18 @@ async def analytics_summary(
         "cross_campus_interactions": cross_campus,
         "projects_created": projects_created,
         "events_created": events_created,
-        "event_rsvps": event_rsvps,
+        "event_registrations": event_registrations,
+        "weekly_retention_rate": weekly_retention_rate,
+        "search_to_connection_rate": search_to_connection_rate,
         "connections_created": connections_created,
         "public_communities": public_communities,
         "searches": searches,
         "search_to_profile_open_rate": search_to_profile_open_rate,
         "average_feed_load_ms": average_feed_load_ms,
+        "feed_load_p75_ms": feed_load_p75_ms,
         "feed_load_samples": len(feed_durations),
         "top_interests": top_interests,
         "active_communities": active_communities,
         "minimum_cohort_size": minimum_cohort_size,
-        "measurement_note": "Search-to-profile-open is a period-level user overlap, not causal attribution. Feed timing is browser-reported. Interest and community insights are suppressed below five students or posts. Historical activity before instrumentation is not backfilled.",
+        "measurement_note": "Weekly retention is the overlap of users active 8–14 days ago and the last 7 days. Search-to-connection is a period-level user overlap, not causal attribution. Feed timing is browser-reported. Interest and community insights are suppressed below five students or posts. Historical activity before instrumentation is not backfilled.",
     }
