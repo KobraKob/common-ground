@@ -142,7 +142,7 @@ export default function DiscoverPage() {
               <p className="mt-3 text-xs cg-muted">Started by {project.creator_name || 'a student'}{project.creator_college_name ? ` · ${project.creator_college_name}` : ''}</p>
               <Link href="/build" className="cg-link mt-4 inline-flex min-h-11 items-center text-sm font-medium">View collaboration space <ExternalLink size={14} className="ml-2"/></Link>
             </article>)}
-            {projects.length === 0 && <Empty title="No projects recruiting right now" body="New student projects will show up here when teams open roles."/>}
+            {visibleProjects.length === 0 && <Empty title={matchSkillsOnly ? "No direct skill matches yet" : "No projects recruiting right now"} body={matchSkillsOnly ? "Add skills to your profile or browse all projects to discover more." : "New student projects will show up here when teams open roles."}/>}
           </section>}
 
 
