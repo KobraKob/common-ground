@@ -226,6 +226,10 @@ export async function getCampusOverview(slug: string): Promise<any> {
 // Identity & Profiles
 // ----------------------------------------------------
 
+export async function getStudentProfile(handle: string): Promise<StudentProfile> {
+  return await request<StudentProfile>(`/profiles/${encodeURIComponent(handle)}`);
+}
+
 export async function getMyProfile(): Promise<StudentProfile | null> {
   try {
     const prof = await request<StudentProfile>('/auth/me');
@@ -762,8 +766,8 @@ export async function getAnalyticsSummary(days = 30): Promise<any> {
 }
 
 export async function trackAnalyticsEvent(
-  event_name: 'page_view' | 'search_performed' | 'post_created' | 'project_created' | 'event_rsvp' | 'community_joined' | 'circle_created' | 'connection_created' | 'feed_load_completed',
-  surface?: 'landing' | 'city' | 'campus' | 'commons' | 'build' | 'discover' | 'messages' | 'profile' | 'passport' | 'mentorship' | 'insights' | 'privacy' | 'terms',
+  event_name: 'page_view' | 'search_performed' | 'post_created' | 'project_created' | 'event_rsvp' | 'community_joined' | 'circle_created' | 'connection_created' | 'feed_load_completed' | 'profile_opened',
+  surface?: 'landing' | 'city' | 'campus' | 'commons' | 'build' | 'discover' | 'messages' | 'profile' | 'passport' | 'mentorship' | 'insights' | 'privacy' | 'terms' | 'search',
   durationMs?: number
 ): Promise<void> {
   if (!isAuthenticated()) return;
