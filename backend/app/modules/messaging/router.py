@@ -13,6 +13,7 @@ from sqlalchemy.orm import aliased
 
 from app.core.database import get_db
 from app.core.permissions import verify_can_dm
+from app.core.rate_limit import rate_limiter
 from app.core.security import get_current_user
 from app.modules.identity.models import StudentProfile, User
 from app.modules.messaging.models import Conversation, ConversationMember, Message
@@ -66,6 +67,7 @@ async def create_direct_conversation(
     if recipient_id == user.id:
         raise HTTPException(status_code=400, detail="You cannot start a conversation with yourself")
 
+    rate_limiter.check_limit(user.id, "direct-conversation-create", 10, 60)
     await verify_can_dm(user.id, recipient_id, db)
     key = direct_conversation_key(user.id, recipient_id)
 
@@ -250,6 +252,7 @@ async def send_conversation_message(
     db: AsyncSession = Depends(get_db),
 ):
     conversation, membership = await require_conversation_member(conversation_id, user.id, db)
+    rate_limiter.check_limit(user.id, "message-send", 30, 60)
     clean_body = payload.body.strip()
     if not clean_body:
         raise HTTPException(status_code=422, detail="Message cannot be empty")
