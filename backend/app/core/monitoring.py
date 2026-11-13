@@ -113,7 +113,9 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
             response: Response = await call_next(request)
         except Exception:
             duration_ms = (time.perf_counter() - start_time) * 1000.0
-            metrics_tracker.record_request(request.method, path, 500, duration_ms)
+            route = request.scope.get("route")
+            metric_path = getattr(route, "path", path)
+            metrics_tracker.record_request(request.method, metric_path, 500, duration_ms)
             raise
 
         duration_ms = (time.perf_counter() - start_time) * 1000.0
