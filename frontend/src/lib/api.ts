@@ -485,11 +485,7 @@ export async function createDirectConversation(targetUserId: string): Promise<Co
 }
 
 export async function getConversations(): Promise<Conversation[]> {
-  try {
-    return await request<Conversation[]>('/conversations');
-  } catch {
-    return [];
-  }
+  return await request<Conversation[]>('/conversations');
 }
 
 export async function getMessages(conversationId: string): Promise<MessageItem[]> {
@@ -508,19 +504,15 @@ export async function getMessagesPaginated({
   offset?: number;
   q?: string;
 }): Promise<PaginatedResult<MessageItem>> {
-  try {
-    const params = new URLSearchParams({
-      limit: String(limit),
-      offset: String(offset),
-      ...(q ? { q } : {}),
-    });
-    const { data, headers } = await requestWithMeta<MessageItem[]>(`/conversations/${conversationId}/messages?${params}`);
-    const totalCount = Number(headers.get('x-total-count') || data.length);
-    const hasMore = headers.get('x-has-more') === 'true' || offset + data.length < totalCount;
-    return { items: data, totalCount, hasMore, nextOffset: offset + data.length };
-  } catch {
-    return { items: [], totalCount: 0, hasMore: false, nextOffset: offset };
-  }
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+    ...(q ? { q } : {}),
+  });
+  const { data, headers } = await requestWithMeta<MessageItem[]>(`/conversations/${conversationId}/messages?${params}`);
+  const totalCount = Number(headers.get('x-total-count') || data.length);
+  const hasMore = headers.get('x-has-more') === 'true' || offset + data.length < totalCount;
+  return { items: data, totalCount, hasMore, nextOffset: offset + data.length };
 }
 
 export async function sendMessage(conversationId: string, body: string): Promise<MessageItem> {
