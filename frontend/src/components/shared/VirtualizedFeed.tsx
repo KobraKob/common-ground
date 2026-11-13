@@ -6,6 +6,7 @@ import { useWindowVirtualizer } from '@tanstack/react-virtual';
 interface VirtualizedFeedProps<T> {
   items: T[];
   renderItem: (item: T, index: number) => React.ReactNode;
+  getItemKey?: (item: T, index: number) => string | number;
   estimateSize?: number;
   overscan?: number;
   className?: string;
@@ -18,6 +19,7 @@ interface VirtualizedFeedProps<T> {
 export function VirtualizedFeed<T>({
   items,
   renderItem,
+  getItemKey,
   estimateSize = 360,
   overscan = 4,
   className = '',
@@ -33,7 +35,7 @@ export function VirtualizedFeed<T>({
     estimateSize: () => estimateSize,
     overscan,
     scrollMargin,
-    getItemKey: (index) => index,
+    getItemKey: (index) => getItemKey?.(items[index], index) ?? index,
   });
   const virtualItems = virtualizer.getVirtualItems();
 
