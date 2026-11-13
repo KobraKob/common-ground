@@ -301,10 +301,10 @@ export default function ProfilePage() {
         <div>
           <h3 className="font-display text-lg font-bold text-[#F8F7FF] flex items-center gap-2">
             <Lock className="w-5 h-5 text-amber-400" />
-            <span>Privacy Visibility &amp; Direct Message Governance</span>
+            <span>Profile Visibility &amp; Mentorship Contact</span>
           </h3>
           <p className="text-xs text-slate-400 font-mono mt-1">
-            Configure boundary settings for public directory search and private message delivery.
+            Control who can discover your profile and request mentorship contact. General chat restrictions are not yet enforced by a server-side messaging API.
           </p>
         </div>
 
@@ -334,10 +334,10 @@ export default function ProfilePage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-white/10 bg-white/[0.02]">
             <div>
               <div className="text-xs font-mono font-bold text-[#F8F7FF]">
-                Direct Message (1-to-1) Permission
+                Mentorship contact permission
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Server-side enforcement of who can initiate new private conversations with you.
+                Controls who can discover your opt-in mentor profile and send a mentorship request.
               </p>
             </div>
             <select
@@ -345,9 +345,9 @@ export default function ProfilePage() {
               onChange={(e) => setDmPermission(e.target.value)}
               className="celestial-input text-xs font-mono py-1.5 px-3 rounded-xl border border-white/10 bg-[#0E1017] text-white cursor-pointer shrink-0 focus:border-amber-400"
             >
-              <option value="EVERYONE">Everyone across Bengaluru</option>
-              <option value="SAME_CAMPUS_OR_COMMUNITY">Same Campus or Shared Clubs</option>
-              <option value="NONE">No Incoming Direct Messages</option>
+              <option value="EVERYONE">Anyone can request mentorship</option>
+              <option value="SAME_CAMPUS_OR_COMMUNITY">Same campus or shared community</option>
+              <option value="NONE">No mentorship requests</option>
             </select>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--cg-border)] pt-4">
