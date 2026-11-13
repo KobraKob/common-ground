@@ -5,10 +5,10 @@ import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Building2, CalendarDays, Compass, ExternalLink, Layers3, MapPin, Users } from 'lucide-react';
-import { getColleges, getCommunities, getEvents, getProjects, getMyProfile, joinCommunity, createCommunity, rsvpEvent } from '@/lib/api';
-import type { College, Community, EventItem, ProjectItem, StudentProfile } from '@/types';
+import { getColleges, getCommunities, getEvents, getProjects, getMyProfile, getPosts, joinCommunity, createCommunity, rsvpEvent } from '@/lib/api';
+import type { College, Community, EventItem, Post, ProjectItem, StudentProfile } from '@/types';
 
-type Section = 'campuses' | 'circles' | 'projects' | 'events';
+type Section = 'campuses' | 'circles' | 'projects' | 'events' | 'opportunities';
 
 export default function DiscoverPage() {
   const [section, setSection] = useState<Section>('campuses');
@@ -16,6 +16,7 @@ export default function DiscoverPage() {
   const [circles, setCircles] = useState<Community[]>([]);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [opportunities, setOpportunities] = useState<Post[]>([]);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState('');
@@ -27,14 +28,15 @@ export default function DiscoverPage() {
 
   useEffect(() => {
     let live = true;
-    Promise.all([getColleges(), getCommunities(), getProjects(), getEvents(), getMyProfile()])
-      .then(([campusData, circleData, projectData, eventData, myProfile]) => {
+    Promise.all([getColleges(), getCommunities(), getProjects(), getEvents(), getMyProfile(), getPosts('opportunities')])
+      .then(([campusData, circleData, projectData, eventData, myProfile, opportunityData]) => {
         if (!live) return;
         setColleges(campusData || []);
         setCircles((circleData || []).filter((item) => item.community_type === 'CROSS_CAMPUS_INTEREST'));
         setProjects(projectData || []);
         setEvents(eventData || []);
         setProfile(myProfile || null);
+        setOpportunities((opportunityData || []).filter((item) => item.category === 'OPPORTUNITY'));
       })
       .catch(() => { if (live) setNotice('Some discovery data could not be loaded. Try again in a moment.'); })
       .finally(() => { if (live) setLoading(false); });
@@ -48,9 +50,15 @@ export default function DiscoverPage() {
     return project.skills_needed.some((skill) => skillSet.has(skill.toLowerCase()));
   }), [projects, profile]);
   const visibleProjects = matchSkillsOnly ? matchingProjects : projects;
+  const matchingOpportunities = useMemo(() => opportunities.filter((item) => {
+    if (!profile?.skills?.length) return false;
+    const skills = new Set(profile.skills.map((skill) => skill.toLowerCase()));
+    return (item.tags || []).some((tag) => skills.has(tag.toLowerCase()));
+  }), [opportunities, profile]);
+  const visibleOpportunities = matchSkillsOnly ? matchingOpportunities : opportunities;
   const tabs: { id: Section; label: string }[] = [
     { id: 'campuses', label: 'Campuses' }, { id: 'circles', label: 'Circles' },
-    { id: 'projects', label: 'Projects' }, { id: 'events', label: 'Events' },
+    { id: 'projects', label: 'Projects' }, { id: 'events', label: 'Events' }, { id: 'opportunities', label: 'Opportunities' },
   ];
 
   async function joinCircle(circle: Community) {
@@ -91,7 +99,7 @@ export default function DiscoverPage() {
       </header>
 
       <section aria-label="Campus intelligence snapshot" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[['Campuses', colleges.length], ['Interest circles', circles.length], ['Projects listed', projects.length], ['Upcoming events', upcoming.length]].map(([label, value]) => <div key={label} className="cg-surface p-4"><p className="text-xs cg-muted">{label}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p></div>)}
+        {[['Campuses', colleges.length], ['Interest circles', circles.length], ['Projects listed', projects.length], ['Upcoming events', upcoming.length], ['Opportunities', opportunities.length]].map(([label, value]) => <div key={label} className="cg-surface p-4"><p className="text-xs cg-muted">{label}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p></div>)}
       </section>
 
       <div className="flex flex-wrap gap-2 border-b border-[var(--cg-border)] pb-3" role="tablist" aria-label="Discovery categories">
@@ -107,7 +115,7 @@ export default function DiscoverPage() {
               <div className="flex items-start justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--cg-elevated)] text-[var(--cg-accent)]"><Building2 size={20}/></span>{campus.is_official_partner && <span className="text-xs text-[var(--cg-success)]">Official partner</span>}</div>
               <div><h2 className="text-lg font-semibold">{campus.name}</h2><p className="mt-1 flex items-center gap-1 text-sm cg-muted"><MapPin size={14}/>{campus.city}, {campus.state}</p></div>
               <div className="flex gap-4 text-xs cg-muted"><span>{campus.member_count ?? '—'} students</span><span>{campus.community_count ?? '—'} communities</span></div>
-              <Link className="cg-link inline-flex min-h-11 items-center text-sm font-medium" href={`/campus?college=${encodeURIComponent(campus.slug)}`}>Explore campus <ExternalLink size={14} className="ml-2"/></Link>
+              <div className="flex flex-wrap gap-4"><Link className="cg-link inline-flex min-h-11 items-center text-sm font-medium" href={`/campus?college=${encodeURIComponent(campus.slug)}`}>Explore campus <ExternalLink size={14} className="ml-2"/></Link><a className="cg-link inline-flex min-h-11 items-center text-sm font-medium" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(campus.name + ', ' + campus.city)}`} target="_blank" rel="noreferrer">Open map <ExternalLink size={14} className="ml-2"/></a></div>
             </article>)}
           </section>}
 
@@ -137,6 +145,24 @@ export default function DiscoverPage() {
             {projects.length === 0 && <Empty title="No projects recruiting right now" body="New student projects will show up here when teams open roles."/>}
           </section>}
 
+
+          {section === 'opportunities' && <section className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">Student opportunities</h2><p className="text-sm cg-muted">Browse verified and community-submitted opportunities. Match tags against skills on your profile.</p></div><button type="button" aria-pressed={matchSkillsOnly} onClick={() => setMatchSkillsOnly(!matchSkillsOnly)} className={`min-h-11 rounded-full px-4 text-sm font-medium ${matchSkillsOnly ? 'bg-[var(--cg-accent)] text-white' : 'bg-[var(--cg-elevated)]'}`}>{matchSkillsOnly ? 'Showing skill matches' : 'Match my skills'} ({matchingOpportunities.length})</button></div>
+            <div className="grid gap-3 lg:grid-cols-2">
+              {visibleOpportunities.map((item) => {
+                const externalUrl = item.opportunity_meta?.external_url;
+                let safeUrl: string | null = null;
+                if (externalUrl) { try { const parsed = new URL(externalUrl); if (parsed.protocol === 'https:' || parsed.protocol === 'http:') safeUrl = parsed.href; } catch {} }
+                return <article key={item.id} className="cg-surface p-5">
+                  <div className="flex flex-wrap items-center gap-2 text-xs"><span className="cg-eyebrow">{item.opportunity_meta?.verification_label?.replace(/_/g, ' ') || 'COMMUNITY SUBMITTED'}</span>{item.opportunity_meta?.deadline && <span className="cg-muted">Deadline: {new Date(item.opportunity_meta.deadline).toLocaleDateString()}</span>}</div>
+                  <h3 className="mt-3 text-lg font-semibold">{item.title || item.body.slice(0, 80)}</h3><p className="mt-2 text-sm leading-6 cg-muted">{item.body}</p>
+                  <div className="mt-4 flex flex-wrap gap-2">{(item.tags || []).map((tag) => <span key={tag} className="rounded-full bg-[var(--cg-elevated)] px-3 py-1 text-xs">{tag}</span>)}</div>
+                  {safeUrl && <a href={safeUrl} target="_blank" rel="noreferrer" className="cg-link mt-4 inline-flex min-h-11 items-center text-sm font-medium">View opportunity <ExternalLink size={14} className="ml-2"/></a>}
+                </article>;
+              })}
+              {visibleOpportunities.length === 0 && <Empty title={matchSkillsOnly ? 'No direct skill matches yet' : 'No opportunities listed yet'} body={matchSkillsOnly ? 'Add skills to your profile or browse all opportunities to discover more.' : 'Community-submitted opportunities will appear here when students share them.'}/>}
+            </div>
+          </section>}
           {section === 'events' && <section className="grid gap-3 sm:grid-cols-2">
             {upcoming.map((event) => <article key={event.id} className="cg-surface p-5">
               <div className="flex items-center gap-2 text-sm cg-muted"><CalendarDays size={16}/>{new Date(event.starts_at).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'})}</div>
