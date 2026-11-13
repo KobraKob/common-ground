@@ -33,7 +33,8 @@ export function NavigationSidebar() {
   }, [pathname]);
 
   const isAuth = ['/login', '/signup', '/onboarding'].some((path) => pathname.startsWith(path));
-  if (pathname === '/' || isAuth || !isLoggedIn) return null;
+  const isMarketing = ['/', '/about', '/privacy', '/terms', '/campuses', '/events'].includes(pathname) || pathname.startsWith('/campus/');
+  if (isMarketing || isAuth || !isLoggedIn) return null;
 
   const renderItem = (item: typeof desktopItems[number], mobile = false) => {
     const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
