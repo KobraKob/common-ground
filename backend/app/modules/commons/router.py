@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc, func
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.security import get_current_user, get_current_user_id
@@ -30,7 +31,7 @@ router = APIRouter(tags=["Commons, Feeds & Search"])
 async def list_posts(
     scope: str = Query("city", pattern="^(campus|city|commons|opportunities)$"),
     tag: Optional[str] = None,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=100),
     current_user_id: Optional[str] = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -86,8 +87,30 @@ async def list_posts(
         query = query.where(Post.tags.ilike(f"%{tag}%"))
 
     query = query.order_by(Post.is_pinned.desc(), desc(Post.created_at)).limit(limit)
-    result = await db.execute(query)
+    result = await db.execute(query.options(selectinload(Post.poll)))
     posts = result.scalars().all()
+
+    # Resolve related display data in bounded batch queries instead of N+1 lookups.
+    author_ids = {post.author_id for post in posts}
+    community_ids = {post.community_id for post in posts if post.community_id}
+    college_ids = {post.college_id for post in posts if post.college_id}
+
+    authors_result = await db.execute(
+        select(StudentProfile).where(StudentProfile.user_id.in_(author_ids))
+    ) if author_ids else None
+    authors_by_id = {
+        profile.user_id: profile for profile in authors_result.scalars().all()
+    } if authors_result else {}
+
+    communities_result = await db.execute(
+        select(Community.id, Community.name).where(Community.id.in_(community_ids))
+    ) if community_ids else None
+    community_names = dict(communities_result.all()) if communities_result else {}
+
+    colleges_result = await db.execute(
+        select(College.id, College.name).where(College.id.in_(college_ids))
+    ) if college_ids else None
+    college_names = dict(colleges_result.all()) if colleges_result else {}
 
     response = []
     for p in posts:
@@ -96,19 +119,9 @@ async def list_posts(
         if any(t in muted_tags for t in post_tags):
             continue
 
-        # Get author details
-        a_res = await db.execute(select(StudentProfile).where(StudentProfile.user_id == p.author_id))
-        author = a_res.scalar_one_or_none()
-
-        comm_name = None
-        if p.community_id:
-            c_res = await db.execute(select(Community.name).where(Community.id == p.community_id))
-            comm_name = c_res.scalar_one_or_none()
-
-        col_name = None
-        if p.college_id:
-            col_res = await db.execute(select(College.name).where(College.id == p.college_id))
-            col_name = col_res.scalar_one_or_none()
+        author = authors_by_id.get(p.author_id)
+        comm_name = community_names.get(p.community_id)
+        col_name = college_names.get(p.college_id)
 
         # Get poll data if any
         poll_dict = None
@@ -383,7 +396,7 @@ async def vote_poll(
 async def list_resources(
     subject: Optional[str] = None,
     community_id: Optional[str] = None,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
     query = select(Resource).where(Resource.is_public_commons == True)
@@ -395,10 +408,17 @@ async def list_resources(
     result = await db.execute(query.order_by(Resource.is_pinned.desc(), desc(Resource.created_at)).limit(limit))
     resources = result.scalars().all()
 
+    uploader_ids = {resource.uploader_id for resource in resources}
+    uploader_result = await db.execute(
+        select(StudentProfile.user_id, StudentProfile.display_name).where(
+            StudentProfile.user_id.in_(uploader_ids)
+        )
+    ) if uploader_ids else None
+    uploader_names = dict(uploader_result.all()) if uploader_result else {}
+
     resp = []
     for r in resources:
-        up_res = await db.execute(select(StudentProfile.display_name).where(StudentProfile.user_id == r.uploader_id))
-        uploader_name = up_res.scalar_one_or_none() or "Student"
+        uploader_name = uploader_names.get(r.uploader_id, "Student")
         resp.append(
             ResourceResponse(
                 id=r.id,
