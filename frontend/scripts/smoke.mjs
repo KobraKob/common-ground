@@ -1,7 +1,7 @@
 const baseUrl = process.env.SMOKE_BASE_URL || 'http://127.0.0.1:3000';
 const routes = [
   '/', '/city', '/campus', '/commons', '/discover', '/build',
-  '/messages', '/profile', '/passport', '/login', '/signup',
+  '/messages', '/profile', '/passport', '/mentorship', '/privacy', '/terms', '/login', '/signup',
 ];
 
 for (const route of routes) {
