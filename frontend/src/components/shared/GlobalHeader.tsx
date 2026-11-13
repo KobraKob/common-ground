@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -33,6 +33,8 @@ export function GlobalHeader() {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('system');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setIsLoggedIn(isAuthenticated());
@@ -92,6 +94,26 @@ export function GlobalHeader() {
     };
   }, [searchQuery]);
 
+  useEffect(() => {
+    const onShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        if (window.matchMedia('(max-width: 767px)').matches) {
+          setIsMobileSearchOpen(true);
+          window.setTimeout(() => mobileSearchInputRef.current?.focus(), 0);
+        } else {
+          searchInputRef.current?.focus();
+        }
+      }
+      if (event.key === 'Escape') {
+        setSearchResults(null);
+        setIsMobileSearchOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onShortcut);
+    return () => window.removeEventListener('keydown', onShortcut);
+  }, []);
+
   const handleSignOut = () => {
     clearAuthSession();
     setIsLoggedIn(false);
@@ -137,14 +159,17 @@ export function GlobalHeader() {
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
-              type="text"
+              ref={searchInputRef}
+              type="search"
+              aria-label="Search CommonGround"
+              autoComplete="off"
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search peers, courses, notes, hackathons..."
               className="celestial-input w-full text-xs font-mono py-2 pl-9 pr-12 text-white placeholder:text-slate-500"
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-slate-400">
-              ⌘K
+              Ctrl K / ⌘ K
             </span>
           </div>
 
@@ -300,8 +325,10 @@ export function GlobalHeader() {
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
-              type="text"
-              autoFocus
+              ref={mobileSearchInputRef}
+              type="search"
+              aria-label="Search CommonGround"
+              autoComplete="off"
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search peers, courses, notes..."
