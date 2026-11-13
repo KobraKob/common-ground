@@ -23,7 +23,9 @@ Prioritise meaningful collaboration and repeat utility over vanity engagement me
 - Added an interactive OpenStreetMap campus network with source-linked approximate campus-centre pins, accessible pin selection, campus detail links and external directions.
 - Added public circle creation and joining through the existing community service.
 - Added exact skill-tag matching for projects and opportunity posts. This is deterministic matching, not an opaque AI score.
-- Added a Campus Passport assembled from profile verification, skills, interests and accepted project memberships with role titles.
+- Added a Campus Passport assembled from profile verification, skills, interests, accepted project memberships, organizer-confirmed event attendance, community memberships and useful-answer activity.
+- Added a durable event-attendance ledger. Only event organizers can mark a GOING RSVP as attended, only after the event ends; RSVP alone never counts as attendance.
+- Added opt-in peer mentorship with public-profile eligibility, explicit availability, topic matching, contact-permission checks, block checks, private requests and accept/decline/cancel controls.
 - Added a Build workspace with project creation, join requests, accepted-member roster, task creation, task status controls and project-lead assignment permissions.
 - Added a moderator-only Campus Intelligence page with aggregated activity and platform inventory metrics.
 - Removed client-side fallback content that presented invented posts, resources, announcements, events or community counts as real activity.
@@ -47,7 +49,7 @@ Prioritise meaningful collaboration and repeat utility over vanity engagement me
 - Connected institutional verification requests to the existing claim workflow; the interface accurately describes a pending review and does not claim to send an OTP.
 - Added a functional Ctrl/Command+K search shortcut, keyboard Escape handling and a skip-to-content link.
 - Added production-route smoke checks to CI and tests for profile privacy persistence and verification claim submission.
-- Added tests for analytics authorization/ingestion and project workspace/campus-boundary permissions.
+- Added tests for analytics authorization/ingestion, project workspace and task permissions, event attendance verification and mentorship consent/contact boundaries.
 
 ## Measurement definitions
 
@@ -75,14 +77,13 @@ The analytics dashboard displays this measurement limitation directly. It intent
 These are intentionally not represented as shipped functionality:
 
 - Campus representatives should verify approximate map pins before they are treated as authoritative entrances or travel/safety guidance. Coordinate provenance and limitations are recorded in docs/CAMPUS_COORDINATE_SOURCES.md.
-- A durable contribution ledger for event participation, accepted project work, peer mentoring and community contributions. Campus Passport currently shows verified profile details and accepted project memberships; it does not yet claim event attendance or mentoring activity it cannot verify.
-- Mentor discovery and matching, including consent, availability and safeguarding rules.
+- A complete contribution ledger for peer mentoring outcomes and project task completion. The Passport currently records accepted project memberships and organizer-confirmed event attendance; it does not yet claim mentorship sessions or completed tasks until those outcomes have a verified workflow.
 - Milestone history, activity timeline and richer task dependencies in project workspaces.
 - Automatic infinite-scroll integration. City and Commons currently use explicit accessible “Load more” pagination; the reusable virtualized feed primitive is not yet wired into those routes.
-- Broader TanStack Query migration for server-state caching and invalidation across legacy pages.
+- Broader TanStack Query migration for server-state caching and invalidation across legacy pages. Discovery and the City feed now use cached query flows; other legacy routes remain to be migrated.
 - A full WCAG 2.2 AA audit with keyboard/screen-reader testing across every route and modal.
 - A full browser-based E2E suite and verified deployment/restore drills. CI includes production-route HTTP smoke checks, but these do not replace real browser interaction tests.
-- A reviewed Privacy Policy and Terms of Service. Do not publish generated legal copy as approved policy.
+- Legal review and owner completion of the Privacy and Terms drafts. These routes are explicitly marked as drafts and must not be represented as approved policy.
 
 ## Acceptance gates
 
@@ -94,3 +95,4 @@ These are intentionally not represented as shipped functionality:
 - Analytics summary is inaccessible to ordinary users and contains only aggregate counts.
 - Manual mobile checks confirm no horizontal overflow, no nested scroll traps and usable 44px targets.
 - Measure LCP, CLS and INP on a mid-range Android device over 4G before claiming performance targets have been met.
+- Apply migrations 004–006 in staging, rehearse rollback and verify the event-attendance and mentorship constraints against the production database engine.
