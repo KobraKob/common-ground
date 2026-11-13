@@ -530,16 +530,6 @@ async def send_message(
     if len(body) > 5000:
         raise HTTPException(status_code=422, detail="Message exceeds the 5000 character limit")
 
-    recent_since = datetime.now(timezone.utc) - timedelta(minutes=1)
-    recent_count_result = await db.execute(
-        select(func.count(Message.id)).where(
-            Message.sender_id == user.id,
-            Message.created_at >= recent_since,
-        )
-    )
-    if int(recent_count_result.scalar() or 0) >= 30:
-        raise HTTPException(status_code=429, detail="Message rate limit reached. Try again shortly.")
-
     # Verify membership
     mem_res = await db.execute(
         select(ConversationMember).where(
@@ -576,6 +566,16 @@ async def send_message(
         other_user_id = other_res.scalar_one_or_none()
         if other_user_id:
             await verify_can_dm(user.id, other_user_id, db)
+
+    recent_since = datetime.now(timezone.utc) - timedelta(minutes=1)
+    recent_count_result = await db.execute(
+        select(func.count(Message.id)).where(
+            Message.sender_id == user.id,
+            Message.created_at >= recent_since,
+        )
+    )
+    if int(recent_count_result.scalar() or 0) >= 30:
+        raise HTTPException(status_code=429, detail="Message rate limit reached. Try again shortly.")
 
     now = datetime.now(timezone.utc)
     member.last_read_at = now
