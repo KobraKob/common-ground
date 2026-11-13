@@ -14,8 +14,7 @@ import {
   Compass,
   Building2,
   BookOpen,
-  Hammer,
-  Map
+  Hammer
 } from 'lucide-react';
 import { 
   unifiedSearch, 
@@ -152,7 +151,6 @@ export function GlobalHeader() {
             { href: '/campus', label: 'Campuses', icon: Building2 },
             { href: '/commons', label: 'Q&A', icon: BookOpen },
             { href: '/build', label: 'Build', icon: Hammer },
-            { href: '/discover', label: 'Discover', icon: Map },
           ].map(({href,label,icon:Icon}) => <Link key={href} href={href} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-[var(--cg-muted)] hover:bg-[var(--cg-elevated)] hover:text-[var(--cg-text)]"><Icon size={15}/>{label}</Link>)}
         </nav>}
         {/* Global Search Bar (Jakob's Law & Fitts's Law) */}
