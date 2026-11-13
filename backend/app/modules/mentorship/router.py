@@ -78,9 +78,9 @@ async def update_my_mentorship_profile(
     if payload.is_available and student.profile_visibility != "PUBLIC":
         raise HTTPException(status_code=409, detail="Set your student profile visibility to Public before appearing in mentor discovery")
     public_text = f"{payload.bio} {payload.availability_note}"
-    if re.search(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}", public_text, re.IGNORECASE):
+    if re.search(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", public_text, re.IGNORECASE):
         raise HTTPException(status_code=422, detail="Do not publish personal email addresses in a mentor profile")
-    if re.search(r"(?:\\+?\\d[\\d\\s().-]{7,}\\d)", public_text):
+    if re.search(r"(?:\+?\d[\d\s().-]{7,}\d)", public_text):
         raise HTTPException(status_code=422, detail="Do not publish phone numbers in a mentor profile")
 
     result = await db.execute(
