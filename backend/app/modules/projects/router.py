@@ -17,7 +17,9 @@ from app.modules.projects.schemas import (
     ProjectJoinRequest,
     MemberStatusUpdateRequest,
     TaskCreateRequest,
+    TaskUpdateRequest,
     TaskResponse,
+    ProjectMemberResponse,
     EventCreateRequest,
     EventResponse,
 )
@@ -342,6 +344,48 @@ async def require_project_member(project_id: str, user_id: str, db: AsyncSession
     return project
 
 
+@router.get("/projects/{project_id}/members", response_model=List[ProjectMemberResponse])
+async def list_project_members(
+    project_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    project = await require_project_member(project_id, user.id, db)
+    result = await db.execute(
+        select(ProjectMember, StudentProfile.display_name, StudentProfile.handle)
+        .join(StudentProfile, StudentProfile.user_id == ProjectMember.user_id)
+        .where(ProjectMember.project_id == project_id, ProjectMember.status == "ACCEPTED")
+        .order_by(ProjectMember.joined_at.asc())
+    )
+    members = [
+        ProjectMemberResponse(
+            user_id=member.user_id,
+            display_name=display_name,
+            handle=handle,
+            role_title=member.role_title or "Collaborator",
+            is_creator=member.user_id == project.creator_id,
+            joined_at=member.joined_at,
+        )
+        for member, display_name, handle in result.all()
+    ]
+    if not any(member.user_id == project.creator_id for member in members):
+        creator_result = await db.execute(
+            select(StudentProfile.display_name, StudentProfile.handle)
+            .where(StudentProfile.user_id == project.creator_id)
+        )
+        creator = creator_result.one_or_none()
+        if creator:
+            members.insert(0, ProjectMemberResponse(
+                user_id=project.creator_id,
+                display_name=creator.display_name,
+                handle=creator.handle,
+                role_title="Project lead",
+                is_creator=True,
+                joined_at=project.created_at,
+            ))
+    return members
+
+
 @router.get("/projects/{project_id}/tasks", response_model=List[TaskResponse])
 async def list_project_tasks(
     project_id: str,
@@ -360,9 +404,11 @@ async def create_project_task(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await require_project_member(project_id, user.id, db)
+    project = await require_project_member(project_id, user.id, db)
     assignee_id = payload.assignee_id or user.id
-    if assignee_id != user.id:
+    if assignee_id != user.id and project.creator_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the project lead can assign tasks to another member")
+    if assignee_id != project.creator_id:
         assignee_result = await db.execute(
             select(ProjectMember.id).where(
                 and_(
@@ -382,6 +428,52 @@ async def create_project_task(
         assignee_id=assignee_id,
     )
     db.add(task)
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+
+@router.patch("/projects/{project_id}/tasks/{task_id}", response_model=TaskResponse)
+async def update_project_task(
+    project_id: str,
+    task_id: str,
+    payload: TaskUpdateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    project = await require_project_member(project_id, user.id, db)
+    task_result = await db.execute(
+        select(Task).where(Task.id == task_id, Task.project_id == project_id)
+    )
+    task = task_result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    is_lead = project.creator_id == user.id
+    if not is_lead and task.assignee_id != user.id:
+        raise HTTPException(status_code=403, detail="You can only update tasks assigned to you")
+
+    changes = payload.model_dump(exclude_unset=True)
+    if not is_lead and any(field in changes for field in ("title", "assignee_id")):
+        raise HTTPException(status_code=403, detail="Only the project lead can edit task details or assignments")
+
+    if "assignee_id" in changes:
+        assignee_id = changes["assignee_id"]
+        if assignee_id is not None and assignee_id != project.creator_id:
+            assignee_result = await db.execute(
+                select(ProjectMember.id).where(
+                    and_(
+                        ProjectMember.project_id == project_id,
+                        ProjectMember.user_id == assignee_id,
+                        ProjectMember.status == "ACCEPTED",
+                    )
+                )
+            )
+            if assignee_result.scalar_one_or_none() is None:
+                raise HTTPException(status_code=400, detail="Tasks can only be assigned to accepted project members")
+
+    for field, value in changes.items():
+        setattr(task, field, value)
     await db.commit()
     await db.refresh(task)
     return task
