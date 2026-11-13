@@ -316,7 +316,7 @@ export default function CityPage() {
       {/* City Hero Banner */}
       <CampusHeroBanner
         title="Bengaluru City Feed"
-        badgeText="CROSS-CAMPUS NETWORK"
+        badgeText="Bengaluru student network"
         shortCode="BLR"
         subtitle="Connect across Bengaluru colleges. Share updates, technical questions, project pitches, and campus events."
         isOfficial={false}
