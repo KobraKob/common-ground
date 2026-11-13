@@ -38,61 +38,77 @@ async def check_users_not_blocked(user_a_id: str, user_b_id: str, db: AsyncSessi
 
 async def verify_can_dm(sender_id: str, recipient_id: str, db: AsyncSession):
     """
-    Verify if sender can direct message recipient according to recipient's dm_permission:
-    - EVERYONE: Allowed (if not blocked)
-    - SAME_CAMPUS_OR_COMMUNITY: Allowed if sharing college_id or any community membership
-    - NONE: Disallowed
+    Enforce recipient messaging preferences, profile visibility and mutual block rules.
     """
-    # 1. First verify no block
     await check_users_not_blocked(sender_id, recipient_id, db)
 
     from app.modules.identity.models import StudentProfile
     from app.modules.communities.models import CommunityMembership
 
-    # Fetch recipient profile
-    res_recip = await db.execute(select(StudentProfile).where(StudentProfile.user_id == recipient_id))
-    recipient = res_recip.scalar_one_or_none()
+    profiles_result = await db.execute(
+        select(StudentProfile).where(StudentProfile.user_id.in_([sender_id, recipient_id]))
+    )
+    profiles = {profile.user_id: profile for profile in profiles_result.scalars().all()}
+    recipient = profiles.get(recipient_id)
+    sender = profiles.get(sender_id)
     if not recipient:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipient profile not found")
 
+    same_campus = bool(
+        sender
+        and sender.college_id
+        and recipient.college_id
+        and sender.college_id == recipient.college_id
+    )
+    needs_shared_community = (
+        recipient.profile_visibility == "SHARED_COMMUNITIES_ONLY"
+        or recipient.dm_permission == "SAME_CAMPUS_OR_COMMUNITY"
+    )
+    shared_community = False
+    if needs_shared_community and not same_campus:
+        sender_communities_result = await db.execute(
+            select(CommunityMembership.community_id).where(CommunityMembership.user_id == sender_id)
+        )
+        sender_communities = set(sender_communities_result.scalars().all())
+        if sender_communities:
+            recipient_communities_result = await db.execute(
+                select(CommunityMembership.community_id).where(
+                    CommunityMembership.user_id == recipient_id,
+                    CommunityMembership.community_id.in_(sender_communities),
+                ).limit(1)
+            )
+            shared_community = recipient_communities_result.scalar_one_or_none() is not None
+
+    if recipient.profile_visibility == "CAMPUS_ONLY" and not same_campus:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Recipient profile is visible only to students from the same campus",
+        )
+    if recipient.profile_visibility == "SHARED_COMMUNITIES_ONLY" and not (same_campus or shared_community):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Recipient profile is visible only to shared community members",
+        )
+    if recipient.profile_visibility not in {"PUBLIC", "CAMPUS_ONLY", "SHARED_COMMUNITIES_ONLY"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Recipient profile is not available for new contact",
+        )
+
     if recipient.dm_permission == "EVERYONE":
         return True
-
     if recipient.dm_permission == "NONE":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Recipient has disabled incoming direct messages",
         )
+    if recipient.dm_permission == "SAME_CAMPUS_OR_COMMUNITY" and (same_campus or shared_community):
+        return True
 
-    if recipient.dm_permission == "SAME_CAMPUS_OR_COMMUNITY":
-        res_sender = await db.execute(select(StudentProfile).where(StudentProfile.user_id == sender_id))
-        sender = res_sender.scalar_one_or_none()
-
-        # Check same college
-        if sender and sender.college_id and recipient.college_id and sender.college_id == recipient.college_id:
-            return True
-
-        # Check shared communities
-        sender_comms_res = await db.execute(
-            select(CommunityMembership.community_id).where(CommunityMembership.user_id == sender_id)
-        )
-        sender_comms = set(sender_comms_res.scalars().all())
-
-        recip_comms_res = await db.execute(
-            select(CommunityMembership.community_id).where(CommunityMembership.user_id == recipient_id)
-        )
-        recip_comms = set(recip_comms_res.scalars().all())
-
-        if sender_comms.intersection(recip_comms):
-            return True
-
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Recipient only accepts DMs from students at the same campus or shared communities",
-        )
-
-    return True
-
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Recipient only accepts DMs from students at the same campus or shared communities",
+    )
 
 async def require_community_member_role(
     community_id: str,
