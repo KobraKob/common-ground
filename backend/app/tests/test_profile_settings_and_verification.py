@@ -49,7 +49,7 @@ async def test_verification_request_creates_pending_claim(client: AsyncClient, d
     await db_session.commit()
 
     response = await client.post(
-        "/api/v1/auth/verify/request",
+        "/api/v1/profiles/verify/request",
         json={"college_id": college.id, "institutional_email": "student@college.edu.in"},
         headers={"X-User-Id": user.id},
     )
