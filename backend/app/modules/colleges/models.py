@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import String, Boolean, DateTime
+from typing import Optional
+from sqlalchemy import String, Boolean, DateTime, Float
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base, GUID, JSONList
@@ -22,4 +23,6 @@ class College(Base):
     email_domains: Mapped[list] = mapped_column(JSONList, default=list)
     is_official_partner: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active_cluster: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
