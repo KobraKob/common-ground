@@ -334,9 +334,9 @@ async def update_mentorship_request(
         mentor_college_id = mentor_college_result.scalar_one_or_none()
         requester_college_id = requester_college_result.scalar_one_or_none()
         db.add(AnalyticsEvent(
-            user_id=user.id,
+            user_id=request.requester_id,
             event_name="connection_created",
-            college_id=mentor_college_id,
+            college_id=requester_college_id,
             is_cross_campus_interaction=bool(mentor_college_id and requester_college_id and mentor_college_id != requester_college_id),
             event_metadata={"surface": "mentorship"},
         ))
