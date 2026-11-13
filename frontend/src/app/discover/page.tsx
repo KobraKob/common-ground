@@ -75,7 +75,7 @@ export default function DiscoverPage() {
   }
   async function rsvp(event: EventItem) {
     setBusyId(event.id); setNotice('');
-    try { await rsvpEvent(event.id, 'GOING'); await queryClient.invalidateQueries({ queryKey: ['discover', 'hub'] }); setNotice(`Your RSVP for ${event.title} was recorded.`); }
+    try { await rsvpEvent(event.id, 'GOING'); await queryClient.invalidateQueries({ queryKey: ['discover', 'hub', cacheScope] }); setNotice(`Your RSVP for ${event.title} was recorded.`); }
     catch { setNotice('Could not record your RSVP. Sign in and try again.'); }
     finally { setBusyId(''); }
   }
