@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { 
   Building2, 
   Users, 
@@ -16,7 +17,8 @@ import {
   HelpCircle,
   Tag,
   ThumbsUp,
-  MapPin
+  MapPin,
+  ArrowRight
 } from 'lucide-react';
 import { getColleges, getCampusOverview, createPost } from '@/lib/api';
 import { BENGALURU_COLLEGES } from '@/constants/colleges';
