@@ -243,6 +243,15 @@ export interface TaskItem {
   created_at: string;
 }
 
+export interface ProjectMemberItem {
+  user_id: string;
+  display_name: string;
+  handle: string;
+  role_title: string;
+  is_creator: boolean;
+  joined_at: string;
+}
+
 export interface EventItem {
   id: string;
   organizer_id: string;
