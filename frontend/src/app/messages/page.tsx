@@ -26,6 +26,7 @@ export default function MessagesPage() {
   const [messageInput, setMessageInput] = useState('');
   const [messageSearch, setMessageSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
   const [myProfile, setMyProfile] = useState<StudentProfile | null>(null);
 
   // Report modal
@@ -73,7 +74,7 @@ export default function MessagesPage() {
       setMessages([...messages, newMsg]);
       setMessageInput('');
     } catch {
-      alert('Failed to deliver message. Check connection.');
+      setErrorMessage('Your message could not be sent. Check your connection and try again.');
     }
   };
 
@@ -244,7 +245,7 @@ export default function MessagesPage() {
                       }`}
                     >
                       <Pin className="w-3 h-3" />
-                      <span>Pinned Vault</span>
+                      <span>Pinned resources</span>
                     </button>
                   </div>
                 )}
@@ -257,7 +258,7 @@ export default function MessagesPage() {
                     <Pin className="w-8 h-8 mx-auto text-amber-400" />
                     <div>
                       <h3 className="font-bold text-base text-white mb-1 font-display">
-                        Pinned Resource Vault
+                        Pinned resources
                       </h3>
                       <p className="max-w-md mx-auto text-slate-400 leading-relaxed font-sans text-xs">
                         All syllabus guides, exam blueprints, and shared repository links pinned in this space are permanently preserved here for students.
@@ -294,7 +295,7 @@ export default function MessagesPage() {
                             {msg.is_announcement && (
                               <span className="neo-badge text-[8px] bg-amber-500/20 text-[#FDE68A] border-amber-400/40 font-bold flex items-center gap-0.5">
                                 <Megaphone className="w-2.5 h-2.5 text-amber-400" />
-                                <span>OFFICIAL</span>
+                                <span>Announcement</span>
                               </span>
                             )}
                           </div>
