@@ -78,7 +78,7 @@ export function GlobalHeader() {
     const timer = window.setTimeout(async () => {
       try {
         const results = await unifiedSearch(query, controller.signal);
-        if (!controller.signal.aborted) { setSearchResults(results); void trackAnalyticsEvent('search_performed', 'search'); }
+        if (!controller.signal.aborted) setSearchResults(results);
       } catch (error) {
         if (!controller.signal.aborted) {
           setSearchResults(null);
