@@ -20,7 +20,7 @@ Prioritise meaningful collaboration and repeat utility over vanity engagement me
 
 ### Discovery and student value
 - Added a live discovery hub for campuses, cross-campus interest circles, projects, events and community-submitted opportunities.
-- Added campus deep links and external map-search links.
+- Added an interactive OpenStreetMap campus network with source-linked approximate campus-centre pins, accessible pin selection, campus detail links and external directions.
 - Added public circle creation and joining through the existing community service.
 - Added exact skill-tag matching for projects and opportunity posts. This is deterministic matching, not an opaque AI score.
 - Added a Campus Passport assembled from profile verification, skills, interests and accepted project memberships with role titles.
@@ -66,7 +66,7 @@ The analytics dashboard displays this measurement limitation directly. It intent
 
 These are intentionally not represented as shipped functionality:
 
-- An embedded multi-campus map with verified coordinates and clustering. Current campus cards deep-link to map search; no coordinates have been invented.
+- Campus representatives should verify approximate map pins before they are treated as authoritative entrances or travel/safety guidance. Coordinate provenance and limitations are recorded in docs/CAMPUS_COORDINATE_SOURCES.md.
 - A durable contribution ledger for event participation, accepted project work, peer mentoring and community contributions. Campus Passport currently shows verified profile details and accepted project memberships; it does not yet claim event attendance or mentoring activity it cannot verify.
 - Mentor discovery and matching, including consent, availability and safeguarding rules.
 - Task status editing, assignment management, milestones and activity history in project workspaces.
