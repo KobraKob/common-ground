@@ -151,19 +151,64 @@ async def list_conversations(
         .order_by(Conversation.last_message_at.desc())
     )
     conversations = result.scalars().unique().all()
+    if not conversations:
+        return []
+
+    conversation_ids = [conversation.id for conversation in conversations]
+    preview_result = await db.execute(
+        select(Message.conversation_id, Message.body)
+        .where(
+            Message.conversation_id.in_(conversation_ids),
+            Message.is_deleted.is_(False),
+        )
+        .order_by(Message.created_at.desc())
+    )
+    previews = {}
+    for conversation_id, body in preview_result.all():
+        previews.setdefault(conversation_id, body[:140])
+
+    other_members_result = await db.execute(
+        select(
+            ConversationMember.conversation_id,
+            ConversationMember.user_id,
+            StudentProfile.display_name,
+        )
+        .outerjoin(StudentProfile, StudentProfile.user_id == ConversationMember.user_id)
+        .where(
+            ConversationMember.conversation_id.in_(conversation_ids),
+            ConversationMember.user_id != user.id,
+        )
+    )
+    other_members = {
+        conversation_id: (other_user_id, display_name or "Student")
+        for conversation_id, other_user_id, display_name in other_members_result.all()
+    }
+
+    outgoing_blocks = await db.execute(
+        select(UserBlock.blocked_id).where(UserBlock.blocker_id == user.id)
+    )
+    incoming_blocks = await db.execute(
+        select(UserBlock.blocker_id).where(UserBlock.blocked_id == user.id)
+    )
+    blocked_ids = set(outgoing_blocks.scalars().all()) | set(incoming_blocks.scalars().all())
+
     responses = []
     for conversation in conversations:
+        title = conversation.title
         if conversation.conversation_type == "DIRECT":
-            other_result = await db.execute(
-                select(ConversationMember.user_id).where(
-                    ConversationMember.conversation_id == conversation.id,
-                    ConversationMember.user_id != user.id,
-                ).limit(1)
-            )
-            other_user_id = other_result.scalar_one_or_none()
-            if other_user_id and await _has_block_between(db, user.id, other_user_id):
+            other_user_id, title = other_members.get(conversation.id, (None, "Student"))
+            if other_user_id in blocked_ids:
                 continue
-        responses.append(await _conversation_response(db, conversation, user.id))
+        responses.append(ConversationResponse(
+            id=conversation.id,
+            conversation_type=conversation.conversation_type,
+            community_id=conversation.community_id,
+            title=title,
+            description=conversation.description,
+            created_at=conversation.created_at,
+            last_message_at=conversation.last_message_at,
+            last_message=previews.get(conversation.id),
+        ))
     return responses
 
 
