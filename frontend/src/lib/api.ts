@@ -40,6 +40,14 @@ if (typeof window !== 'undefined') {
   const storedId = localStorage.getItem('cg_active_user_id');
   if (storedId) activeUserId = storedId;
   activeAuthToken = localStorage.getItem('cg_auth_token');
+  // Old cg-user_<id> values were unsigned and are no longer valid sessions.
+  if (activeAuthToken?.startsWith('cg-user_')) {
+    localStorage.removeItem('cg_auth_token');
+    localStorage.removeItem('cg_active_user_id');
+    localStorage.removeItem('cg_user_profile');
+    activeUserId = '';
+    activeAuthToken = null;
+  }
   const storedProf = localStorage.getItem('cg_user_profile');
   if (storedProf) {
     try {
@@ -58,11 +66,12 @@ export function isAuthenticated(): boolean {
 }
 
 export function setActiveUser(userId: string) {
+  // Identity selection is not authentication. Only signup/login may establish a session.
   activeUserId = userId;
-  activeAuthToken = `cg-user_${userId}`;
+  activeAuthToken = null;
   if (typeof window !== 'undefined') {
     localStorage.setItem('cg_active_user_id', userId);
-    localStorage.setItem('cg_auth_token', `cg-user_${userId}`);
+    localStorage.removeItem('cg_auth_token');
   }
 }
 
@@ -99,7 +108,6 @@ export function getActiveProfile(): StudentProfile | null {
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const headers = {
     'Content-Type': 'application/json',
-    ...(activeUserId ? { 'X-User-Id': activeUserId } : {}),
     ...(activeAuthToken ? { 'Authorization': `Bearer ${activeAuthToken}` } : {}),
     ...(options.headers || {}),
   };
@@ -179,7 +187,7 @@ export async function getCampusOverview(slug: string): Promise<any> {
 
 export async function getMyProfile(): Promise<StudentProfile | null> {
   try {
-    const prof = await request<StudentProfile>('/profiles/me');
+    const prof = await request<StudentProfile>('/auth/me');
     cachedUserProfile = prof;
     if (typeof window !== 'undefined') {
       localStorage.setItem('cg_user_profile', JSON.stringify(prof));
@@ -395,10 +403,11 @@ export async function executeModerationAction(payload: any): Promise<any> {
 // Unified Search
 // ----------------------------------------------------
 
-export async function unifiedSearch(q: string): Promise<any> {
+export async function unifiedSearch(q: string, signal?: AbortSignal): Promise<any> {
   try {
-    return await request<any>(`/search?q=${encodeURIComponent(q)}`);
-  } catch {
+    return await request<any>(`/search?q=${encodeURIComponent(q)}`, { signal });
+  } catch (error) {
+    if (signal?.aborted) throw error;
     return {
       students: [],
       communities: [],

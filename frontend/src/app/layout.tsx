@@ -30,7 +30,7 @@ export default function RootLayout({
           <GlobalHeader />
           <div className="flex-1 flex max-w-7xl mx-auto w-full">
             <NavigationSidebar />
-            <main className="flex-1 p-4 md:p-6 lg:p-8 pb-24 md:pb-8 overflow-y-auto w-full max-w-full">
+            <main className="flex-1 p-4 md:p-6 lg:p-8 pb-24 md:pb-8 w-full max-w-full">
               {children}
             </main>
           </div>

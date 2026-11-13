@@ -17,31 +17,37 @@ from app.modules.moderation.router import router as moderation_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Ensure database schema is ready and college cluster reference directory is initialized
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Production schema changes are applied through reviewed Supabase migrations.
+    # create_all and the SQLite compatibility migration are development-only.
+    if settings.ENVIRONMENT.lower() in {"development", "dev", "local", "test"}:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
-        def migrate_sqlite_columns(sync_conn):
-            if sync_conn.dialect.name == "sqlite":
-                existing_posts_cols = [r[1] for r in sync_conn.exec_driver_sql("PRAGMA table_info(posts)").fetchall()]
-                if "media_url" not in existing_posts_cols:
-                    sync_conn.exec_driver_sql("ALTER TABLE posts ADD COLUMN media_url TEXT;")
-                if "media_type" not in existing_posts_cols:
-                    sync_conn.exec_driver_sql("ALTER TABLE posts ADD COLUMN media_type TEXT;")
-                if "shares_count" not in existing_posts_cols:
-                    sync_conn.exec_driver_sql("ALTER TABLE posts ADD COLUMN shares_count INTEGER DEFAULT 0;")
+            def migrate_sqlite_columns(sync_conn):
+                if sync_conn.dialect.name == "sqlite":
+                    existing_posts_cols = [
+                        row[1] for row in sync_conn.exec_driver_sql("PRAGMA table_info(posts)").fetchall()
+                    ]
+                    if "media_url" not in existing_posts_cols:
+                        sync_conn.exec_driver_sql("ALTER TABLE posts ADD COLUMN media_url TEXT;")
+                    if "media_type" not in existing_posts_cols:
+                        sync_conn.exec_driver_sql("ALTER TABLE posts ADD COLUMN media_type TEXT;")
+                    if "shares_count" not in existing_posts_cols:
+                        sync_conn.exec_driver_sql("ALTER TABLE posts ADD COLUMN shares_count INTEGER DEFAULT 0;")
 
-                existing_users_cols = [r[1] for r in sync_conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()]
-                if "password_hash" not in existing_users_cols:
-                    sync_conn.exec_driver_sql("ALTER TABLE users ADD COLUMN password_hash TEXT;")
+                    existing_users_cols = [
+                        row[1] for row in sync_conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()
+                    ]
+                    if "password_hash" not in existing_users_cols:
+                        sync_conn.exec_driver_sql("ALTER TABLE users ADD COLUMN password_hash TEXT;")
 
-        await conn.run_sync(migrate_sqlite_columns)
+            await conn.run_sync(migrate_sqlite_columns)
 
     try:
         from app.seed import init_college_directory
         await init_college_directory()
     except Exception as exc:
-        print(f"[Directory Init Warning] {exc}")
+        print(f"[Directory Init Warning] {type(exc).__name__}: {exc}")
 
     yield
     await engine.dispose()

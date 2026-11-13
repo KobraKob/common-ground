@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     PORT: int = 8000
     HOST: str = "0.0.0.0"
-    SECRET_KEY: str = "commonground-production-secret-key-bengaluru-2026"
+    SECRET_KEY: str = ""
     
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./commonground.db"
@@ -38,3 +38,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Never boot a non-development deployment with a predictable signing key.
+if settings.ENVIRONMENT.lower() not in {"development", "dev", "local", "test"}:
+    if len(settings.SECRET_KEY.strip()) < 32:
+        raise RuntimeError("SECRET_KEY must be configured with at least 32 characters outside development.")
+
