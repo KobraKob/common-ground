@@ -59,6 +59,13 @@ async def test_organizer_confirms_attendance_after_event_and_student_can_view_it
     assert history.status_code == 200
     assert len(history.json()) == 1
     assert history.json()[0]["title"] == event.title
+
+    contribution_summary = await client.get(
+        "/api/v1/profiles/me/contributions",
+        headers={"X-User-Id": attendee.id},
+    )
+    assert contribution_summary.status_code == 200
+    assert len(contribution_summary.json()["events_attended"]) == 1
     record = (await db_session.execute(
         select(EventAttendance).where(EventAttendance.user_id == attendee.id)
     )).scalar_one()
