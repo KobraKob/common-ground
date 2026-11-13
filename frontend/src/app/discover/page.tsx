@@ -102,6 +102,7 @@ export default function DiscoverPage() {
         <p className="cg-eyebrow">DISCOVER COMMON GROUND</p>
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Find your people. Build beyond your campus.</h1>
         <p className="max-w-2xl text-base leading-7 cg-muted">Explore participating colleges, interest circles, student projects and upcoming events across Bengaluru. Listings come from the live CommonGround services.</p>
+        <Link href="/mentorship" className="cg-link inline-flex min-h-11 items-center text-sm font-medium">Explore peer mentorship <ExternalLink size={14} className="ml-2"/></Link>
       </header>
 
       <section aria-label="Campus intelligence snapshot" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
