@@ -12,19 +12,22 @@ import {
   getStudents, 
   createPost, 
   reactToPost, 
-  getMyProfile 
+  getMyProfile,
+  getActiveProfile,
 } from './api';
 import { Post, College, Community, StudentProfile } from '@/types';
 
 // Query Keys
 export const queryKeys = {
-  posts: (scope: string, tag?: string) => ['posts', scope, tag ?? 'all'] as const,
-  infinitePosts: (scope: string, tag?: string) => ['posts', 'infinite', scope, tag ?? 'all'] as const,
+  posts: (scope: string, tag?: string, userId = 'anonymous') => ['posts', scope, tag ?? 'all', userId] as const,
+  infinitePosts: (scope: string, tag?: string, userId = 'anonymous') => ['posts', 'infinite', scope, tag ?? 'all', userId] as const,
   colleges: ['colleges'] as const,
-  communities: (collegeId?: string) => ['communities', collegeId ?? 'all'] as const,
-  students: (skill?: string) => ['students', skill ?? 'all'] as const,
-  profile: ['profile', 'me'] as const,
+  communities: (collegeId?: string, userId = 'anonymous') => ['communities', collegeId ?? 'all', userId] as const,
+  students: (skill?: string, userId = 'anonymous') => ['students', skill ?? 'all', userId] as const,
+  profile: (userId = 'anonymous') => ['profile', 'me', userId] as const,
 };
+
+const currentUserCacheKey = () => getActiveProfile()?.user_id || 'anonymous';
 
 // 1. Infinite Posts Query for Infinite Scrolling
 export function useInfinitePostsQuery(
@@ -33,7 +36,7 @@ export function useInfinitePostsQuery(
   limit: number = 10
 ) {
   return useInfiniteQuery({
-    queryKey: queryKeys.infinitePosts(scope, tag),
+    queryKey: queryKeys.infinitePosts(scope, tag, currentUserCacheKey()),
     queryFn: async ({ pageParam = 0 }) => {
       return await getPostsPaginated({
         scope,
@@ -53,7 +56,7 @@ export function useInfinitePostsQuery(
 // 2. Regular Posts Query
 export function usePostsQuery(scope: 'campus' | 'city' | 'commons' | 'opportunities', tag?: string) {
   return useQuery({
-    queryKey: queryKeys.posts(scope, tag),
+    queryKey: queryKeys.posts(scope, tag, currentUserCacheKey()),
     queryFn: () => getPosts(scope, tag),
     staleTime: 30 * 1000,
   });
@@ -71,7 +74,7 @@ export function useCollegesQuery() {
 // 4. Communities Query
 export function useCommunitiesQuery(collegeId?: string) {
   return useQuery({
-    queryKey: queryKeys.communities(collegeId),
+    queryKey: queryKeys.communities(collegeId, currentUserCacheKey()),
     queryFn: () => getCommunities(collegeId),
     staleTime: 60 * 1000,
   });
@@ -80,7 +83,7 @@ export function useCommunitiesQuery(collegeId?: string) {
 // 5. Students Query
 export function useStudentsQuery(skill?: string) {
   return useQuery({
-    queryKey: queryKeys.students(skill),
+    queryKey: queryKeys.students(skill, currentUserCacheKey()),
     queryFn: () => getStudents(skill),
     staleTime: 60 * 1000,
   });
@@ -89,7 +92,7 @@ export function useStudentsQuery(skill?: string) {
 // 6. User Profile Query
 export function useProfileQuery() {
   return useQuery({
-    queryKey: queryKeys.profile,
+    queryKey: queryKeys.profile(currentUserCacheKey()),
     queryFn: getMyProfile,
     staleTime: 2 * 60 * 1000,
   });
