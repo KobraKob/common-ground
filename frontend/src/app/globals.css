@@ -4,22 +4,22 @@
 
 :root {
   /* Neutral Obsidian Dark Base (No purple washes) */
-  --bg-canvas: #0A0C12;
-  --bg-surface: #12151F;
-  --bg-elevated: #181C2A;
+  --bg-canvas: #000000;
+  --bg-surface: #1C1C1E;
+  --bg-elevated: #2C2C2E;
   --bg-glass-card: rgba(18, 21, 31, 0.78);
   --bg-glass-input: rgba(10, 12, 18, 0.85);
 
   /* ONE Accent Color: Warm Lit Campus Amber */
-  --accent-amber-core: #F59E0B;
-  --accent-amber-bright: #FBBF24;
-  --accent-amber-soft: #FDE68A;
-  --accent-amber-hover: #D97706;
+  --accent-amber-core: #0A84FF;
+  --accent-amber-bright: #409CFF;
+  --accent-amber-soft: #8EC5FF;
+  --accent-amber-hover: #0066CC;
 
   /* Typography Colors */
-  --text-primary: #F8F9FA;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
+  --text-primary: #F5F5F7;
+  --text-secondary: #A1A1A6;
+  --text-muted: #8E8E93;
 
   /* Borders & Specular Highlights (Quiet, precise) */
   --border-subtle: rgba(255, 255, 255, 0.08);
@@ -239,12 +239,16 @@ h1, h2, h3, h4, .font-display {
 }
 
 /* CommonGround design system — calm surfaces, one accent, consistent interaction. */
-:root{color-scheme:dark;--cg-bg:#101318;--cg-surface:#181d24;--cg-elevated:#202731;--cg-text:#f4f6f8;--cg-muted:#a4afbd;--cg-subtle:#788493;--cg-border:rgba(226,232,240,.12);--cg-accent:#5b9cff;--cg-accent-strong:#2878ed;--cg-success:#45b987;--cg-danger:#e16d75;--cg-radius:16px;--cg-radius-sm:10px;--cg-space-1:4px;--cg-space-2:8px;--cg-space-3:12px;--cg-space-4:16px;--cg-space-6:24px;--cg-space-8:32px;--cg-motion-fast:140ms;--cg-motion-normal:200ms}
-@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){color-scheme:light;--cg-bg:#f5f7fa;--cg-surface:#fff;--cg-elevated:#edf1f6;--cg-text:#17202b;--cg-muted:#526071;--cg-subtle:#667386;--cg-border:rgba(23,32,43,.13);--cg-accent:#1769d2;--cg-accent-strong:#0d55b4}}
-:root[data-theme="light"]{color-scheme:light;--cg-bg:#f5f7fa;--cg-surface:#fff;--cg-elevated:#edf1f6;--cg-text:#17202b;--cg-muted:#526071;--cg-subtle:#667386;--cg-border:rgba(23,32,43,.13);--cg-accent:#1769d2;--cg-accent-strong:#0d55b4}
+:root{color-scheme:dark;--cg-bg:#000;--cg-surface:#1c1c1e;--cg-elevated:#2c2c2e;--cg-text:#f5f5f7;--cg-muted:#a1a1a6;--cg-subtle:#8e8e93;--cg-border:rgba(235,235,245,.16);--cg-accent:#0a84ff;--cg-accent-strong:#409cff;--cg-success:#30d158;--cg-danger:#ff453a;--cg-radius:12px;--cg-radius-sm:8px;--cg-space-1:4px;--cg-space-2:8px;--cg-space-3:12px;--cg-space-4:16px;--cg-space-6:24px;--cg-space-8:32px;--cg-motion-fast:140ms;--cg-motion-normal:200ms;--cg-font:Inter,-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){color-scheme:light;--cg-bg:#fff;--cg-surface:#f5f5f7;--cg-elevated:#e8e8ed;--cg-text:#1d1d1f;--cg-muted:#6e6e73;--cg-subtle:#86868b;--cg-border:rgba(29,29,31,.14);--cg-accent:#0066cc;--cg-accent-strong:#007aff}}
+:root[data-theme="light"]{color-scheme:light;--cg-bg:#fff;--cg-surface:#f5f5f7;--cg-elevated:#e8e8ed;--cg-text:#1d1d1f;--cg-muted:#6e6e73;--cg-subtle:#86868b;--cg-border:rgba(29,29,31,.14);--cg-accent:#0066cc;--cg-accent-strong:#007aff}
 :root[data-theme="dark"]{color-scheme:dark}
-html,body{background:var(--cg-bg);color:var(--cg-text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-body{overflow-x:clip}h1,h2,h3,h4,.font-display{font-family:inherit;letter-spacing:-.035em}
+html,body{background:var(--cg-bg);color:var(--cg-text);font-family:var(--cg-font)}
+body{overflow-x:clip}h1,h2,h3,h4,.font-display{font-family:var(--cg-font);letter-spacing:-.035em}
+:root{--bg-canvas:var(--cg-bg);--bg-surface:var(--cg-surface);--bg-elevated:var(--cg-elevated);--text-primary:var(--cg-text);--text-secondary:var(--cg-muted);--text-muted:var(--cg-subtle);--accent-amber-core:var(--cg-accent);--accent-amber-bright:var(--cg-accent-strong);--accent-amber-soft:var(--cg-accent);--accent-amber-hover:var(--cg-accent-strong)}
+[class*="text-amber-"]{color:var(--cg-accent)!important}
+[class*="border-amber-"]{border-color:color-mix(in srgb,var(--cg-accent) 36%,var(--cg-border))!important}
+[class*="bg-amber-"]{background-color:color-mix(in srgb,var(--cg-accent) 12%,transparent)!important}
 .celestial-card,.neo-card,.celestial-card-amber{background:var(--cg-surface);border:1px solid var(--cg-border);border-radius:var(--cg-radius);box-shadow:0 1px 2px rgba(0,0,0,.08);backdrop-filter:none;-webkit-backdrop-filter:none;transition:border-color var(--cg-motion-fast) ease,background-color var(--cg-motion-fast) ease,transform var(--cg-motion-fast) ease}
 .celestial-card:hover,.neo-card:hover,.celestial-card-amber:hover{transform:none;border-color:color-mix(in srgb,var(--cg-accent) 38%,var(--cg-border));box-shadow:0 4px 16px rgba(0,0,0,.12)}
 .btn-campus-amber,.neo-pill-btn{background:var(--cg-accent);color:#fff!important;border:1px solid transparent;box-shadow:none;min-height:44px;font-weight:600;transition:background-color var(--cg-motion-fast),transform var(--cg-motion-fast)}
