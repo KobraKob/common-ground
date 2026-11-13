@@ -53,18 +53,46 @@ export default function DiscoverPage() {
 
   const upcoming = useMemo(() => events.filter((event) => new Date(event.ends_at) >= new Date()), [events]);
   const myPastEvents = useMemo(() => events.filter((event) => event.organizer_id === profile?.user_id && new Date(event.ends_at) < new Date()), [events, profile]);
-  const matchingProjects = useMemo(() => projects.filter((project) => {
-    if (!profile?.skills?.length) return false;
-    const skillSet = new Set(profile.skills.map((skill) => skill.toLowerCase()));
-    return project.skills_needed.some((skill) => skillSet.has(skill.toLowerCase()));
-  }), [projects, profile]);
+  const profileSignals = useMemo(() => new Set(
+    [...(profile?.skills || []), ...(profile?.interests || [])]
+      .map((item) => item.trim().toLowerCase())
+      .filter((item) => item.length >= 2)
+  ), [profile]);
+  const matchingProjects = useMemo(() => projects.filter((project) =>
+    project.skills_needed.some((skill) => profileSignals.has(skill.toLowerCase()))
+  ), [projects, profileSignals]);
   const visibleProjects = matchSkillsOnly ? matchingProjects : projects;
-  const matchingOpportunities = useMemo(() => opportunities.filter((item) => {
-    if (!profile?.skills?.length) return false;
-    const skills = new Set(profile.skills.map((skill) => skill.toLowerCase()));
-    return (item.tags || []).some((tag) => skills.has(tag.toLowerCase()));
-  }), [opportunities, profile]);
+  const matchingOpportunities = useMemo(() => opportunities.filter((item) =>
+    (item.tags || []).some((tag) => profileSignals.has(tag.toLowerCase()))
+  ), [opportunities, profileSignals]);
   const visibleOpportunities = matchSkillsOnly ? matchingOpportunities : opportunities;
+  const recommendations = useMemo(() => {
+    if (!profile) return [];
+    const signals = [...profileSignals];
+    const picks: { id: string; title: string; description: string; reason: string; section: Section; kind: string; relevance: number }[] = [];
+
+    for (const project of projects) {
+      const matches = project.skills_needed.filter((skill) => profileSignals.has(skill.toLowerCase()));
+      if (matches.length) picks.push({ id: project.id, title: project.title, description: project.pitch, reason: `Matches your skills: ${matches.slice(0, 3).join(', ')}`, section: 'projects', kind: 'Project', relevance: matches.length + 3 });
+    }
+    for (const opportunity of opportunities) {
+      const matches = (opportunity.tags || []).filter((tag) => profileSignals.has(tag.toLowerCase()));
+      if (matches.length) picks.push({ id: opportunity.id, title: opportunity.title || 'Student opportunity', description: opportunity.body, reason: `Matches your interests: ${matches.slice(0, 3).join(', ')}`, section: 'opportunities', kind: 'Opportunity', relevance: matches.length + 2 });
+    }
+    for (const event of upcoming) {
+      const text = `${event.title} ${event.description}`.toLowerCase();
+      const matches = signals.filter((signal) => text.includes(signal));
+      if (matches.length) picks.push({ id: event.id, title: event.title, description: event.description, reason: `Related to: ${matches.slice(0, 2).join(', ')}`, section: 'events', kind: 'Event', relevance: matches.length + 1 });
+      else if (profile.college_id && event.college_id === profile.college_id) picks.push({ id: event.id, title: event.title, description: event.description, reason: 'From your campus', section: 'events', kind: 'Event', relevance: 1 });
+      else if (event.is_cross_campus) picks.push({ id: event.id, title: event.title, description: event.description, reason: 'Open across campuses', section: 'events', kind: 'Event', relevance: 0 });
+    }
+    for (const circle of circles) {
+      const text = `${circle.name} ${circle.description}`.toLowerCase();
+      const matches = signals.filter((signal) => text.includes(signal));
+      if (matches.length) picks.push({ id: circle.id, title: circle.name, description: circle.description, reason: `Interest overlap: ${matches.slice(0, 2).join(', ')}`, section: 'circles', kind: 'Circle', relevance: matches.length + 1 });
+    }
+    return picks.sort((a, b) => b.relevance - a.relevance).slice(0, 6);
+  }, [profile, profileSignals, projects, opportunities, upcoming, circles]);
   const tabs: { id: Section; label: string }[] = [
     { id: 'campuses', label: 'Campuses' }, { id: 'circles', label: 'Circles' },
     { id: 'projects', label: 'Projects' }, { id: 'events', label: 'Events' }, { id: 'opportunities', label: 'Opportunities' },
@@ -141,6 +169,10 @@ export default function DiscoverPage() {
       </div>
 
       {discoveryQuery.isError && <p role="alert" className="rounded-xl border border-[var(--cg-border)] bg-[var(--cg-surface)] px-4 py-3 text-sm">Some discovery data could not be loaded. Refresh to try again.</p>}
+      {profile && <section className="space-y-4">
+        <div><p className="cg-eyebrow">PERSONALIZED DISCOVERY</p><h2 className="mt-2 text-2xl font-semibold">Recommended for you</h2><p className="mt-1 text-sm cg-muted">Transparent matches from your listed skills, interests and campus. No opaque recommendation score.</p></div>
+        {recommendations.length ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{recommendations.map((item)=><article key={item.kind+item.id} className="cg-surface flex flex-col p-4"><div className="flex items-center justify-between gap-2"><span className="cg-eyebrow">{item.kind}</span><span className="text-xs cg-muted">{item.reason}</span></div><h3 className="mt-3 font-semibold">{item.title}</h3><p className="mt-2 line-clamp-3 flex-1 text-sm cg-muted">{item.description}</p><button type="button" onClick={()=>setSection(item.section)} className="cg-link mt-4 inline-flex min-h-11 items-center self-start text-sm font-medium">Explore {item.kind.toLowerCase()} <ArrowRight size={14} className="ml-2"/></button></article>)}</div> : <div className="cg-surface flex flex-wrap items-center justify-between gap-3 p-5"><p className="text-sm cg-muted">{profileSignals.size ? 'No direct matches yet. Explore all listings or update your interests.' : 'Add skills and interests to your profile to receive relevant project, event and community suggestions.'}</p><Link href="/profile" className="cg-link inline-flex min-h-11 items-center text-sm">Update profile <ArrowRight size={14} className="ml-1"/></Link></div>}
+      </section>}
       {notice && <p role="status" className="rounded-xl border border-[var(--cg-border)] bg-[var(--cg-surface)] px-4 py-3 text-sm">{notice}</p>}
       {loading ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Loading discovery"><div className="h-36 animate-pulse rounded-2xl bg-[var(--cg-elevated)]"/><div className="h-36 animate-pulse rounded-2xl bg-[var(--cg-elevated)]"/><div className="h-36 animate-pulse rounded-2xl bg-[var(--cg-elevated)]"/></div> : (
         <>
