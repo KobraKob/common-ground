@@ -609,6 +609,17 @@ export async function requestToJoinProject(projectId: string, payload: { pitch_n
   });
 }
 
+export async function getProjectJoinRequests(projectId: string): Promise<ProjectJoinRequestItem[]> {
+  return await request<ProjectJoinRequestItem[]>(`/projects/${projectId}/join-requests`);
+}
+
+export async function updateProjectMemberStatus(projectId: string, memberId: string, status: 'ACCEPTED' | 'DECLINED'): Promise<{ message: string }> {
+  return await request<{ message: string }>(`/projects/${projectId}/members/${memberId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
 export async function getProjectMembers(projectId: string): Promise<ProjectMemberItem[]> {
   return await request<ProjectMemberItem[]>(`/projects/${projectId}/members`);
 }
