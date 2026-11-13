@@ -118,7 +118,7 @@ export function GlobalHeader() {
     clearAuthSession();
     setIsLoggedIn(false);
     router.push('/');
-    window.location.reload();
+    router.refresh();
   };
 
   const currentProfile = getActiveProfile();
@@ -166,7 +166,7 @@ export function GlobalHeader() {
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search peers, courses, notes, hackathons..."
-              className="celestial-input w-full text-xs font-mono py-2 pl-9 pr-12 text-white placeholder:text-slate-500"
+              className="celestial-input w-full text-sm py-2 pl-9 pr-12 placeholder:text-[var(--cg-muted)]"
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-slate-400">
               Ctrl K / ⌘ K
@@ -175,7 +175,7 @@ export function GlobalHeader() {
 
           {/* Search Results Dropdown */}
           {searchResults && (
-            <div className="absolute top-full left-0 right-0 mt-2 celestial-card p-3 shadow-2xl max-h-96 overflow-y-auto border border-white/15 z-50 animate-entrance">
+            <div className="absolute top-full left-0 right-0 mt-2 celestial-card p-3 shadow-xl max-h-96 overflow-y-auto z-50 animate-entrance">
               {searchResults.students?.length > 0 && (
                 <div className="mb-3">
                   <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 mb-1.5 font-semibold">
@@ -307,7 +307,7 @@ export function GlobalHeader() {
           <button
             type="button"
             onClick={toggleTheme}
-            className="min-h-11 min-w-11 rounded-full border border-white/15 bg-white/5 text-slate-300 transition-colors hover:text-white"
+            className="min-h-11 min-w-11 rounded-full border border-[var(--cg-border)] bg-[var(--cg-elevated)] text-[var(--cg-muted)] transition-colors hover:text-[var(--cg-text)]"
             title={`Appearance: ${theme}. Click to cycle system, light and dark.`}
             aria-label={`Appearance: ${theme}. Change theme`}
           >
@@ -332,12 +332,12 @@ export function GlobalHeader() {
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search peers, courses, notes..."
-              className="celestial-input w-full text-xs font-mono py-2 pl-9 pr-4 text-white"
+              className="celestial-input w-full text-sm py-2 pl-9 pr-4 placeholder:text-[var(--cg-muted)]"
             />
           </div>
 
           {searchResults && (
-            <div className="mt-2 celestial-card p-3 shadow-2xl max-h-72 overflow-y-auto border border-white/15">
+            <div className="mt-2 celestial-card p-3 shadow-xl max-h-72 overflow-y-auto">
               {searchResults.students?.length > 0 && (
                 <div className="mb-2">
                   <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 mb-1 font-semibold">
