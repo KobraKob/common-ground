@@ -155,18 +155,31 @@ async def list_conversations(
         return []
 
     conversation_ids = [conversation.id for conversation in conversations]
-    preview_result = await db.execute(
-        select(Message.conversation_id, Message.body)
+    latest_message_rows = (
+        select(
+            Message.conversation_id.label("conversation_id"),
+            Message.body.label("body"),
+            func.row_number().over(
+                partition_by=Message.conversation_id,
+                order_by=Message.created_at.desc(),
+            ).label("row_number"),
+        )
         .where(
             Message.conversation_id.in_(conversation_ids),
             Message.is_deleted.is_(False),
         )
-        .order_by(Message.created_at.desc())
+        .subquery()
     )
-    previews = {}
-    for conversation_id, body in preview_result.all():
-        previews.setdefault(conversation_id, body[:140])
+    preview_result = await db.execute(
+        select(latest_message_rows.c.conversation_id, latest_message_rows.c.body)
+        .where(latest_message_rows.c.row_number == 1)
+    )
+    previews = {conversation_id: body[:140] for conversation_id, body in preview_result.all()}
 
+    direct_conversation_ids = [
+        conversation.id for conversation in conversations
+        if conversation.conversation_type == "DIRECT"
+    ]
     other_members_result = await db.execute(
         select(
             ConversationMember.conversation_id,
@@ -175,13 +188,13 @@ async def list_conversations(
         )
         .outerjoin(StudentProfile, StudentProfile.user_id == ConversationMember.user_id)
         .where(
-            ConversationMember.conversation_id.in_(conversation_ids),
+            ConversationMember.conversation_id.in_(direct_conversation_ids),
             ConversationMember.user_id != user.id,
         )
-    )
+    ) if direct_conversation_ids else None
     other_members = {
         conversation_id: (other_user_id, display_name or "Student")
-        for conversation_id, other_user_id, display_name in other_members_result.all()
+        for conversation_id, other_user_id, display_name in (other_members_result.all() if other_members_result else [])
     }
 
     outgoing_blocks = await db.execute(
