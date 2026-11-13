@@ -22,6 +22,8 @@ from app.modules.identity.schemas import (
 )
 from app.modules.colleges.models import College
 from app.modules.communities.models import Community, CommunityMembership
+from app.modules.commons.models import Post, Comment
+from app.modules.events.models import Event, EventAttendance
 
 
 def hash_password(password: str) -> str:
@@ -544,6 +546,52 @@ async def update_my_profile(
         onboarding_completed=profile.onboarding_completed,
         created_at=profile.created_at,
     )
+
+
+@router.get("/me/contributions")
+async def get_my_contributions(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    posts_created = await db.execute(
+        select(func.count(Post.id)).where(Post.author_id == user.id)
+    )
+    questions_asked = await db.execute(
+        select(func.count(Post.id)).where(Post.author_id == user.id, Post.category == "QUESTION_QA")
+    )
+    useful_answers = await db.execute(
+        select(func.count(Comment.id)).where(Comment.author_id == user.id, Comment.is_useful_answer.is_(True))
+    )
+
+    membership_result = await db.execute(
+        select(Community, CommunityMembership.joined_at)
+        .join(CommunityMembership, CommunityMembership.community_id == Community.id)
+        .where(CommunityMembership.user_id == user.id)
+        .order_by(CommunityMembership.joined_at.desc())
+        .limit(50)
+    )
+    attendance_result = await db.execute(
+        select(EventAttendance, Event)
+        .join(Event, Event.id == EventAttendance.event_id)
+        .where(EventAttendance.user_id == user.id)
+        .order_by(EventAttendance.marked_at.desc())
+        .limit(50)
+    )
+
+    return {
+        "posts_created": int(posts_created.scalar() or 0),
+        "questions_asked": int(questions_asked.scalar() or 0),
+        "useful_answers": int(useful_answers.scalar() or 0),
+        "communities": [
+            {"id": community.id, "name": community.name, "slug": community.slug, "joined_at": joined_at}
+            for community, joined_at in membership_result.all()
+        ],
+        "events_attended": [
+            {"id": event.id, "title": event.title, "starts_at": event.starts_at, "attended_at": attendance.marked_at}
+            for attendance, event in attendance_result.all()
+        ],
+        "attendance_note": "Events appear only after their organizer confirms attendance. An RSVP alone is not counted as attendance.",
+    }
 
 
 @router.get("/{handle}", response_model=StudentProfileResponse)
