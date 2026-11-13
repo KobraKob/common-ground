@@ -62,6 +62,8 @@ async def verify_can_dm(sender_id: str, recipient_id: str, db: AsyncSession):
     sender = profiles.get(sender_id)
     if not recipient:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipient profile not found")
+    if not sender:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Complete your student profile before messaging")
 
     same_campus = bool(
         sender
