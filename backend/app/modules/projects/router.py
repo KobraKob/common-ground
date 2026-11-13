@@ -20,6 +20,7 @@ from app.modules.projects.schemas import (
     TaskUpdateRequest,
     TaskResponse,
     ProjectMemberResponse,
+    ProjectJoinRequestResponse,
     EventCreateRequest,
     EventResponse,
 )
@@ -342,6 +343,42 @@ async def require_project_member(project_id: str, user_id: str, db: AsyncSession
     if member_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=403, detail="Only accepted project members can access this workspace")
     return project
+
+
+@router.get("/projects/{project_id}/join-requests", response_model=List[ProjectJoinRequestResponse])
+async def list_project_join_requests(
+    project_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    project_result = await db.execute(select(Project).where(Project.id == project_id))
+    project = project_result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project.creator_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the project lead can review join requests")
+
+    result = await db.execute(
+        select(ProjectMember, StudentProfile.display_name, StudentProfile.handle)
+        .join(StudentProfile, StudentProfile.user_id == ProjectMember.user_id)
+        .where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.status == "PENDING_REQUEST",
+        )
+        .order_by(ProjectMember.joined_at.asc())
+    )
+    return [
+        ProjectJoinRequestResponse(
+            member_id=member.id,
+            user_id=member.user_id,
+            display_name=display_name,
+            handle=handle,
+            role_title=member.role_title or "Collaborator",
+            pitch_note=member.pitch_note,
+            requested_at=member.joined_at,
+        )
+        for member, display_name, handle in result.all()
+    ]
 
 
 @router.get("/projects/{project_id}/members", response_model=List[ProjectMemberResponse])
