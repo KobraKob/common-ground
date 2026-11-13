@@ -1,0 +1,52 @@
+name: Monthly database restore drill
+
+on:
+  schedule:
+    - cron: '31 4 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monthly-database-restore-drill
+  cancel-in-progress: false
+
+jobs:
+  restore-drill:
+    runs-on: ubuntu-latest
+    environment: staging-restore
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client, GnuPG and AWS CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client gnupg awscli
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.BACKUP_AWS_REGION }}
+      - name: Download newest encrypted backup and checksum
+        id: backup
+        env:
+          BACKUP_S3_URI: ${{ vars.BACKUP_S3_URI }}
+        run: |
+          LATEST_KEY="$(aws s3 ls "$BACKUP_S3_URI/" | awk '{print $4}' | grep -E '\\.dump\\.gpg$' | sort | tail -n 1)"
+          test -n "$LATEST_KEY"
+          aws s3 cp "$BACKUP_S3_URI/$LATEST_KEY" /tmp/restore.dump.gpg
+          aws s3 cp "$BACKUP_S3_URI/$LATEST_KEY.sha256" /tmp/restore.dump.gpg.sha256
+      - name: Restore to isolated disposable database
+        env:
+          BACKUP_FILE: /tmp/restore.dump.gpg
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+          RESTORE_DATABASE_URL: ${{ secrets.ISOLATED_RESTORE_DATABASE_URL }}
+        run: bash scripts/restore-drill-postgres.sh
+      - name: Verify restored schema and core tables
+        env:
+          RESTORE_DATABASE_URL: ${{ secrets.ISOLATED_RESTORE_DATABASE_URL }}
+        run: |
+          RESTORE_URL="$(printf '%s' "$RESTORE_DATABASE_URL" | sed 's#^postgresql+asyncpg://#postgresql://#')"
+          psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM users;'
+          psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM student_profiles;'
