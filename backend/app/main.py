@@ -13,7 +13,7 @@ from app.modules.colleges.router import router as colleges_router
 from app.modules.communities.router import router as communities_router
 from app.modules.commons.router import router as commons_router
 from app.modules.projects.router import router as projects_router
-from app.modules.moderation.router import router as moderation_router
+from app.modules.moderation.router import router as moderation_router\nfrom app.modules.analytics.router import router as analytics_router
 
 
 @asynccontextmanager
@@ -125,4 +125,4 @@ app.include_router(colleges_router, prefix=settings.API_V1_PREFIX)
 app.include_router(communities_router, prefix=settings.API_V1_PREFIX)
 app.include_router(commons_router, prefix=settings.API_V1_PREFIX)
 app.include_router(projects_router, prefix=settings.API_V1_PREFIX)
-app.include_router(moderation_router, prefix=settings.API_V1_PREFIX)
+app.include_router(moderation_router, prefix=settings.API_V1_PREFIX)\napp.include_router(analytics_router, prefix=settings.API_V1_PREFIX)
