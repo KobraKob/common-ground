@@ -32,8 +32,8 @@ export default function PassportPage() {
       <Link href="/profile" className="cg-link inline-flex min-h-11 items-center text-sm">Edit profile <ArrowUpRight size={16} className="ml-1"/></Link>
     </header>
     <section className="cg-surface flex flex-wrap items-center gap-5 p-6 sm:p-8">
-      <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[var(--cg-elevated)] text-2xl font-semibold text-[var(--cg-accent)]">{profile.avatar_url ? <img src={profile.avatar_url} alt="" className="h-full w-full object-cover"/> : profile.display_name.slice(0,1).toUpperCase()}</div>
-      <div className="min-w-0 flex-1"><h2 className="text-2xl font-semibold">{profile.display_name}</h2><p className="mt-1 text-sm cg-muted">@{profile.handle} · {profile.college_name || 'Campus not set'}</p><p className="mt-2 flex items-center gap-2 text-xs cg-muted"><ShieldCheck size={15} className="text-[var(--cg-success)]"/>{profile.verification_stage.replaceAll('_',' ').toLowerCase()}</p></div>
+      <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[var(--cg-elevated)] text-2xl font-semibold text-[var(--cg-accent)]">{profile.display_name.slice(0,1).toUpperCase()}</div>
+      <div className="min-w-0 flex-1"><h2 className="text-2xl font-semibold">{profile.display_name}</h2><p className="mt-1 text-sm cg-muted">@{profile.handle} · {profile.college_name || 'Campus not set'}</p><p className="mt-2 flex items-center gap-2 text-xs cg-muted"><ShieldCheck size={15} className="text-[var(--cg-success)]"/>{profile.verification_stage.replace(/_/g, ' ').toLowerCase()}</p></div>
       <div className="rounded-xl bg-[var(--cg-elevated)] px-4 py-3"><p className="text-xs cg-muted">Projects created</p><p className="mt-1 text-2xl font-semibold tabular-nums">{myProjects.length}</p></div>
     </section>
     <div className="grid gap-4 lg:grid-cols-2">
