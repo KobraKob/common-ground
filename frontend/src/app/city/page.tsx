@@ -555,194 +555,65 @@ export default function CityPage() {
               </span>
             </div>
           ) : (
-            <div className="celestial-card p-5 border border-white/10 transition-all">
+            <div className="cg-surface space-y-4 p-5">
               {!isComposerExpanded ? (
-                <div
-                  onClick={() => setIsComposerExpanded(true)}
-                  className="flex items-center gap-3 cursor-pointer"
-                >
-                  <div className="w-8 h-8 rounded-full bg-amber-400 text-[#0A0C12] flex items-center justify-center font-mono font-bold text-xs">
-                    {getActiveProfile()?.display_name?.charAt(0)<VirtualizedFeed
+                <button type="button" onClick={() => setIsComposerExpanded(true)} className="flex min-h-12 w-full items-center gap-3 text-left">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--cg-accent)] text-sm font-semibold text-white">{getActiveProfile()?.display_name?.charAt(0) || 'U'}</span>
+                  <span className="text-sm cg-muted">Share a campus update, question or photo…</span>
+                </button>
+              ) : (
+                <form onSubmit={handleCreatePost} className="space-y-4">
+                  <div className="flex items-center justify-between"><span className="text-sm font-semibold">Create a post</span><button type="button" onClick={() => setIsComposerExpanded(false)} className="min-h-11 rounded-full px-3 text-sm cg-muted">Close</button></div>
+                  <label className="block text-sm font-medium">Post title<input type="text" value={postTitle} onChange={(event)=>setPostTitle(event.target.value)} maxLength={160} placeholder="Title (optional)" className="celestial-input mt-2 min-h-11 w-full px-3"/></label>
+                  <label className="block text-sm font-medium">Your update<textarea value={postBody} onChange={(event)=>setPostBody(event.target.value)} maxLength={5000} rows={4} placeholder="What is happening on your campus?" className="celestial-input mt-2 w-full px-3 py-2"/></label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="block text-sm font-medium">Post type<select value={postCategory} onChange={(event)=>setPostCategory(event.target.value as typeof postCategory)} className="celestial-input mt-2 min-h-11 w-full px-3"><option value="HANGOUT_MEME">Campus update</option><option value="DISCUSSION">Discussion</option><option value="OPPORTUNITY">Opportunity</option></select></label>
+                    <label className="block text-sm font-medium">Tags<input value={postTags} onChange={(event)=>setPostTags(event.target.value)} maxLength={160} placeholder="Bengaluru, design, coding" className="celestial-input mt-2 min-h-11 w-full px-3"/></label>
+                  </div>
+                  {mediaPreview && <div className="relative rounded-xl border border-[var(--cg-border)] p-2"><button type="button" onClick={handleClearMedia} className="absolute right-3 top-3 z-10 min-h-10 rounded-full bg-black/80 px-3 text-xs text-white">Remove media</button>{mediaType === 'VIDEO' ? <video src={mediaPreview} controls className="mx-auto max-h-56 rounded-lg"/> : <img src={mediaPreview} alt="Selected upload preview" className="mx-auto max-h-56 rounded-lg object-contain"/>}</div>}
+                  {showPollCreator && <div className="space-y-3 rounded-xl border border-[var(--cg-border)] p-4"><label className="block text-sm font-medium">Poll question<input value={pollQuestion} onChange={(event)=>setPollQuestion(event.target.value)} maxLength={180} className="celestial-input mt-2 min-h-11 w-full px-3"/></label><div className="grid gap-2 sm:grid-cols-2">{pollOptions.map((option,index)=><input key={index} value={option} onChange={(event)=>setPollOptions((current)=>current.map((item,itemIndex)=>itemIndex===index?event.target.value:item))} maxLength={100} aria-label={`Poll option ${index+1}`} className="celestial-input min-h-11 w-full px-3"/></div></div>}
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--cg-border)] pt-3">
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={()=>fileInputRef.current?.click()} className="min-h-11 rounded-full border border-[var(--cg-border)] px-4 text-sm">Add media</button>
+                      <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleFileUpload} className="hidden"/>
+                      <button type="button" onClick={()=>setShowPollCreator((current)=>!current)} className="min-h-11 rounded-full border border-[var(--cg-border)] px-4 text-sm">{showPollCreator?'Remove poll':'Add poll'}</button>
+                    </div>
+                    <button type="submit" disabled={isPosting || (!postBody.trim() && !mediaUrl)} className="btn-campus-amber min-h-11 rounded-full px-5 text-sm font-semibold disabled:opacity-50">{isPosting?'Publishing…':'Publish post'}</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: 'ALL', label: 'All posts' },
+                { id: 'MEDIA', label: 'Media' },
+                { id: 'POLLS', label: 'Polls' },
+                { id: 'DISCUSSIONS', label: 'Discussions' },
+              ].map((filter) => <button key={filter.id} type="button" aria-pressed={feedFilter===filter.id} onClick={()=>setFeedFilter(filter.id as typeof feedFilter)} className={`min-h-11 rounded-full border px-3 text-xs ${feedFilter===filter.id?'border-[var(--cg-accent)] bg-[var(--cg-elevated)]':'border-[var(--cg-border)] cg-muted'}`}>{filter.label}</button>)}
+            </div>
+            <button type="button" onClick={()=>setSortOrder((current)=>current==='LATEST'?'POPULAR':'LATEST')} className="min-h-11 rounded-full px-3 text-xs cg-muted">Sort: {sortOrder==='LATEST'?'Latest':'Most upvoted'}</button>
+          </div>
+
+          {isFeedLoading ? (
+            <div className="space-y-4" aria-label="Loading city feed">{[1,2,3].map((index)=><div key={index} className="cg-surface h-40 animate-pulse rounded-2xl"/>)}</div>
+          ) : postsQuery.isError ? (
+            <div role="alert" className="cg-surface p-6 text-sm cg-muted">The city feed could not be loaded. Refresh to try again.</div>
+          ) : displayedPosts.length===0 ? (
+            <div className="cg-surface space-y-3 border border-dashed p-10 text-center"><h3 className="font-semibold">No matching posts yet</h3><p className="text-sm cg-muted">Change the filter or start a conversation with Bengaluru students.</p><button type="button" onClick={()=>setFeedFilter('ALL')} className="cg-link min-h-11">Reset filters</button></div>
+          ) : (
+            <VirtualizedFeed
               items={displayedPosts}
               renderItem={renderPostCard}
+              getItemKey={(post) => post.id}
               estimateSize={520}
-              overscan={3}
+              overscan={4}
               hasMore={hasMorePosts}
               isFetchingNextPage={isLoadingMorePosts}
               onLoadMore={loadMorePosts}
             />
-                  key={post.id}
-                  id={`post-${post.id}`}
-                  className="celestial-card p-5 sm:p-6 space-y-4"
-                >
-                  {/* Author Header */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-amber-400 text-[#0A0C12] flex items-center justify-center font-mono font-bold text-xs shadow-sm">
-                        {post.author_name ? post.author_name.charAt(0) : 'S'}
-                      </div>
-                      <div>
-                        <div className="text-xs font-mono font-bold text-white">
-                          {post.author_name || 'Student'}
-                        </div>
-                        <div className="text-[10px] font-mono text-slate-400">
-                          @{post.author_handle || 'student'} • {post.college_name || 'College not listed'}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <TrustBadge stage={post.author_verification} size="sm" />
-                      <button
-                        onClick={() => setReportTarget({ id: post.id, type: 'POST', title: post.title || post.body })}
-                        className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
-                        title="Report post"
-                      >
-                        <Flag className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Title & Body */}
-                  {post.title && (
-                    <h3 className="font-display text-base font-bold text-white">
-                      {post.title}
-                    </h3>
-                  )}
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                    {post.body}
-                  </p>
-
-                  {/* Real Photo Media */}
-                  {post.media_url && (
-                    <div
-                      onClick={() => setLightboxImage({ url: post.media_url!, title: post.title, author: post.author_name || 'Student' })}
-                      className="rounded-xl overflow-hidden border border-white/10 max-h-96 cursor-pointer bg-black/50 relative group"
-                    >
-                      <img
-                        src={post.media_url}
-                        alt={post.title || 'Post media'}
-                        className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-[1.01]"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    </div>
-                  )}
-
-                  {/* Poll Container */}
-                  {post.poll && (
-                    <div className="p-4 rounded-xl bg-black/40 border border-white/10 space-y-2.5">
-                      <div className="text-xs font-mono text-amber-300 font-bold">
-                        {post.poll.question}
-                      </div>
-                      <div className="space-y-2">
-                        {post.poll.options.map((opt) => {
-                          const totalVotes = post.poll!.options.reduce((sum, o) => sum + (o.votes || 0), 0);
-                          const isVoted = votedPolls[post.id] === opt.id;
-                          const pct = totalVotes > 0
-                            ? Math.round(((opt.votes || 0) / totalVotes) * 100)
-                            : 0;
-                          return (
-                            <button
-                              key={opt.id}
-                              onClick={() => handleVote(post.id, opt.id)}
-                              className={`w-full p-2.5 rounded-xl text-xs font-mono text-left relative overflow-hidden border transition-all ${
-                                isVoted
-                                  ? 'border-amber-400/50 bg-amber-500/15 text-amber-200 font-bold'
-                                  : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
-                              }`}
-                            >
-                              <div
-                                className="absolute left-0 top-0 bottom-0 bg-amber-400/10 pointer-events-none transition-all duration-300"
-                                style={{ width: `${pct}%` }}
-                              />
-                              <div className="relative z-10 flex items-center justify-between">
-                                <span>{opt.text}</span>
-                                <span className="text-[10px] text-slate-400 font-semibold">{pct}% ({opt.votes || 0})</span>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Reaction Bar */}
-                  <div className="flex items-center justify-between pt-3 border-t border-white/10 text-xs font-mono text-slate-400">
-                    <div className="flex items-center gap-5">
-                      <button
-                        onClick={() => handleReaction(post.id)}
-                        className={`flex items-center gap-1.5 transition-colors ${
-                          post.liked_by_me ? 'text-amber-400 font-bold' : 'hover:text-white'
-                        }`}
-                      >
-                        <Heart className={`w-3.5 h-3.5 ${post.liked_by_me ? 'fill-amber-400' : ''}`} />
-                        <span>{post.upvotes_count}</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleToggleComments(post.id)}
-                        className="flex items-center gap-1.5 hover:text-white transition-colors"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        <span>{post.comments_count} Comments</span>
-                      </button>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        setShareModalPost(post);
-                        sharePost(post.id).catch(() => {});
-                      }}
-                      className="flex items-center gap-1.5 hover:text-white transition-colors"
-                    >
-                      <Share2 className="w-3.5 h-3.5" />
-                      <span>Share</span>
-                    </button>
-                  </div>
-
-                  {/* Comment Thread */}
-                  {expandedComments[post.id] && (
-                    <div className="pt-3 border-t border-white/10 space-y-3">
-                      <div className="space-y-2 max-h-56 overflow-y-auto">
-                        {(commentsByPost[post.id] || []).map((comm) => (
-                          <div key={comm.id} className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs font-mono space-y-1">
-                            <div className="flex items-center justify-between text-[10px] text-slate-400">
-                              <span className="text-white font-semibold">{comm.author_name} (@{comm.author_handle})</span>
-                              <span>{new Date(comm.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            </div>
-                            <p className="text-slate-300">{comm.body}</p>
-                          </div>
-                        ))}
-                        {(commentsByPost[post.id] || []).length === 0 && (
-                          <div className="text-[11px] text-slate-500 font-mono py-1">
-                            No comments yet. Be the first to reply.
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={commentInput[post.id] || ''}
-                          onChange={(e) => setCommentInput({ ...commentInput, [post.id]: e.target.value })}
-                          onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
-                          placeholder="Write a comment..."
-                          className="celestial-input flex-1 text-xs py-2 px-3 text-white"
-                        />
-                        <button
-                          onClick={() => handleAddComment(post.id)}
-                          disabled={commentSubmitting[post.id]}
-                          className="btn-campus-amber text-xs font-mono px-4 py-2 font-bold"
-                        >
-                          Reply
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
           )}
         </div>
       )}
