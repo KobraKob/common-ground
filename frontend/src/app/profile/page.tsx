@@ -105,7 +105,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8"><div className="flex justify-end"><Link href="/passport" className="text-link">View student passport <ArrowUpRight size={16} /></Link></div>
+    <div className="max-w-5xl mx-auto space-y-8"><div className="flex justify-end"><Link href="/passport" className="text-link">View student passport <ArrowRight size={16} /></Link></div>
       {/* Student Identity Showcase & Holographic Pass */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left: 3D Holographic Student ID Card */}
