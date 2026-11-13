@@ -35,22 +35,32 @@ export default function MessagesPage() {
   const [reportTarget, setReportTarget] = useState<{ id: string; type: any; title: string } | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function loadData() {
       setLoading(true);
       const [convs, prof] = await Promise.all([
         getConversations(),
         getMyProfile(),
       ]);
+      if (!isMounted) return;
+
       setConversations(convs);
       setMyProfile(prof);
       if (convs.length > 0) {
+        const requestId = ++messageRequestId.current;
         setSelectedConvId(convs[0].id);
         const msgs = await getMessages(convs[0].id);
-        setMessages(msgs);
+        if (isMounted && requestId === messageRequestId.current) setMessages(msgs);
       }
-      setLoading(false);
+      if (isMounted) setLoading(false);
     }
+
     loadData();
+    return () => {
+      isMounted = false;
+      messageRequestId.current += 1;
+    };
   }, []);
 
   const handleSelectConv = async (convId: string) => {
