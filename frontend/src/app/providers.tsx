@@ -7,7 +7,7 @@ import { getQueryClient } from '@/lib/queryClient';
 import { usePerformanceMonitoring } from '@/lib/monitoring';
 import { isAuthenticated, trackAnalyticsEvent } from '@/lib/api';
 
-const trackedSurfaces = new Set(['city', 'campus', 'commons', 'build', 'discover', 'messages', 'profile', 'passport']);
+const trackedSurfaces = new Set(['city', 'campus', 'commons', 'build', 'discover', 'messages', 'profile', 'passport', 'mentorship', 'insights', 'privacy', 'terms']);
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => getQueryClient());
