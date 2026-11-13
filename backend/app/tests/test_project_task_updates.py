@@ -64,3 +64,16 @@ async def test_project_lead_assigns_task_and_member_updates_own_status(client: A
         headers={"X-User-Id": stranger.id},
     )
     assert denied_stranger.status_code == 403
+
+    completed = await client.patch(
+        f"/api/v1/projects/{project.id}/tasks/{task.id}",
+        json={"status": "DONE"},
+        headers={"X-User-Id": member.id},
+    )
+    assert completed.status_code == 200
+    summary = await client.get(
+        "/api/v1/profiles/me/contributions",
+        headers={"X-User-Id": member.id},
+    )
+    assert summary.status_code == 200
+    assert summary.json()["tasks_marked_done"] == 1
