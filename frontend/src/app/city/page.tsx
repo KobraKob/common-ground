@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { VirtualizedFeed } from '@/components/shared/VirtualizedFeed';
+import { useInfinitePostsQuery } from '@/lib/queries';
 import Link from 'next/link';
 import { 
   Compass, 
@@ -28,7 +29,6 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { 
-  getPostsPaginated, 
   getCommunities, 
   getStudents,
   votePoll, 
@@ -57,9 +57,10 @@ export default function CityPage() {
   const [sortOrder, setSortOrder] = useState<'LATEST' | 'POPULAR'>('LATEST');
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [hasMorePosts, setHasMorePosts] = useState(false);
-  const [nextPostOffset, setNextPostOffset] = useState(0);
-  const [isLoadingMorePosts, setIsLoadingMorePosts] = useState(false);
+  const postsQuery = useInfinitePostsQuery('city', undefined, 12);
+  const hasMorePosts = Boolean(postsQuery.hasNextPage);
+  const isLoadingMorePosts = postsQuery.isFetchingNextPage;
+  const isFeedLoading = loading || postsQuery.isLoading;
 
   // Poll voting state
   const [votedPolls, setVotedPolls] = useState<Record<string, string>>({});
@@ -97,14 +98,10 @@ export default function CityPage() {
     async function loadData() {
       setLoading(true);
       try {
-        const [postPage, cData, peers] = await Promise.all([
-          getPostsPaginated({ scope: 'city', limit: 12, offset: 0 }),
+        const [cData, peers] = await Promise.all([
           getCommunities(),
           getStudents(),
         ]);
-        setPosts(postPage.items);
-        setHasMorePosts(postPage.hasMore);
-        setNextPostOffset(postPage.nextOffset);
         setCommunities((cData || []).filter((c) => c.community_type === 'CROSS_CAMPUS_INTEREST' || !c.college_id));
         setStudents(peers || []);
       } catch (err) {
@@ -117,21 +114,24 @@ export default function CityPage() {
     loadData();
   }, []);
 
-  const loadMorePosts = async () => {
-    if (isLoadingMorePosts || !hasMorePosts) return;
-    setIsLoadingMorePosts(true);
-    try {
-      const page = await getPostsPaginated({ scope: 'city', limit: 12, offset: nextPostOffset });
-      setPosts((current) => {
-        const seen = new Set(current.map((post) => post.id));
-        return [...current, ...page.items.filter((post) => !seen.has(post.id))];
-      });
-      setHasMorePosts(page.hasMore);
-      setNextPostOffset(page.nextOffset);
-    } finally {
-      setIsLoadingMorePosts(false);
+  useEffect(() => {
+    const incoming = postsQuery.data?.pages.flatMap((page) => page.items) ?? [];
+    if (!incoming.length) return;
+    setPosts((current) => {
+      const currentById = new Map(current.map((post) => [post.id, post]));
+      const incomingIds = new Set(incoming.map((post) => post.id));
+      return [
+        ...incoming.map((post) => currentById.get(post.id) ?? post),
+        ...current.filter((post) => !incomingIds.has(post.id)),
+      ];
+    });
+  }, [postsQuery.data?.pages]);
+
+  const loadMorePosts = useCallback(() => {
+    if (postsQuery.hasNextPage && !postsQuery.isFetchingNextPage) {
+      void postsQuery.fetchNextPage();
     }
-  };
+  }, [postsQuery.fetchNextPage, postsQuery.hasNextPage, postsQuery.isFetchingNextPage]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
