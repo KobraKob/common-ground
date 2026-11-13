@@ -60,7 +60,7 @@ export function CampusHeroBanner({
           {showActiveCount && activeCount !== undefined && (
             <div className="flex items-center gap-1.5 text-[var(--cg-accent)]">
               <Users className="w-3.5 h-3.5 text-[var(--cg-accent)]" />
-              <span>{activeCount} Active Students</span>
+              <span>{activeCount} Students in this campus</span>
             </div>
           )}
 
