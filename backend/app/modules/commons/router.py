@@ -13,6 +13,7 @@ from app.modules.identity.models import User, StudentProfile, UserBlock, UserMut
 from app.modules.colleges.models import College
 from app.modules.communities.models import Community, CommunityMembership
 from app.modules.commons.models import Post, Poll, PollVote, Comment, Reaction, Resource
+from app.modules.analytics.models import AnalyticsEvent
 from app.modules.messaging.models import Conversation, ConversationMember, Message
 from app.modules.commons.schemas import (
     PostCreateRequest,
@@ -114,7 +115,7 @@ async def list_posts(
     count_res = await db.execute(select(func.count()).select_from(count_subq))
     total_count = count_res.scalar() or 0
 
-    query = query.order_by(Post.is_pinned.desc(), desc(Post.created_at)).offset(offset).limit(limit)
+    query = query.order_by(Post.is_pinned.desc(), desc(Post.created_at), desc(Post.id)).offset(offset).limit(limit)
     result = await db.execute(query)
     posts = result.scalars().all()
 
@@ -125,83 +126,72 @@ async def list_posts(
     response.headers["X-Offset"] = str(offset)
     response.headers["X-Limit"] = str(limit)
 
+    post_ids = [post.id for post in posts]
+    author_ids = {post.author_id for post in posts}
+    community_ids = {post.community_id for post in posts if post.community_id}
+    college_ids = {post.college_id for post in posts if post.college_id}
+    authors = {}
+    communities = {}
+    colleges = {}
+    liked_post_ids = set()
+    if author_ids:
+        authors = {profile.user_id: profile for profile in (await db.execute(select(StudentProfile).where(StudentProfile.user_id.in_(author_ids)))).scalars().all()}
+    if community_ids:
+        communities = dict((await db.execute(select(Community.id, Community.name).where(Community.id.in_(community_ids)))).all())
+    if college_ids:
+        colleges = dict((await db.execute(select(College.id, College.name).where(College.id.in_(college_ids)))).all())
+    if current_user_id and post_ids:
+        liked_post_ids = set((await db.execute(
+            select(Reaction.target_id).where(
+                Reaction.user_id == current_user_id,
+                Reaction.target_type == "POST",
+                Reaction.target_id.in_(post_ids),
+            )
+        )).scalars().all())
+
     response = []
-    for p in posts:
-        # Skip if post contains muted tags
-        post_tags = [t.lower() for t in (p.tags or [])]
-        if any(t in muted_tags for t in post_tags):
+    for post in posts:
+        post_tags = [tag.lower() for tag in (post.tags or [])]
+        if any(tag in muted_tags for tag in post_tags):
             continue
-
-        # Get author details
-        a_res = await db.execute(select(StudentProfile).where(StudentProfile.user_id == p.author_id))
-        author = a_res.scalar_one_or_none()
-
-        comm_name = None
-        if p.community_id:
-            c_res = await db.execute(select(Community.name).where(Community.id == p.community_id))
-            comm_name = c_res.scalar_one_or_none()
-
-        col_name = None
-        if p.college_id:
-            col_res = await db.execute(select(College.name).where(College.id == p.college_id))
-            col_name = col_res.scalar_one_or_none()
-
-        # Get poll data if any
+        author = authors.get(post.author_id)
         poll_dict = None
-        if p.poll:
+        if post.poll:
             poll_dict = {
-                "id": p.poll.id,
-                "question": p.poll.question,
-                "options": p.poll.options,
-                "expires_at": p.poll.expires_at.isoformat() if p.poll.expires_at else None,
+                "id": post.poll.id,
+                "question": post.poll.question,
+                "options": post.poll.options,
+                "expires_at": post.poll.expires_at.isoformat() if post.poll.expires_at else None,
             }
-
-        liked_by_me = False
-        if current_user_id:
-            r_res = await db.execute(
-                select(Reaction).where(
-                    and_(
-                        Reaction.user_id == current_user_id,
-                        Reaction.target_type == "POST",
-                        Reaction.target_id == p.id,
-                    )
-                )
-            )
-            liked_by_me = r_res.scalar_one_or_none() is not None
-
-        response.append(
-            PostResponse(
-                id=p.id,
-                author_id=p.author_id,
-                author_name=author.display_name if author else "Student",
-                author_handle=author.handle if author else "student",
-                author_avatar=author.avatar_url if author else None,
-                author_verification=author.verification_stage if author else "STAGE_1_PROVISIONAL",
-                community_id=p.community_id,
-                community_name=comm_name,
-                college_id=p.college_id,
-                college_name=col_name,
-                category=p.category,
-                title=p.title,
-                body=p.body,
-                tags=p.tags or [],
-                media_url=p.media_url,
-                media_type=p.media_type,
-                is_cross_campus=p.is_cross_campus,
-                is_pinned=p.is_pinned,
-                accepted_answer_comment_id=p.accepted_answer_comment_id,
-                opportunity_meta=p.opportunity_meta,
-                poll=poll_dict,
-                upvotes_count=p.upvotes_count,
-                comments_count=p.comments_count,
-                shares_count=p.shares_count or 0,
-                liked_by_me=liked_by_me,
-                created_at=p.created_at,
-            )
-        )
-
+        response.append(PostResponse(
+            id=post.id,
+            author_id=post.author_id,
+            author_name=author.display_name if author else "Student",
+            author_handle=author.handle if author else "student",
+            author_avatar=author.avatar_url if author else None,
+            author_verification=author.verification_stage if author else "STAGE_1_PROVISIONAL",
+            community_id=post.community_id,
+            community_name=communities.get(post.community_id) if post.community_id else None,
+            college_id=post.college_id,
+            college_name=colleges.get(post.college_id) if post.college_id else None,
+            category=post.category,
+            title=post.title,
+            body=post.body,
+            tags=post.tags or [],
+            media_url=post.media_url,
+            media_type=post.media_type,
+            is_cross_campus=post.is_cross_campus,
+            is_pinned=post.is_pinned,
+            accepted_answer_comment_id=post.accepted_answer_comment_id,
+            opportunity_meta=post.opportunity_meta,
+            poll=poll_dict,
+            upvotes_count=post.upvotes_count,
+            comments_count=post.comments_count,
+            shares_count=post.shares_count or 0,
+            liked_by_me=post.id in liked_post_ids,
+            created_at=post.created_at,
+        ))
     return response
-
 
 @router.post("/posts", response_model=PostResponse)
 async def create_post(
@@ -231,6 +221,7 @@ async def create_post(
     )
     db.add(post)
     await db.flush()
+    db.add(AnalyticsEvent(user_id=user.id, event_name="post_created", college_id=post.college_id))
 
     # Create poll if poll details provided
     poll_dict = None
@@ -721,6 +712,10 @@ async def unified_search(
                 {"id": m.id, "conversation_id": m.conversation_id, "body": m.body[:150], "created_at": m.created_at.isoformat()}
                 for m in msg_res.scalars().all()
             ]
+
+    if current_user_id:
+        db.add(AnalyticsEvent(user_id=current_user_id, event_name="search_performed", event_metadata={"query_length": len(q)}))
+        await db.commit()
 
     return UnifiedSearchResponse(
         students=students,
