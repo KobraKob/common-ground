@@ -526,6 +526,17 @@ export async function getMyContributions(): Promise<MyContributions> {
   return await request<MyContributions>('/profiles/me/contributions');
 }
 
+export type EventAttendeeItem = {
+  user_id: string;
+  display_name: string;
+  handle: string;
+  attended: boolean;
+};
+
+export async function getEventAttendees(eventId: string): Promise<EventAttendeeItem[]> {
+  return await request<EventAttendeeItem[]>(`/events/${eventId}/attendees`);
+}
+
 export async function getMyEventAttendance(): Promise<{ id: string; event_id: string; title: string; starts_at: string; attended_at: string }[]> {
   return await request('/events/attendance/mine');
 }
