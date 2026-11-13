@@ -65,7 +65,14 @@ async def list_posts(
         p_res = await db.execute(select(StudentProfile.college_id).where(StudentProfile.user_id == current_user_id))
         user_college_id = p_res.scalar_one_or_none()
 
-    query = select(Post).options(selectinload(Post.poll)).where(Post.is_hidden_by_mod == False)
+    query = (
+        select(Post, StudentProfile, Community.name, College.name)
+        .outerjoin(StudentProfile, StudentProfile.user_id == Post.author_id)
+        .outerjoin(Community, Community.id == Post.community_id)
+        .outerjoin(College, College.id == Post.college_id)
+        .options(selectinload(Post.poll))
+        .where(Post.is_hidden_by_mod == False)
+    )
 
     # Filter out blocked users
     if blocked_user_ids:
@@ -116,7 +123,19 @@ async def list_posts(
 
     query = query.order_by(Post.is_pinned.desc(), desc(Post.created_at)).offset(offset).limit(limit)
     result = await db.execute(query)
-    posts = result.scalars().all()
+    rows = result.all()
+    posts = [row[0] for row in rows]
+
+    liked_post_ids = set()
+    if current_user_id and posts:
+        liked_result = await db.execute(
+            select(Reaction.target_id).where(
+                Reaction.user_id == current_user_id,
+                Reaction.target_type == "POST",
+                Reaction.target_id.in_([post.id for post in posts]),
+            )
+        )
+        liked_post_ids = set(liked_result.scalars().all())
 
     # Set pagination response headers
     has_more = (offset + len(posts)) < total_count
@@ -126,26 +145,13 @@ async def list_posts(
     response.headers["X-Limit"] = str(limit)
 
     response = []
-    for p in posts:
+    for p, author, comm_name, col_name in rows:
         # Skip if post contains muted tags
         post_tags = [t.lower() for t in (p.tags or [])]
         if any(t in muted_tags for t in post_tags):
             continue
 
-        # Get author details
-        a_res = await db.execute(select(StudentProfile).where(StudentProfile.user_id == p.author_id))
-        author = a_res.scalar_one_or_none()
-
-        comm_name = None
-        if p.community_id:
-            c_res = await db.execute(select(Community.name).where(Community.id == p.community_id))
-            comm_name = c_res.scalar_one_or_none()
-
-        col_name = None
-        if p.college_id:
-            col_res = await db.execute(select(College.name).where(College.id == p.college_id))
-            col_name = col_res.scalar_one_or_none()
-
+        # Poll data is eager-loaded; reactions are fetched in one batch above.
         # Get poll data if any
         poll_dict = None
         if p.poll:
@@ -156,18 +162,7 @@ async def list_posts(
                 "expires_at": p.poll.expires_at.isoformat() if p.poll.expires_at else None,
             }
 
-        liked_by_me = False
-        if current_user_id:
-            r_res = await db.execute(
-                select(Reaction).where(
-                    and_(
-                        Reaction.user_id == current_user_id,
-                        Reaction.target_type == "POST",
-                        Reaction.target_id == p.id,
-                    )
-                )
-            )
-            liked_by_me = r_res.scalar_one_or_none() is not None
+        liked_by_me = p.id in liked_post_ids
 
         response.append(
             PostResponse(
