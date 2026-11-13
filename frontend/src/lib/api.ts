@@ -530,6 +530,24 @@ export async function createProject(payload: any): Promise<ProjectItem> {
   return created;
 }
 
+export async function requestToJoinProject(projectId: string, payload: { pitch_note: string; role_title?: string }): Promise<{ message: string }> {
+  return await request<{ message: string }>(`/projects/${projectId}/join-request`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getProjectTasks(projectId: string): Promise<TaskItem[]> {
+  return await request<TaskItem[]>(`/projects/${projectId}/tasks`);
+}
+
+export async function createProjectTask(projectId: string, title: string): Promise<TaskItem> {
+  return await request<TaskItem>(`/projects/${projectId}/tasks`, {
+    method: 'POST',
+    body: JSON.stringify({ title, status: 'TODO' }),
+  });
+}
+
 export async function getEvents(): Promise<EventItem[]> {
   try {
     return await request<EventItem[]>('/events');
