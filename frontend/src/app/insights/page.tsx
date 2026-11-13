@@ -21,7 +21,10 @@ type Summary = {
   public_communities: number;
   searches: number;
   search_to_profile_open_rate: number | null;
+  search_to_connection_rate: number | null;
+  weekly_retention_rate: number | null;
   average_feed_load_ms: number | null;
+  feed_load_p75_ms: number | null;
   feed_load_samples: number;
   top_interests: { topic: string; students: number }[];
   active_communities: { id: string; name: string; posts_in_period: number }[];
@@ -49,7 +52,10 @@ export default function InsightsPage() {
     { label: 'Community connections · 30d', value: summary.connections_created, icon: MessageCircle },
     { label: 'Searches · 30d', value: summary.searches, icon: Search },
     { label: 'Searchers who opened a profile', value: summary.search_to_profile_open_rate === null ? 'No data' : `${summary.search_to_profile_open_rate}%`, icon: Users },
+    { label: 'Search-to-connection overlap', value: summary.search_to_connection_rate === null ? 'No data' : `${summary.search_to_connection_rate}%`, icon: MessageCircle },
+    { label: 'Weekly retention', value: summary.weekly_retention_rate === null ? 'No data' : `${summary.weekly_retention_rate}%`, icon: Activity },
     { label: 'Average feed load', value: summary.average_feed_load_ms === null ? 'No data' : `${summary.average_feed_load_ms.toLocaleString()} ms`, icon: Gauge },
+    { label: 'Feed load p75', value: summary.feed_load_p75_ms === null ? 'No data' : `${summary.feed_load_p75_ms.toLocaleString()} ms`, icon: Gauge },
     { label: 'Feed timing samples', value: summary.feed_load_samples, icon: Activity },
     { label: 'Weekly retention', value: summary.weekly_retention_rate === null ? 'No data' : `${summary.weekly_retention_rate}%`, icon: Activity },
     { label: 'Searchers who connected', value: summary.search_to_connection_rate === null ? 'No data' : `${summary.search_to_connection_rate}%`, icon: Users },
