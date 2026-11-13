@@ -25,9 +25,9 @@ export default function RootLayout({
       </head>
       <body className="bg-[#F5F6FD] dark:bg-[#0E0F1A] text-[#1A1C29] dark:text-[#F5F6FD] antialiased">
         <GlobalHeader />
-        <div className="flex max-w-7xl mx-auto w-full min-h-[calc(100vh-4rem)]">
+        <div className="flex items-start max-w-7xl mx-auto w-full min-h-[calc(100svh-4rem)]">
           <NavigationSidebar />
-          <main className="flex-1 p-4 md:p-6 lg:p-8 pb-20 md:pb-8 overflow-y-auto w-full max-w-full">
+          <main className="flex-1 min-w-0 p-4 md:p-6 lg:p-8 pb-24 md:pb-8 w-full max-w-full">
             {children}
           </main>
         </div>
