@@ -23,7 +23,7 @@ Surface = Literal["landing", "city", "campus", "commons", "build", "discover", "
 
 class AnalyticsEventInput(BaseModel):
     event_name: Literal[
-        "page_view", "search_performed", "profile_opened", "feed_loaded",
+        "page_view", "search_performed", "profile_opened", "feed_load_completed", "connection_created",
         "feed_load_completed", "connection_created", "post_created", "project_created",
         "event_rsvp", "community_joined", "circle_created",
     ]
@@ -106,6 +106,12 @@ async def analytics_summary(
         select(func.count(AnalyticsEvent.id)).where(
             AnalyticsEvent.created_at >= since,
             AnalyticsEvent.event_name == "event_rsvp",
+        )
+    )
+    connections_created = await scalar(
+        select(func.count(AnalyticsEvent.id)).where(
+            AnalyticsEvent.created_at >= since,
+            AnalyticsEvent.event_name == "connection_created",
         )
     )
     public_communities = await scalar(
@@ -202,6 +208,7 @@ async def analytics_summary(
         "projects_created": projects_created,
         "events_created": events_created,
         "event_rsvps": event_rsvps,
+        "connections_created": connections_created,
         "public_communities": public_communities,
         "searches": searches,
         "search_to_profile_open_rate": search_to_profile_open_rate,
