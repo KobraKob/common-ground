@@ -62,3 +62,32 @@ async def test_verification_request_creates_pending_claim(client: AsyncClient, d
     assert claim.college_id == college.id
     assert claim.institutional_email == "student@college.edu.in"
     assert claim.status == "PENDING"
+
+
+@pytest.mark.asyncio
+async def test_verification_rejects_unlisted_institutional_email_domain(client: AsyncClient, db_session):
+    user = User(id="verification-domain-student", email="domain@student.test", platform_role="USER")
+    college = College(
+        id="verification-domain-college",
+        name="Domain Verification College",
+        slug="verification-domain-college",
+        short_name="DVC",
+        city="Bengaluru",
+        state="Karnataka",
+        email_domains=["domaincollege.edu.in"],
+    )
+    profile = StudentProfile(
+        user_id=user.id,
+        handle="verificationdomainstudent",
+        display_name="Domain Verification Student",
+        college_id=college.id,
+    )
+    db_session.add_all([user, college, profile])
+    await db_session.commit()
+
+    response = await client.post(
+        "/api/v1/profiles/verify/request",
+        json={"college_id": college.id, "institutional_email": "student@gmail.com"},
+        headers={"X-User-Id": user.id},
+    )
+    assert response.status_code == 400
