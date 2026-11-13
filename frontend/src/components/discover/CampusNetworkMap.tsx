@@ -71,6 +71,6 @@ export function CampusNetworkMap({ colleges }: { colleges: College[] }) {
       </div>
       <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selected.name + ', ' + selected.city + ', Bengaluru, India')}`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-[var(--cg-elevated)] px-4 text-sm font-medium hover:bg-[var(--cg-accent)] hover:text-white">Open directions <ExternalLink size={15}/></a>
     </div>}
-    <p className="border-t border-[var(--cg-border)] px-5 py-3 text-xs cg-muted">Map data © OpenStreetMap contributors. Pins show approximate campus locations, not official entrances. Verify directions with the institution before travelling.</p>
+    <p className="border-t border-[var(--cg-border)] px-5 py-3 text-xs cg-muted">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>. Pins show approximate campus locations, not official entrances. Verify directions with the institution before travelling.</p>
   </section>;
 }
