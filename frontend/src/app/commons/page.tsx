@@ -21,90 +21,10 @@ import { Post, ResourceItem } from '@/types';
 import { ReportModal } from '@/components/shared/ReportModal';
 import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
 
-// Starter questions to guarantee a rich first visit
-const STARTER_COMMONS_POSTS: Post[] = [
-  {
-    id: 'starter-commons-1',
-    author_id: 'aarav-rvce',
-    author_name: 'Aarav Patel',
-    author_handle: 'aarav_builder',
-    college_name: 'RV College of Engineering',
-    author_verification: 'STAGE_3_INSTITUTIONAL_VERIFIED',
-    category: 'QUESTION_QA',
-    title: 'How to prepare for Autonomous 3rd Sem Data Structures exams?',
-    body: 'Looking for reliable past notes and important algorithm problems (Trees, Graphs, Sorting). Any RVCE or PESU seniors have pointers on faculty marking keys?',
-    accepted_answer_comment_id: 'ans-1',
-    upvotes_count: 34,
-    comments_count: 8,
-    shares_count: 12,
-    is_cross_campus: true,
-    is_pinned: false,
-    tags: ['DSA', 'Academics', 'VTU'],
-    created_at: new Date(Date.now() - 3600000 * 16).toISOString(),
-  },
-  {
-    id: 'starter-commons-2',
-    author_id: 'diya-pesu',
-    author_name: 'Diya Sharma',
-    author_handle: 'diya_design',
-    college_name: 'PES University',
-    author_verification: 'STAGE_3_INSTITUTIONAL_VERIFIED',
-    category: 'QUESTION_QA',
-    title: 'Recommended design systems and Figma component libraries for student hackathons?',
-    body: 'Building our presentation demo this weekend. What free open-source component systems work fastest with Next.js and Tailwind without heavy setup overhead?',
-    upvotes_count: 22,
-    comments_count: 5,
-    shares_count: 7,
-    is_cross_campus: true,
-    is_pinned: false,
-    tags: ['UIUX', 'Figma', 'Nextjs'],
-    created_at: new Date(Date.now() - 3600000 * 30).toISOString(),
-  },
-];
-
-const STARTER_RESOURCES: ResourceItem[] = [
-  {
-    id: 'starter-res-1',
-    uploader_id: 'aarav-rvce',
-    uploader_name: 'Aarav Patel (RVCE)',
-    title: 'Data Structures & Algorithms Semester Blueprint',
-    description: 'Comprehensive handwritten lecture notes covering trees, graphs, sorting, and asymptotic analysis for autonomous VTU colleges.',
-    subject_tags: ['DSA', 'VTU', 'Algorithms'],
-    file_url: 'https://example.com/dsa-notes.pdf',
-    is_pinned: true,
-    is_public_commons: true,
-    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-  },
-  {
-    id: 'starter-res-2',
-    uploader_id: 'diya-pesu',
-    uploader_name: 'Diya Sharma (PESU)',
-    title: 'Computer Networks Packet Tracer Lab Manual',
-    description: 'Step-by-step configurations for OSPF, VLAN trunking, and subnetting topologies with verified screenshots and test captures.',
-    subject_tags: ['Networks', 'Labs', 'Cisco'],
-    file_url: 'https://example.com/cn-lab.pdf',
-    is_pinned: false,
-    is_public_commons: true,
-    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
-  },
-  {
-    id: 'starter-res-3',
-    uploader_id: 'kavya-bmsce',
-    uploader_name: 'Kavya Rao (BMSCE)',
-    title: 'Microcontroller & Embedded Systems Lab Prep Guide',
-    description: 'ARM Cortex M4 assembly routines, timer interrupts, and ADC interfacing examples tested on lab hardware benches.',
-    subject_tags: ['Embedded', 'ARM', 'Hardware'],
-    file_url: 'https://example.com/embedded-lab.pdf',
-    is_pinned: false,
-    is_public_commons: true,
-    created_at: new Date(Date.now() - 3600000 * 72).toISOString(),
-  },
-];
-
 export default function CommonsPage() {
   const [activeTab, setActiveTab] = useState<'qa' | 'resources'>('qa');
-  const [posts, setPosts] = useState<Post[]>(STARTER_COMMONS_POSTS);
-  const [resources, setResources] = useState<ResourceItem[]>(STARTER_RESOURCES);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [resources, setResources] = useState<ResourceItem[]>([]);
   const [searchFilter, setSearchFilter] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
@@ -140,7 +60,7 @@ export default function CommonsPage() {
           setResources(STARTER_RESOURCES);
         }
       } catch (err) {
-        console.warn('Using starter commons data:', err);
+        console.warn('Could not load the knowledge commons:', err);
       } finally {
         setLoading(false);
       }
