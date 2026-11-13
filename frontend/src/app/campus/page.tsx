@@ -91,6 +91,13 @@ export default function CampusPage() {
   const [reportTarget, setReportTarget] = useState<{ id: string; type: any; title: string } | null>(null);
 
   useEffect(() => {
+    const requestedCampus = new URLSearchParams(window.location.search).get('college');
+    if (requestedCampus && BENGALURU_COLLEGES.some((item) => item.slug === requestedCampus)) {
+      setSelectedSlug(requestedCampus);
+    }
+  }, []);
+
+  useEffect(() => {
     let isCancelled = false;
     async function loadData() {
       setLoading(true);
