@@ -243,6 +243,16 @@ export interface TaskItem {
   created_at: string;
 }
 
+export interface ProjectJoinRequestItem {
+  member_id: string;
+  user_id: string;
+  display_name: string;
+  handle: string;
+  role_title: string;
+  pitch_note?: string | null;
+  requested_at: string;
+}
+
 export interface ProjectMemberItem {
   user_id: string;
   display_name: string;
