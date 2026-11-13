@@ -520,22 +520,6 @@ async def send_message(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    body = payload.body.strip()
-    if not body:
-        raise HTTPException(status_code=422, detail="Message cannot be empty")
-    if len(body) > 5000:
-        raise HTTPException(status_code=422, detail="Message exceeds the 5000 character limit")
-
-    recent_since = datetime.now(timezone.utc) - timedelta(minutes=1)
-    recent_count_result = await db.execute(
-        select(func.count(Message.id)).where(
-            Message.sender_id == user.id,
-            Message.created_at >= recent_since,
-        )
-    )
-    if int(recent_count_result.scalar() or 0) >= 30:
-        raise HTTPException(status_code=429, detail="Message rate limit reached. Try again shortly.")
-
     if user.is_suspended:
         raise HTTPException(status_code=403, detail="Suspended accounts cannot send messages")
 
