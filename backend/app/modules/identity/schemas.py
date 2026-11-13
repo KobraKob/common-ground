@@ -26,9 +26,9 @@ class ProfileUpdateRequest(BaseModel):
     skills: Optional[List[str]] = None
     interests: Optional[List[str]] = None
     collaboration_goals: Optional[List[str]] = None
-    profile_visibility: Optional[str] = None
+    profile_visibility: Optional[Literal['PUBLIC', 'CAMPUS_ONLY', 'SHARED_COMMUNITIES_ONLY']] = None
     show_course_year: Optional[bool] = None
-    dm_permission: Optional[str] = None
+    dm_permission: Optional[Literal['EVERYONE', 'SAME_CAMPUS_OR_COMMUNITY', 'NONE']] = None
 
 
 class VerificationClaimRequest(BaseModel):
