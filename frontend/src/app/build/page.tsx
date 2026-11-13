@@ -42,6 +42,8 @@ export default function BuildPage() {
   }, []);
 
   const visibleProjects = useMemo(() => filter === 'ALL' ? projects : projects.filter((project) => project.stage === filter), [projects, filter]);
+  const currentUserId = profile?.user_id || '';
+  const isWorkspaceLead = Boolean(workspace && currentUserId && workspace.creator_id === currentUserId);
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -94,7 +96,7 @@ export default function BuildPage() {
       const updated = await updateProjectTask(workspace.id, task.id, changes);
       setTasks((current) => current.map((item) => item.id === updated.id ? updated : item));
     } catch (error: any) {
-      setNotice(error?.detail || 'Could not update this task.');
+      setWorkspaceError(error?.detail || 'Could not update this task.');
     } finally { setTaskBusy(false); }
   }
 
@@ -105,7 +107,7 @@ export default function BuildPage() {
     try {
       const task = await createProjectTask(workspace.id, taskTitle.trim(), selectedAssignee || profile?.user_id);
       setTasks((current) => [...current, task]); setTaskTitle('');
-    } catch (error: any) { setNotice(error?.detail || 'Only project members can add tasks.'); }
+    } catch (error: any) { setWorkspaceError(error?.detail || 'Only project members can add tasks.'); }
     finally { setTaskBusy(false); }
   }
 
@@ -151,18 +153,18 @@ export default function BuildPage() {
         <section><h3 className="font-semibold">Team</h3>{members.length ? <ul className="mt-3 flex flex-wrap gap-2">{members.map((member)=><li key={member.user_id} className="rounded-full bg-[var(--cg-elevated)] px-3 py-1.5 text-xs">{member.display_name} · {member.role_title}</li>)}</ul> : <p className="mt-2 text-sm cg-muted">Accepted team members will appear here.</p>}</section>
         <section><h3 className="font-semibold">Tasks</h3>{workspaceError && <p role="alert" className="text-sm text-[var(--cg-danger)]">{workspaceError}</p>}
           {tasks.length ? <div className="mt-3 space-y-2">{tasks.map((task)=><div key={task.id} className="grid gap-2 rounded-xl bg-[var(--cg-elevated)] p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-            <div className="min-w-0"><p className="text-sm font-medium">{task.title}</p><p className="mt-1 text-xs cg-muted">Assigned to {members.find((member)=>member.user_id===task.assignee_id)?.display_name || (task.assignee_id===profile?.user_id ? profile.display_name : 'Unassigned')}</p></div>
+            <div className="min-w-0"><p className="text-sm font-medium">{task.title}</p><p className="mt-1 text-xs cg-muted">Assigned to {members.find((member)=>member.user_id===task.assignee_id)?.display_name || (task.assignee_id===currentUserId ? (profile?.display_name || 'You') : 'Unassigned')}</p></div>
             <div className="flex flex-wrap gap-2">
-              <select aria-label={`Status for ${task.title}`} value={task.status} disabled={taskBusy || (workspace.creator_id!==profile?.user_id && task.assignee_id!==profile?.user_id)} onChange={(event)=>changeTask(task,{status:event.target.value as TaskItem['status']})} className="celestial-input min-h-10 px-2 text-xs">
+              <select aria-label={`Status for ${task.title}`} value={task.status} disabled={taskBusy || (!isWorkspaceLead && task.assignee_id!==profile?.user_id)} onChange={(event)=>changeTask(task,{status:event.target.value as TaskItem['status']})} className="celestial-input min-h-10 px-2 text-xs">
                 <option value="TODO">To do</option><option value="IN_PROGRESS">In progress</option><option value="DONE">Done</option>
               </select>
-              {workspace.creator_id===profile?.user_id && <select aria-label={`Assignee for ${task.title}`} value={task.assignee_id || ''} disabled={taskBusy} onChange={(event)=>changeTask(task,{assignee_id:event.target.value || null})} className="celestial-input min-h-10 max-w-44 px-2 text-xs">
+              {isWorkspaceLead && <select aria-label={`Assignee for ${task.title}`} value={task.assignee_id || ''} disabled={taskBusy} onChange={(event)=>changeTask(task,{assignee_id:event.target.value || null})} className="celestial-input min-h-10 max-w-44 px-2 text-xs">
                 <option value="">Unassigned</option>{members.map((member)=><option key={member.user_id} value={member.user_id}>{member.display_name}</option>)}
               </select>}
             </div>
           </div>)}</div> : <p className="mt-2 text-sm cg-muted">No tasks yet. Add the first milestone below.</p>}
           <form onSubmit={addTask} className="mt-3 flex flex-wrap gap-2"><input value={taskTitle} onChange={(e)=>setTaskTitle(e.target.value)} minLength={2} placeholder="Add a task or milestone" className="celestial-input min-w-0 flex-1 px-3"/>
-            {workspace.creator_id===profile?.user_id && <select aria-label="Assign new task to" value={selectedAssignee} onChange={(e)=>setSelectedAssignee(e.target.value)} className="celestial-input min-h-11 max-w-44 px-2 text-xs"><option value={profile.user_id}>Assign to me</option>{members.filter((member)=>member.user_id!==profile.user_id).map((member)=><option key={member.user_id} value={member.user_id}>{member.display_name}</option>)}</select>}
+            {workspace.creator_id===profile?.user_id && <select aria-label="Assign new task to" value={selectedAssignee} onChange={(e)=>setSelectedAssignee(e.target.value)} className="celestial-input min-h-11 max-w-44 px-2 text-xs"><option value={currentUserId}>Assign to me</option>{members.filter((member)=>member.user_id!==currentUserId).map((member)=><option key={member.user_id} value={member.user_id}>{member.display_name}</option>)}</select>}
             <button disabled={taskBusy} className="min-h-11 rounded-full bg-[var(--cg-accent)] px-4 text-sm font-semibold text-white">{taskBusy?'Saving…':'Add task'}</button>
           </form>
         </section>
