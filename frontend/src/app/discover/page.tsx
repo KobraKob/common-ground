@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Building2, CalendarDays, Compass, ExternalLink, Layers3, MapPin, Users } from 'lucide-react';
-import { getColleges, getCommunities, getEvents, getProjects, getMyProfile, joinCommunity, rsvpEvent } from '@/lib/api';
+import { getColleges, getCommunities, getEvents, getProjects, getMyProfile, joinCommunity, createCommunity, rsvpEvent } from '@/lib/api';
 import type { College, Community, EventItem, ProjectItem, StudentProfile } from '@/types';
 
 type Section = 'campuses' | 'circles' | 'projects' | 'events';
@@ -16,7 +16,7 @@ export default function DiscoverPage() {
   const [events, setEvents] = useState<EventItem[]>([]);\n  const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState('');
-  const [notice, setNotice] = useState('');\n  const [matchSkillsOnly, setMatchSkillsOnly] = useState(false);
+  const [notice, setNotice] = useState('');\n  const [matchSkillsOnly, setMatchSkillsOnly] = useState(false);\n  const [showCircleForm, setShowCircleForm] = useState(false);\n  const [circleName, setCircleName] = useState('');\n  const [circleDescription, setCircleDescription] = useState('');
 
   useEffect(() => {
     let live = true;
@@ -52,6 +52,22 @@ export default function DiscoverPage() {
     finally { setBusyId(''); }
   }
 
+  async function handleCreateCircle(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const cleanName = circleName.trim();
+    const cleanDescription = circleDescription.trim();
+    if (cleanName.length < 2 || !cleanDescription) return;
+    setBusyId('create'); setNotice('');
+    const slug = cleanName.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Math.random().toString(36).slice(2, 7);
+    try {
+      const created = await createCommunity({ name: cleanName, slug, description: cleanDescription, community_type: 'CROSS_CAMPUS_INTEREST', visibility: 'PUBLIC' });
+      setCircles((current) => [created, ...current]);
+      setCircleName(''); setCircleDescription(''); setShowCircleForm(false);
+      setNotice('Your circle is live. Invite students who share the interest.');
+    } catch { setNotice('Could not create the circle. Sign in and try again.'); }
+    finally { setBusyId(''); }
+  }
+
   return (
     <div className="cg-page space-y-8">
       <header className="max-w-3xl space-y-3">
@@ -77,14 +93,18 @@ export default function DiscoverPage() {
             </article>)}
           </section>}
 
-          {section === 'circles' && <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {section === 'circles' && <section className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">CommonGround Circles</h2><p className="text-sm cg-muted">Small interest-led communities connecting students across colleges.</p></div><button type="button" onClick={() => setShowCircleForm(!showCircleForm)} className="min-h-11 rounded-full bg-[var(--cg-accent)] px-4 text-sm font-semibold text-white">{showCircleForm ? 'Close form' : 'Create a circle'}</button></div>
+            {showCircleForm && <form onSubmit={handleCreateCircle} className="cg-surface grid gap-3 p-5 sm:grid-cols-2"><label className="text-sm font-medium">Circle name<input required minLength={2} maxLength={150} value={circleName} onChange={(e) => setCircleName(e.target.value)} placeholder="Bengaluru Photography Circle" className="celestial-input mt-2 w-full px-3"/></label><label className="text-sm font-medium sm:row-span-2">What is this circle about?<textarea required value={circleDescription} onChange={(e) => setCircleDescription(e.target.value)} rows={3} placeholder="Describe the shared interest and what members can do together." className="celestial-input mt-2 w-full resize-y px-3 py-2"/></label><div className="flex items-end"><button disabled={busyId === 'create'} className="min-h-11 rounded-full bg-[var(--cg-accent)] px-5 text-sm font-semibold text-white disabled:opacity-50">{busyId === 'create' ? 'Creating…' : 'Create public circle'}</button></div></form>}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {circles.map((circle) => <article key={circle.id} className="cg-surface flex flex-col p-5">
               <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--cg-elevated)] text-[var(--cg-accent)]"><Users size={20}/></span>
               <h2 className="text-lg font-semibold">{circle.name}</h2><p className="mt-2 flex-1 text-sm leading-6 cg-muted">{circle.description}</p>
               <p className="mt-4 text-xs cg-muted">{circle.member_count} members · Cross-campus circle</p>
               <button disabled={busyId === circle.id} onClick={() => joinCircle(circle)} className="mt-4 min-h-11 rounded-full bg-[var(--cg-accent)] px-4 text-sm font-semibold text-white disabled:opacity-50">{busyId === circle.id ? 'Joining…' : 'Join circle'}</button>
             </article>)}
-            {circles.length === 0 && <Empty title="No public circles yet" body="Interest circles will appear here as students create them. Explore campus communities in the meantime."/>}
+            {circles.length === 0 && <Empty title="No public circles yet" body="Create the first interest-led community and invite students from other campuses."/>}
+            </div>
           </section>}
 
           {section === 'projects' && <section className="grid gap-3 lg:grid-cols-2">
