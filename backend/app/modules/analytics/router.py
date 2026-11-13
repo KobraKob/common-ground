@@ -18,14 +18,14 @@ from app.modules.projects.models import Project
 
 router = APIRouter(prefix="/analytics", tags=["Product analytics"])
 
-Surface = Literal["landing", "city", "campus", "commons", "build", "discover", "messages", "profile", "passport", "search"]
+Surface = Literal["landing", "city", "campus", "commons", "build", "discover", "messages", "profile", "passport", "search", "mentorship", "insights", "privacy", "terms"]
 
 
 class AnalyticsEventInput(BaseModel):
     event_name: Literal[
         "page_view", "search_performed", "profile_opened", "feed_loaded",
-        "post_created", "project_created", "event_rsvp", "community_joined",
-        "circle_created",
+        "feed_load_completed", "connection_created", "post_created", "project_created",
+        "event_rsvp", "community_joined", "circle_created",
     ]
     surface: Optional[Surface] = None
     duration_ms: Optional[float] = Field(default=None, ge=0, le=120000)
