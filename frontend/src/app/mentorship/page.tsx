@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, BookOpen, CalendarClock, Check, ShieldCheck, UserRound, Users } from 'lucide-react';
 import {
   createMentorshipRequest,
+  getActiveProfile,
   getMentors,
   getMyMentorshipProfile,
   getMyMentorshipRequests,
@@ -33,6 +34,7 @@ type MentorshipHub = {
 
 export default function MentorshipPage() {
   const queryClient = useQueryClient();
+  const cacheScope = getActiveProfile()?.user_id || 'anonymous';
   const [signedIn, setSignedIn] = useState(false);
   const [topicFilter, setTopicFilter] = useState('');
   const [isAvailable, setIsAvailable] = useState(false);
@@ -48,7 +50,7 @@ export default function MentorshipPage() {
   useEffect(() => { setSignedIn(isAuthenticated()); }, []);
 
   const hubQuery = useQuery<MentorshipHub>({
-    queryKey: ['mentorship', 'hub'],
+    queryKey: ['mentorship', 'hub', cacheScope],
     enabled: signedIn,
     queryFn: async () => {
       const [mentors, profile, requests] = await Promise.all([
@@ -93,7 +95,7 @@ export default function MentorshipPage() {
         availability_note: availabilityNote.trim(),
         format,
       });
-      await queryClient.invalidateQueries({ queryKey: ['mentorship', 'hub'] });
+      await queryClient.invalidateQueries({ queryKey: ['mentorship', 'hub', cacheScope] });
       setNotice(isAvailable ? 'Your opt-in mentor profile is saved.' : 'Your mentor profile is hidden from discovery.');
     } catch (error: any) {
       setNotice(error?.detail || 'Could not save your mentorship profile. Check that your student profile is public.');
