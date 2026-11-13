@@ -19,7 +19,7 @@ Prioritise meaningful collaboration and repeat utility over vanity engagement me
 - Standardised campus hero presentation and removed the decorative radial glow.
 
 ### Discovery and student value
-- Added a live discovery hub for campuses, cross-campus interest circles, projects, events and community-submitted opportunities.
+- Added a live discovery hub for campuses, cross-campus interest circles, projects, events, opportunities and opt-in peer mentorship.
 - Added an interactive OpenStreetMap campus network with source-linked approximate campus-centre pins, accessible pin selection, campus detail links and external directions.
 - Added public circle creation and joining through the existing community service.
 - Added exact skill-tag matching for projects and opportunity posts. This is deterministic matching, not an opaque AI score.
@@ -27,6 +27,7 @@ Prioritise meaningful collaboration and repeat utility over vanity engagement me
 - Added a durable event-attendance ledger. Only event organizers can mark a GOING RSVP as attended, only after the event ends; RSVP alone never counts as attendance.
 - Added opt-in peer mentorship with public-profile eligibility, explicit availability, topic matching, contact-permission checks, block checks, private requests and accept/decline/cancel controls.
 - Added a Build workspace with project creation, join requests, accepted-member roster, task creation, task status controls and project-lead assignment permissions.
+- Added opt-in peer mentorship with mentor availability, topic matching, contact-permission enforcement, request acceptance/decline/cancellation and private request history.
 - Added a moderator-only Campus Intelligence page with aggregated activity and platform inventory metrics.
 - Removed client-side fallback content that presented invented posts, resources, announcements, events or community counts as real activity.
 
@@ -40,6 +41,7 @@ Prioritise meaningful collaboration and repeat utility over vanity engagement me
 - Enforced campus-only project join restrictions server-side.
 - Protected runtime metrics and metric reset endpoints behind moderator/admin authorization.
 - Added privacy-limited authenticated analytics events. Only allowlisted event names and coarse product surfaces are accepted; no free-form search terms, message content or personal activity payloads are collected.
+- Migrated discovery and city feed to account-scoped TanStack Query caching, infinite pagination and window-based virtualization. GET requests no longer send an unnecessary JSON content type.
 - Added moderator-only aggregated analytics and performance indexes for discovery, collaboration and analytics query paths.
 - Removed feed N+1 queries by joining author/community/college data and batching reaction lookups.
 - Replaced resource uploader N+1 lookups with one joined query and bounded resource pagination.
