@@ -55,21 +55,40 @@ export function GlobalHeader() {
     }
   };
 
-  const handleSearch = async (val: string) => {
+  const handleSearch = (val: string) => {
     setSearchQuery(val);
-    if (val.trim().length >= 2) {
-      setIsSearching(true);
-      try {
-        const results = await unifiedSearch(val);
-        setSearchResults(results);
-      } catch (err) {
-        console.error(err);
-      }
-    } else {
+    if (val.trim().length < 2) {
       setSearchResults(null);
       setIsSearching(false);
+    } else {
+      setIsSearching(true);
     }
   };
+
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < 2) return;
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const results = await unifiedSearch(query, controller.signal);
+        if (!controller.signal.aborted) setSearchResults(results);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error('Search failed:', error);
+          setSearchResults(null);
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsSearching(false);
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [searchQuery]);
 
   const handleSignOut = () => {
     clearAuthSession();
