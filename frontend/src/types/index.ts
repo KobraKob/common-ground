@@ -199,6 +199,7 @@ export interface Conversation {
   created_at: string;
   last_message_at: string;
   last_message?: string;
+  member_role?: 'OWNER' | 'MODERATOR' | 'MEMBER';
 }
 
 export interface MessageItem {
