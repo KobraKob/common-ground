@@ -37,8 +37,8 @@ const stories = [
 
 const verificationLevels = [
   { label: 'Self-reported', detail: 'College affiliation selected, not yet confirmed', icon: Users, className: 'text-[var(--cg-muted)]' },
-  { label: 'Vouched', detail: 'Confirmed by trusted campus members', icon: CheckCircle2, className: 'text-sky-400' },
-  { label: 'Verified', detail: 'Institutional email confirmed', icon: ShieldCheck, className: 'text-emerald-400' },
+  { label: 'Vouched', detail: 'Confirmed by trusted campus members', icon: CheckCircle2, className: 'text-[var(--cg-info)]' },
+  { label: 'Verified', detail: 'Institutional email confirmed', icon: ShieldCheck, className: 'text-[var(--cg-success)]' },
   { label: 'Official', detail: 'Authorized college or department account', icon: Building2, className: 'text-[var(--cg-text)]' },
 ];
 
