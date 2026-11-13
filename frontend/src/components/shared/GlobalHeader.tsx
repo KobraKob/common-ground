@@ -26,29 +26,30 @@ export function GlobalHeader() {
   const [searchResults, setSearchResults] = useState<any>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const [isTwilight, setIsTwilight] = useState(false);
+  const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('system');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setIsLoggedIn(isAuthenticated());
-      const storedAtmosphere = localStorage.getItem('cg-atmosphere');
-      if (storedAtmosphere === 'twilight') {
-        setIsTwilight(true);
-        document.documentElement.classList.add('atmosphere-twilight');
-      }
+    setIsLoggedIn(isAuthenticated());
+    const savedTheme = localStorage.getItem('cg-theme');
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      setTheme(savedTheme);
+      document.documentElement.dataset.theme = savedTheme;
+    } else {
+      setTheme('system');
+      delete document.documentElement.dataset.theme;
     }
   }, []);
 
-  const toggleAtmosphere = () => {
-    const nextMode = !isTwilight;
-    setIsTwilight(nextMode);
-    if (nextMode) {
-      document.documentElement.classList.add('atmosphere-twilight');
-      localStorage.setItem('cg-atmosphere', 'twilight');
+  const toggleTheme = () => {
+    const nextTheme = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system';
+    setTheme(nextTheme);
+    if (nextTheme === 'system') {
+      localStorage.removeItem('cg-theme');
+      delete document.documentElement.dataset.theme;
     } else {
-      document.documentElement.classList.remove('atmosphere-twilight');
-      localStorage.setItem('cg-atmosphere', 'midnight');
+      localStorage.setItem('cg-theme', nextTheme);
+      document.documentElement.dataset.theme = nextTheme;
     }
   };
 
@@ -264,17 +265,14 @@ export function GlobalHeader() {
             {isMobileSearchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
           </button>
 
-          {/* Atmosphere Toggle */}
           <button
-            onClick={toggleAtmosphere}
-            className="p-2 rounded-full border border-white/15 bg-white/5 text-amber-300 hover:border-amber-400/50 transition-all"
-            title={isTwilight ? 'Switch to Deep Midnight' : 'Switch to Twilight Atmosphere'}
+            type="button"
+            onClick={toggleTheme}
+            className="min-h-11 min-w-11 rounded-full border border-white/15 bg-white/5 text-slate-300 transition-colors hover:text-white"
+            title={`Appearance: ${theme}. Click to cycle system, light and dark.`}
+            aria-label={`Appearance: ${theme}. Change theme`}
           >
-            {isTwilight ? (
-              <Orbit className="w-4 h-4 text-amber-400" />
-            ) : (
-              <Moon className="w-4 h-4 text-amber-300" />
-            )}
+            {theme === 'light' ? <Sun className="mx-auto h-4 w-4" /> : <Moon className="mx-auto h-4 w-4" />}
           </button>
         </div>
       </div>
