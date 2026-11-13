@@ -13,36 +13,36 @@ interface TrustBadgeProps {
 
 const TIER_DETAILS = {
   STAGE_1_PROVISIONAL: {
-    label: 'Provisional',
-    title: 'Provisional Student Account',
-    description: 'Registered with a personal email. College affiliation is self-reported and pending institutional verification.',
-    badgeClass: 'bg-white/5 border-white/15 text-slate-300',
+    label: 'Self-reported',
+    title: 'Self-reported affiliation',
+    description: 'Joined with a personal email. College affiliation has not been institutionally confirmed.',
+    badgeClass: 'bg-[var(--cg-elevated)] border-[var(--cg-border)] text-[var(--cg-muted)]',
     icon: ShieldAlert,
-    iconColor: 'text-amber-400',
+    iconColor: 'text-[var(--cg-muted)]',
   },
   STAGE_2_COMMUNITY_VALIDATED: {
-    label: 'Peer-Validated',
-    title: 'Peer-Validated Student',
-    description: 'Vouched for by campus club leads, ambassadors, or trusted peer invite codes.',
-    badgeClass: 'bg-amber-500/10 border-amber-400/30 text-amber-200',
+    label: 'Vouched',
+    title: 'Community vouched',
+    description: 'Confirmed by trusted campus representatives or a verified peer invitation.',
+    badgeClass: 'bg-sky-500/10 border-sky-500/25 text-sky-300',
     icon: CheckCircle2,
-    iconColor: 'text-amber-400',
+    iconColor: 'text-sky-400',
   },
   STAGE_3_INSTITUTIONAL_VERIFIED: {
-    label: 'Verified Student',
-    title: 'Institutional Verified Student',
-    description: 'Cryptographically authenticated with an official college email (.edu.in or .ac.in).',
-    badgeClass: 'bg-amber-500/15 border-amber-400/50 text-amber-300 font-semibold shadow-[0_0_12px_rgba(245,158,11,0.15)]',
+    label: 'Verified',
+    title: 'Institutionally verified student',
+    description: 'Institutional college email confirmed. This does not imply college endorsement.',
+    badgeClass: 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400 font-semibold',
     icon: ShieldCheck,
-    iconColor: 'text-amber-400',
+    iconColor: 'text-emerald-400',
   },
   STAGE_4_OFFICIAL_PARTNER: {
-    label: 'Official Campus',
-    title: 'Official Campus Account',
-    description: 'Verified department, college administration, or authorized student council.',
-    badgeClass: 'bg-amber-500/20 border-amber-400/60 text-amber-100 font-bold',
+    label: 'Official',
+    title: 'Official institution account',
+    description: 'An account authorized by a college, department or student council.',
+    badgeClass: 'bg-[var(--cg-elevated)] border-[var(--cg-border)] text-[var(--cg-text)] font-semibold',
     icon: Building2,
-    iconColor: 'text-amber-300',
+    iconColor: 'text-[var(--cg-text)]',
   },
 };
 
@@ -79,7 +79,7 @@ export function TrustBadge({
           setShowTooltip(!showTooltip);
         }}
         className={`neo-badge inline-flex items-center border transition-all duration-150 ${config.badgeClass} ${sizeClasses} ${
-          interactive ? 'cursor-pointer hover:border-amber-400/60' : 'cursor-default'
+          interactive ? 'min-h-11 cursor-pointer hover:border-[var(--cg-accent)]' : 'min-h-11 cursor-default'
         }`}
         title={config.title}
       >
@@ -101,9 +101,9 @@ export function TrustBadge({
               setShowTooltip(false);
             }}
           />
-          <div className="absolute left-0 top-full mt-2 z-50 w-64 p-4 rounded-xl bg-[#12151F] border border-white/15 shadow-2xl backdrop-blur-2xl text-left animate-entrance">
+          <div className="absolute left-0 top-full mt-2 z-50 w-64 p-4 rounded-xl bg-[var(--cg-surface)] border border-[var(--cg-border)] shadow-2xl text-left animate-entrance">
             <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="flex items-center gap-1.5 font-display text-xs font-bold text-white">
+              <div className="flex items-center gap-1.5 font-display text-xs font-semibold text-[var(--cg-text)]">
                 <Icon className={`w-3.5 h-3.5 ${config.iconColor}`} />
                 <span>{config.title}</span>
               </div>
@@ -113,12 +113,12 @@ export function TrustBadge({
                   e.stopPropagation();
                   setShowTooltip(false);
                 }}
-                className="text-slate-400 hover:text-white p-0.5"
+                className="text-[var(--cg-muted)] hover:text-[var(--cg-text)] p-0.5"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
-            <p className="text-[11px] font-sans text-slate-300 leading-relaxed">
+            <p className="text-[11px] font-sans cg-muted leading-relaxed">
               {config.description}
             </p>
           </div>
