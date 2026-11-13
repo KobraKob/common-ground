@@ -489,6 +489,10 @@ export async function sendMessage(conversationId: string, body: string): Promise
 // Projects & Events
 // ----------------------------------------------------
 
+export async function getMyProjects(): Promise<ProjectItem[]> {
+  return await request<ProjectItem[]>('/projects/mine');
+}
+
 export async function getProjects(): Promise<ProjectItem[]> {
   const res = await getProjectsPaginated({ limit: 50, offset: 0 });
   return res.items;
