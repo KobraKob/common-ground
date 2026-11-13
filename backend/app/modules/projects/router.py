@@ -593,6 +593,48 @@ async def create_event(
     )
 
 
+@router.get("/events/{event_id}/attendees")
+async def list_event_attendees(
+    event_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    event_result = await db.execute(select(Event).where(Event.id == event_id))
+    event = event_result.scalar_one_or_none()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the event organizer can view the RSVP list")
+
+    result = await db.execute(
+        select(
+            EventRSVP.user_id,
+            StudentProfile.display_name,
+            StudentProfile.handle,
+            EventAttendance.id,
+        )
+        .outerjoin(StudentProfile, StudentProfile.user_id == EventRSVP.user_id)
+        .outerjoin(
+            EventAttendance,
+            and_(
+                EventAttendance.event_id == EventRSVP.event_id,
+                EventAttendance.user_id == EventRSVP.user_id,
+            ),
+        )
+        .where(EventRSVP.event_id == event_id, EventRSVP.status == "GOING")
+        .order_by(EventRSVP.created_at.asc())
+    )
+    return [
+        {
+            "user_id": user_id,
+            "display_name": display_name or "Student",
+            "handle": handle or "",
+            "attended": attendance_id is not None,
+        }
+        for user_id, display_name, handle, attendance_id in result.all()
+    ]
+
+
 @router.post("/events/{event_id}/attendance/{attendee_id}")
 async def mark_event_attendance(
     event_id: str,
