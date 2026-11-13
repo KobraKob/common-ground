@@ -14,7 +14,8 @@ import {
   Compass,
   Building2,
   BookOpen,
-  Hammer
+  Hammer,
+  Menu
 } from 'lucide-react';
 import { 
   unifiedSearch, 
@@ -31,6 +32,7 @@ export function GlobalHeader() {
   const [searchResults, setSearchResults] = useState<any>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('system');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -108,6 +110,7 @@ export function GlobalHeader() {
       if (event.key === 'Escape') {
         setSearchResults(null);
         setIsMobileSearchOpen(false);
+        setIsMobileNavOpen(false);
       }
     };
     window.addEventListener('keydown', onShortcut);
@@ -125,7 +128,7 @@ export function GlobalHeader() {
 
   return (
     <header className="cg-header sticky top-0 z-40 w-full border-b border-[var(--cg-border)] bg-[var(--cg-bg)]/95 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-4 h-[52px] flex items-center justify-between gap-4">
         {/* Brand / Logo */}
         <div className="flex items-center gap-3 shrink-0">
           <Link href="/" className="flex items-center gap-2.5 group">
@@ -255,7 +258,7 @@ export function GlobalHeader() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-white/15 bg-white/5 hover:border-amber-400/50 text-xs font-mono text-slate-300 hover:text-white transition-all"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[var(--cg-border)] bg-[var(--cg-elevated)] text-sm text-[var(--cg-muted)] hover:text-[var(--cg-text)] transition-colors"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 <span>Sign In</span>
@@ -266,7 +269,7 @@ export function GlobalHeader() {
                 className="btn-campus-amber text-xs font-mono px-4 py-1.5 flex items-center gap-1 font-bold shadow-sm"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                <span>Join Free</span>
+                <span>Join</span>
               </Link>
             </div>
           ) : (
@@ -294,14 +297,27 @@ export function GlobalHeader() {
             </div>
           )}
 
-          {/* Mobile Search Button */}
-          <button
-            onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-            className="md:hidden p-2 rounded-full border border-white/15 bg-white/5 text-slate-300 hover:text-white transition-all"
-            title="Search"
-          >
-            {isMobileSearchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
-          </button>
+          {!isLoggedIn && (
+            <button
+              type="button"
+              onClick={() => setIsMobileNavOpen((open) => !open)}
+              className="md:hidden inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-[var(--cg-border)] bg-[var(--cg-elevated)] text-[var(--cg-text)]"
+              aria-label={isMobileNavOpen ? 'Close navigation' : 'Open navigation'}
+              aria-expanded={isMobileNavOpen}
+            >
+              {isMobileNavOpen ? <X size={19} /> : <Menu size={19} />}
+            </button>
+          )}
+          {isLoggedIn && (
+            <button
+              onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+              className="md:hidden p-2 rounded-full border border-[var(--cg-border)] bg-[var(--cg-elevated)] text-[var(--cg-muted)] hover:text-[var(--cg-text)] transition-colors"
+              title="Search"
+              aria-label="Search"
+            >
+              {isMobileSearchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+            </button>
+          )}
 
           <button
             type="button"
@@ -315,9 +331,26 @@ export function GlobalHeader() {
         </div>
       </div>
 
-      {!isLoggedIn && <nav aria-label="Public navigation" className="flex items-center gap-1 overflow-x-auto border-t border-[var(--cg-border)] px-3 py-1.5 lg:hidden">
-        {[['/city','City'],['/campus','Campuses'],['/commons','Q&A'],['/build','Build'],['/discover','Discover']].map(([href,label])=><Link key={href} href={href} className="min-h-10 shrink-0 rounded-full px-3 py-2 text-xs font-medium text-[var(--cg-muted)] hover:bg-[var(--cg-elevated)]">{label}</Link>)}
-      </nav>}
+      {!isLoggedIn && isMobileNavOpen && (
+        <div className="fixed inset-x-0 top-[52px] bottom-0 z-50 overflow-y-auto bg-[var(--cg-bg)] px-6 py-8 lg:hidden" role="dialog" aria-modal="true" aria-label="Site navigation">
+          <nav aria-label="Public navigation" className="flex flex-col">
+            {[
+              { href: '/city', label: 'City' },
+              { href: '/campus', label: 'Campuses' },
+              { href: '/commons', label: 'Q&A' },
+              { href: '/build', label: 'Build' },
+            ].map(({ href, label }) => (
+              <Link key={href} href={href} onClick={() => setIsMobileNavOpen(false)} className="flex min-h-16 items-center border-b border-[var(--cg-border)] text-2xl font-semibold tracking-tight">
+                {label}
+              </Link>
+            ))}
+          </nav>
+          <div className="mt-8 flex items-center gap-5 text-sm">
+            <Link href="/login" onClick={() => setIsMobileNavOpen(false)} className="cg-link min-h-11 inline-flex items-center font-semibold">Sign in</Link>
+            <Link href="/signup" onClick={() => setIsMobileNavOpen(false)} className="btn-campus-amber inline-flex min-h-11 items-center rounded-full px-5">Join free</Link>
+          </div>
+        </div>
+      )}
       {/* Expandable Mobile Search Drawer */}
       {isMobileSearchOpen && (
         <div className="md:hidden border-t border-white/10 px-4 py-3 bg-[#0A0C12]/95 backdrop-blur-2xl">
