@@ -26,6 +26,7 @@ export default function MessagesPage() {
   const [messageInput, setMessageInput] = useState('');
   const [messageSearch, setMessageSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState('');
   const [myProfile, setMyProfile] = useState<StudentProfile | null>(null);
 
   // Report modal
@@ -41,9 +42,11 @@ export default function MessagesPage() {
         ]);
         setConversations(convs || []);
         setMyProfile(prof);
-        if (convs && convs.length > 0) {
-          setSelectedConvId(convs[0].id);
-          const msgs = await getMessages(convs[0].id);
+        const requestedConversationId = new URLSearchParams(window.location.search).get('conversation');
+        const selectedConversation = (convs || []).find((conversation) => conversation.id === requestedConversationId) || (convs || [])[0];
+        if (selectedConversation) {
+          setSelectedConvId(selectedConversation.id);
+          const msgs = await getMessages(selectedConversation.id);
           setMessages(msgs || []);
         }
       } catch (err) {
@@ -70,10 +73,12 @@ export default function MessagesPage() {
     if (!messageInput.trim() || !selectedConvId) return;
     try {
       const newMsg = await sendMessage(selectedConvId, messageInput.trim());
-      setMessages([...messages, newMsg]);
+      setMessages((current) => [...current, newMsg]);
+      setConversations((current) => current.map((conversation) => conversation.id === selectedConvId ? { ...conversation, last_message: newMsg.body, last_message_at: newMsg.created_at } : conversation).sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()));
       setMessageInput('');
-    } catch {
-      alert('Failed to deliver message. Check connection.');
+      setNotice('');
+    } catch (error: any) {
+      setNotice(error?.detail || 'Message could not be delivered. Check your connection and contact permissions.');
     }
   };
 
@@ -87,7 +92,8 @@ export default function MessagesPage() {
   });
 
   return (
-    <div className="max-w-6xl mx-auto h-[calc(100vh-6.5rem)] flex flex-col">
+    <div className="cg-page max-w-6xl mx-auto h-[calc(100vh-6.5rem)] flex flex-col">
+      {notice && <p role="status" className="mb-3 rounded-xl border border-[var(--cg-border)] bg-[var(--cg-elevated)] p-3 text-sm">{notice}</p>}
       <div className="celestial-card flex-1 flex flex-col md:flex-row overflow-hidden border border-white/10 bg-[#12151F] rounded-xl shadow-2xl">
         {/* Left: Channels & Direct Messages Sidebar */}
         <div className="w-full md:w-80 border-r border-white/10 flex flex-col shrink-0 bg-[#0E1017]">
