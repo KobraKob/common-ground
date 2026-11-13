@@ -126,10 +126,10 @@ export default function CommonsPage() {
       {/* Commons Hero Banner */}
       <CampusHeroBanner
         title="Academic Commons"
-        badgeText="SEARCHABLE COURSE VAULT • VERIFIED"
+        badgeText="KNOWLEDGE COMMONS • STUDENT-SHARED"
         shortCode="COMMONS // Q&A"
-        subtitle="Search peer-verified exam blueprints, lecture summaries, and course solutions verified by students across Bengaluru campuses."
-        isOfficial={true}
+        subtitle="Ask questions, share study resources and learn from peers across Bengaluru campuses. Student-submitted content is not institutionally verified unless explicitly marked."
+        isOfficial={false}
         actionSlot={
           <button
             onClick={() => setShowAskModal(true)}
@@ -158,7 +158,7 @@ export default function CommonsPage() {
                 Academics Tip: Filter by your current semester subjects
               </div>
               <p className="text-xs font-sans text-slate-400 leading-relaxed">
-                Looking for syllabus-specific solutions? Tap a subject filter below to instantly view verified notes and accepted solutions.
+                Looking for syllabus-specific help? Filter by topic to find student-submitted notes and discussions. Check the source and syllabus before relying on shared material.
               </p>
             </div>
           </div>
@@ -307,7 +307,7 @@ export default function CommonsPage() {
                         <span>Accepted Senior Answer:</span>
                       </div>
                       <p className="text-xs text-amber-100 leading-relaxed font-sans">
-                        Focus on AVL tree rotations and Dijkstra graph implementations. Verified notes available in the Study Vault!
+                        This discussion has an accepted answer. Open the thread to review the community response.
                       </p>
                     </div>
                   )}
@@ -366,7 +366,7 @@ export default function CommonsPage() {
                   <div>
                     <div className="flex items-center justify-between mb-2.5">
                       <span className="neo-badge text-[9px] bg-white/5 text-slate-300 border-white/10">
-                        VERIFIED STUDY RESOURCE
+                        STUDENT-SHARED RESOURCE
                       </span>
                     </div>
                     <h3 className="font-display text-base font-bold text-[#F8F7FF] mb-1.5">
@@ -388,14 +388,12 @@ export default function CommonsPage() {
                     <span className="text-[11px] font-mono text-slate-400">
                       Shared by {res.uploader_name}
                     </span>
-                    {res.file_url && (
-                      <button
-                        onClick={() => alert('Accessing verified study notes...')}
-                        className="btn-campus-amber text-xs font-mono px-3.5 py-1.5 flex items-center gap-1.5 font-bold"
-                      >
+                    {(res.file_url || res.external_link) && (
+                      <a href={res.file_url || res.external_link} target="_blank" rel="noopener noreferrer"
+                        className="btn-campus-amber min-h-11 text-xs font-mono px-3.5 py-1.5 inline-flex items-center gap-1.5 font-bold">
                         <FolderDown className="w-3.5 h-3.5" />
-                        <span>Download</span>
-                      </button>
+                        <span>Open resource</span>
+                      </a>
                     )}
                   </div>
                 </div>
