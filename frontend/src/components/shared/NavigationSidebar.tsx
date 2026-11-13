@@ -3,19 +3,17 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, Compass, BookOpen, MessageSquare, Hammer, User, ShieldCheck, Map } from 'lucide-react';
+import { Building2, Compass, BookOpen, MessageSquare, User, ShieldCheck } from 'lucide-react';
 import { getActiveProfile, getMyProfile, isAuthenticated } from '@/lib/api';
 
 const desktopItems = [
   { href: '/city', label: 'City', icon: Compass },
   { href: '/campus', label: 'Campuses', icon: Building2 },
   { href: '/commons', label: 'Q&A', icon: BookOpen },
-  { href: '/build', label: 'Build', icon: Hammer },
-  { href: '/discover', label: 'Discover', icon: Map },
   { href: '/messages', label: 'Messages', icon: MessageSquare },
   { href: '/profile', label: 'Profile', icon: User },
 ];
-const mobileItems = desktopItems.filter((item) => ['/city','/discover','/build','/messages','/profile'].includes(item.href));
+const mobileItems = desktopItems;
 
 export function NavigationSidebar() {
   const pathname = usePathname();
