@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { 
   MessageSquare, 
   Megaphone, 
@@ -14,7 +15,7 @@ import {
   ShieldCheck,
   CheckCircle2
 } from 'lucide-react';
-import { getConversations, getMessages, sendMessage, getMyProfile } from '@/lib/api';
+import { getConversations, getMessages, sendMessage, getMyProfile, isAuthenticated } from '@/lib/api';
 import { Conversation, MessageItem, StudentProfile } from '@/types';
 import { ReportModal } from '@/components/shared/ReportModal';
 
@@ -26,6 +27,7 @@ export default function MessagesPage() {
   const [messageInput, setMessageInput] = useState('');
   const [messageSearch, setMessageSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [signedIn, setSignedIn] = useState(false);
   const [notice, setNotice] = useState('');
   const [myProfile, setMyProfile] = useState<StudentProfile | null>(null);
 
@@ -34,6 +36,9 @@ export default function MessagesPage() {
 
   useEffect(() => {
     async function loadData() {
+      const authenticated = isAuthenticated();
+      setSignedIn(authenticated);
+      if (!authenticated) { setLoading(false); return; }
       setLoading(true);
       try {
         const [convs, prof] = await Promise.all([
@@ -90,6 +95,10 @@ export default function MessagesPage() {
     if (messageSearch) return m.body.toLowerCase().includes(messageSearch.toLowerCase());
     return true;
   });
+
+  if (!loading && !signedIn) {
+    return <div className="cg-page"><section className="cg-surface mx-auto max-w-xl space-y-4 p-8 text-center"><MessageSquare className="mx-auto text-[var(--cg-accent)]" size={30}/><h1 className="text-2xl font-semibold">Your messages</h1><p className="text-sm cg-muted">Sign in to open conversations and message students who allow contact.</p><Link href="/login" className="btn-campus-amber inline-flex min-h-11 items-center rounded-full px-5">Sign in</Link></section></div>;
+  }
 
   return (
     <div className="cg-page max-w-6xl mx-auto h-[calc(100vh-6.5rem)] flex flex-col">
