@@ -81,6 +81,7 @@ async def create_direct_conversation(
     recipient_profile = recipient_profile_result.scalar_one_or_none()
     if not recipient_profile:
         raise HTTPException(status_code=404, detail="Student profile not found")
+    recipient_name = recipient_name
 
     if existing:
         return {
