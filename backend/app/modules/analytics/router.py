@@ -92,7 +92,7 @@ async def analytics_summary(
     )
     projects_created = await scalar(select(func.count(Project.id)).where(Project.created_at >= since))
     events_created = await scalar(select(func.count(Event.id)).where(Event.created_at >= since))
-    communities_total = await scalar(select(func.count(Community.id)).where(Community.visibility != "PRIVATE_INVITE_ONLY"))
+    communities_total = await scalar(select(func.count(Community.id)).where(Community.visibility == "PUBLIC"))
 
     return {
         "period_days": days,
