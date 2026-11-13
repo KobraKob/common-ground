@@ -585,10 +585,10 @@ export default function CityPage() {
                       </div>
                       <div>
                         <div className="text-xs font-mono font-bold text-white">
-                          {post.author_name || 'Student Builder'}
+                          {post.author_name || 'Student'}
                         </div>
                         <div className="text-[10px] font-mono text-slate-400">
-                          @{post.author_handle || 'student'} • {post.college_name || 'Bengaluru Campus'}
+                          @{post.author_handle || 'student'} • {post.college_name || 'College not listed'}
                         </div>
                       </div>
                     </div>
@@ -841,7 +841,7 @@ export default function CityPage() {
                 href="/messages"
                 className="btn-campus-amber text-xs font-mono py-2 text-center font-bold"
               >
-                Join Channel
+                Open messages
               </Link>
             </div>
           ))}
