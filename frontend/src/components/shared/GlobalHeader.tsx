@@ -5,15 +5,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   Search, 
-  Sparkles, 
   Moon, 
   Orbit, 
   X, 
   LogOut, 
   LogIn, 
-  UserPlus, 
-  Compass, 
-  Building2 
+  UserPlus
 } from 'lucide-react';
 import { 
   unifiedSearch, 
@@ -76,7 +73,6 @@ export function GlobalHeader() {
         if (!controller.signal.aborted) setSearchResults(results);
       } catch (error) {
         if (!controller.signal.aborted) {
-          console.error('Search failed:', error);
           setSearchResults(null);
         }
       } finally {
@@ -101,9 +97,9 @@ export function GlobalHeader() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-purple-500/20 bg-[#090420]/80 backdrop-blur-2xl">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
         {/* Brand / Logo */}
-        <div className="flex items-center gap-4 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
           <Link href="/" className="flex items-center gap-2.5 group">
             {/* Glowing Logo Icon */}
             <div className="relative w-9 h-9 rounded-2xl bg-gradient-to-br from-[#2E1065] to-[#120836] border border-amber-400/40 flex items-center justify-center text-[#FBBF24] shadow-[0_0_15px_rgba(251,191,36,0.35)] transition-transform group-hover:scale-105">
@@ -116,46 +112,26 @@ export function GlobalHeader() {
                   Common<em className="text-amber-300 not-italic">Ground</em>
                 </span>
                 <span className="hidden sm:inline-block neo-badge text-[9px] px-1.5 py-0.2 bg-amber-400/10 text-[#FDE68A] border-amber-400/30">
-                  BLR // 2026
+                  BLR
                 </span>
               </div>
               <span className="text-[9px] font-mono tracking-widest text-[#7C6FA6] uppercase hidden sm:block">
-                CROSS-CAMPUS NIGHT NETWORK
+                CROSS-CAMPUS STUDENT NETWORK
               </span>
             </div>
           </Link>
-
-          {/* Quick Direct Nav Tabs on Desktop */}
-          <nav className="hidden xl:flex items-center gap-1 pl-2">
-            <Link
-              href="/city"
-              className="px-3 py-1.5 rounded-xl text-xs font-mono text-[#C4B5FD] hover:text-[#FDE68A] hover:bg-purple-900/30 flex items-center gap-1.5 transition-colors"
-            >
-              <Compass className="w-3.5 h-3.5 text-amber-400" />
-              <span>City Pulse</span>
-            </Link>
-            <Link
-              href="/campus"
-              className="px-3 py-1.5 rounded-xl text-xs font-mono text-[#C4B5FD] hover:text-[#FDE68A] hover:bg-purple-900/30 flex items-center gap-1.5 transition-colors"
-            >
-              <Building2 className="w-3.5 h-3.5 text-purple-400" />
-              <span>Campus Hub</span>
-            </Link>
-          </nav>
         </div>
 
-        {/* Global Search Bar */}
+        {/* Global Search Bar (Deference: Content-focused, clean keyboard-friendly input) */}
         <div className="flex-1 max-w-md relative hidden md:block">
           <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 font-mono text-sm">
-              ✦
-            </span>
+            <Search className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Search cross-campus peers, study groups, Q&A, build squads..."
-              className="celestial-input w-full text-xs font-mono py-2 pl-9 pr-12 text-[#F8F7FF]"
+              placeholder="Search peers, courses, notes, hackathons..."
+              className="celestial-input w-full text-xs font-mono py-2 pl-9 pr-12 text-[#F8F7FF] placeholder:text-[#7C6FA6]"
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono bg-purple-950/80 border border-purple-400/30 px-1.5 py-0.5 rounded text-[#C4B5FD]">
               ⌘K
@@ -164,21 +140,24 @@ export function GlobalHeader() {
 
           {/* Search Results Dropdown */}
           {searchResults && (
-            <div className="absolute top-full left-0 right-0 mt-2 celestial-card p-4 shadow-2xl max-h-96 overflow-y-auto border border-purple-400/30 z-50">
+            <div className="absolute top-full left-0 right-0 mt-2 celestial-card p-3 shadow-2xl max-h-96 overflow-y-auto border border-purple-400/30 z-50">
               {searchResults.students?.length > 0 && (
-                <div className="mb-4">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#FBBF24] mb-2 flex items-center gap-1.5">
-                    <span>✦ Cross-Campus Peers</span>
+                <div className="mb-3">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#FBBF24] mb-1.5 flex items-center gap-1.5">
+                    <span>✦ Students</span>
                   </div>
                   <div className="space-y-1">
                     {searchResults.students.map((s: any) => (
                       <Link
                         key={s.id || s.user_id}
-                        href={`/profile`}
+                        href="/profile"
                         onClick={() => setSearchResults(null)}
                         className="flex items-center justify-between p-2 rounded-xl hover:bg-purple-900/30 text-xs font-mono transition-colors"
                       >
-                        <span className="font-semibold text-[#F8F7FF]">{s.name || s.display_name} <span className="text-[#7C6FA6]">(@{s.handle})</span></span>
+                        <span className="font-semibold text-[#F8F7FF]">
+                          {s.name || s.display_name}{' '}
+                          <span className="text-[#7C6FA6]">(@{s.handle})</span>
+                        </span>
                         <TrustBadge stage={s.stage || s.verification_stage} size="sm" />
                       </Link>
                     ))}
@@ -187,15 +166,15 @@ export function GlobalHeader() {
               )}
 
               {searchResults.commons_posts?.length > 0 && (
-                <div className="mb-4">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#A855F7] mb-2 flex items-center gap-1.5">
-                    <span>✦ Vault Q&A Notes</span>
+                <div className="mb-3">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#A855F7] mb-1.5 flex items-center gap-1.5">
+                    <span>✦ Course Q&A & Notes</span>
                   </div>
                   <div className="space-y-1">
                     {searchResults.commons_posts.map((p: any) => (
                       <Link
                         key={p.id}
-                        href={`/commons`}
+                        href="/commons"
                         onClick={() => setSearchResults(null)}
                         className="block p-2 rounded-xl hover:bg-purple-900/30 text-xs font-mono text-[#C4B5FD] hover:text-[#FDE68A] truncate transition-colors"
                       >
@@ -208,14 +187,14 @@ export function GlobalHeader() {
 
               {searchResults.communities?.length > 0 && (
                 <div>
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#38BDF8] mb-2 flex items-center gap-1.5">
-                    <span>✦ Active Communities</span>
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#38BDF8] mb-1.5 flex items-center gap-1.5">
+                    <span>✦ Campus Communities</span>
                   </div>
                   <div className="space-y-1">
                     {searchResults.communities.map((c: any) => (
                       <Link
                         key={c.id}
-                        href={`/messages`}
+                        href="/messages"
                         onClick={() => setSearchResults(null)}
                         className="flex items-center justify-between p-2 rounded-xl hover:bg-purple-900/30 text-xs font-mono transition-colors"
                       >
@@ -228,8 +207,8 @@ export function GlobalHeader() {
               )}
 
               {!searchResults.students?.length && !searchResults.commons_posts?.length && !searchResults.communities?.length && (
-                <div className="p-4 text-center text-xs font-mono text-[#7C6FA6]">
-                  No matching peers, notes, or communities found.
+                <div className="p-3 text-center text-xs font-mono text-[#7C6FA6]">
+                  No matching students, notes, or groups found.
                 </div>
               )}
             </div>
@@ -237,8 +216,8 @@ export function GlobalHeader() {
         </div>
 
         {/* Right Controls */}
-        <div className="flex items-center gap-2">
-          {/* Auth Controls: Either Guest (Sign In / Join Free) OR Authenticated (Profile + Sign Out) */}
+        <div className="flex items-center gap-2.5">
+          {/* Guest or Authenticated State */}
           {!isLoggedIn ? (
             <div className="flex items-center gap-2">
               <Link
@@ -258,16 +237,16 @@ export function GlobalHeader() {
               </Link>
             </div>
           ) : (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <Link
                 href="/profile"
-                className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-purple-400/30 bg-[#120836]/70 hover:border-amber-400/50 hover:shadow-[0_0_12px_rgba(251,191,36,0.25)] transition-all"
-                title="My student profile"
+                className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-purple-400/30 bg-[#120836]/70 hover:border-amber-400/50 transition-all"
+                title="My Profile"
               >
                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-[#090420] flex items-center justify-center font-mono font-bold text-[11px] shadow-sm">
                   {currentProfile?.display_name ? currentProfile.display_name.charAt(0) : 'U'}
                 </div>
-                <span className="text-xs font-mono font-medium hidden md:inline text-[#F8F7FF]">
+                <span className="text-xs font-mono font-medium hidden sm:inline text-[#F8F7FF]">
                   @{currentProfile?.handle || 'me'}
                 </span>
               </Link>
@@ -282,11 +261,11 @@ export function GlobalHeader() {
             </div>
           )}
 
-          {/* Mobile Search Trigger */}
+          {/* Mobile Search Button */}
           <button
             onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-            className="md:hidden p-2 rounded-full border border-purple-400/30 bg-[#120836]/70 text-[#C4B5FD] hover:text-[#FDE68A] hover:border-amber-400/50 transition-all"
-            title="Search network"
+            className="md:hidden p-2 rounded-full border border-purple-400/30 bg-[#120836]/70 text-[#C4B5FD] hover:text-[#FDE68A] transition-all"
+            title="Search"
           >
             {isMobileSearchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
           </button>
@@ -295,7 +274,7 @@ export function GlobalHeader() {
           <button
             onClick={toggleAtmosphere}
             className="p-2 rounded-full border border-purple-400/30 bg-[#120836]/70 text-[#FDE68A] hover:border-amber-400/50 hover:shadow-[0_0_12px_rgba(251,191,36,0.3)] transition-all"
-            title={isTwilight ? 'Switch to Deep Midnight' : 'Switch to Twilight Glow'}
+            title={isTwilight ? 'Switch to Deep Midnight' : 'Switch to Twilight Atmosphere'}
           >
             {isTwilight ? (
               <Orbit className="w-4 h-4 text-[#C084FC]" />
@@ -310,95 +289,38 @@ export function GlobalHeader() {
       {isMobileSearchOpen && (
         <div className="md:hidden border-t border-purple-500/20 px-4 py-3 bg-[#090420]/95 backdrop-blur-2xl">
           <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 font-mono text-sm">
-              ✦
-            </span>
+            <Search className="w-4 h-4 text-purple-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               autoFocus
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Search peers, notes, build squads..."
-              className="celestial-input w-full text-xs font-mono py-2.5 pl-9 pr-4 text-[#F8F7FF]"
+              placeholder="Search peers, courses, notes..."
+              className="celestial-input w-full text-xs font-mono py-2 pl-9 pr-4 text-[#F8F7FF]"
             />
           </div>
 
           {searchResults && (
-            <div className="mt-2 celestial-card p-3 shadow-2xl max-h-80 overflow-y-auto border border-purple-400/30">
+            <div className="mt-2 celestial-card p-3 shadow-2xl max-h-72 overflow-y-auto border border-purple-400/30">
               {searchResults.students?.length > 0 && (
-                <div className="mb-3">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#FBBF24] mb-1.5 flex items-center gap-1.5">
-                    <span>✦ Cross-Campus Peers</span>
+                <div className="mb-2">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#FBBF24] mb-1">
+                    ✦ Students
                   </div>
-                  <div className="space-y-1">
-                    {searchResults.students.map((s: any) => (
-                      <Link
-                        key={s.id || s.user_id}
-                        href="/profile"
-                        onClick={() => {
-                          setSearchResults(null);
-                          setIsMobileSearchOpen(false);
-                        }}
-                        className="flex items-center justify-between p-2 rounded-xl hover:bg-purple-900/30 text-xs font-mono transition-colors"
-                      >
-                        <span className="font-semibold text-[#F8F7FF]">{s.name || s.display_name} (@{s.handle})</span>
-                        <TrustBadge stage={s.stage || s.verification_stage} size="sm" />
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {searchResults.commons_posts?.length > 0 && (
-                <div className="mb-3">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#A855F7] mb-1.5 flex items-center gap-1.5">
-                    <span>✦ Vault Q&A Notes</span>
-                  </div>
-                  <div className="space-y-1">
-                    {searchResults.commons_posts.map((p: any) => (
-                      <Link
-                        key={p.id}
-                        href="/commons"
-                        onClick={() => {
-                          setSearchResults(null);
-                          setIsMobileSearchOpen(false);
-                        }}
-                        className="block p-2 rounded-xl hover:bg-purple-900/30 text-xs font-mono text-[#C4B5FD] hover:text-[#FDE68A] truncate transition-colors"
-                      >
-                        {p.title}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {searchResults.communities?.length > 0 && (
-                <div>
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#38BDF8] mb-1.5 flex items-center gap-1.5">
-                    <span>✦ Active Communities</span>
-                  </div>
-                  <div className="space-y-1">
-                    {searchResults.communities.map((c: any) => (
-                      <Link
-                        key={c.id}
-                        href="/messages"
-                        onClick={() => {
-                          setSearchResults(null);
-                          setIsMobileSearchOpen(false);
-                        }}
-                        className="flex items-center justify-between p-2 rounded-xl hover:bg-purple-900/30 text-xs font-mono transition-colors"
-                      >
-                        <span className="text-[#F8F7FF] font-medium">{c.name}</span>
-                        <span className="text-[10px] font-mono text-[#7C6FA6]">{c.member_count} members</span>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {!searchResults.students?.length && !searchResults.commons_posts?.length && !searchResults.communities?.length && (
-                <div className="p-3 text-center text-xs font-mono text-[#7C6FA6]">
-                  No matching results found.
+                  {searchResults.students.map((s: any) => (
+                    <Link
+                      key={s.id || s.user_id}
+                      href="/profile"
+                      onClick={() => {
+                        setSearchResults(null);
+                        setIsMobileSearchOpen(false);
+                      }}
+                      className="flex items-center justify-between p-1.5 rounded-lg hover:bg-purple-900/30 text-xs font-mono"
+                    >
+                      <span>{s.name || s.display_name}</span>
+                      <TrustBadge stage={s.stage || s.verification_stage} size="sm" />
+                    </Link>
+                  ))}
                 </div>
               )}
             </div>

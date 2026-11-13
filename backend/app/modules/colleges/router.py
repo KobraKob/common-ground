@@ -1,9 +1,10 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 
 from app.core.database import get_db
+from app.core.cache import cache_response
 from app.modules.colleges.models import College
 from app.modules.colleges.schemas import CollegeResponse, CampusHubOverview
 from app.modules.identity.models import StudentProfile
@@ -15,7 +16,9 @@ router = APIRouter(prefix="/colleges", tags=["Campus & Colleges"])
 
 
 @router.get("", response_model=List[CollegeResponse])
+@cache_response(ttl_seconds=60, namespace="colleges_list")
 async def list_colleges(
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     query = select(College).where(College.is_active_cluster == True).order_by(College.name)
@@ -56,8 +59,10 @@ async def list_colleges(
 
 
 @router.get("/{slug}", response_model=CampusHubOverview)
+@cache_response(ttl_seconds=60, namespace="colleges_slug")
 async def get_campus_hub_overview(
     slug: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     c_res = await db.execute(select(College).where(College.slug == slug))

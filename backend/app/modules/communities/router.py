@@ -1,8 +1,8 @@
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, desc
+from sqlalchemy import select, and_, or_, desc, func
 
 from app.core.database import get_db
 from app.core.security import get_current_user, get_current_user_id
@@ -101,9 +101,12 @@ async def create_community(
 
 @router.get("/communities", response_model=List[CommunityResponse])
 async def list_communities(
+    response: Response,
     college_id: Optional[str] = None,
     community_type: Optional[str] = None,
     search: Optional[str] = None,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     query = select(Community).where(Community.visibility != "PRIVATE_INVITE_ONLY")
@@ -114,8 +117,20 @@ async def list_communities(
     if search:
         query = query.where(Community.name.ilike(f"%{search}%"))
 
-    result = await db.execute(query.order_by(desc(Community.member_count)))
-    return result.scalars().all()
+    count_subq = query.order_by(None).subquery()
+    count_res = await db.execute(select(func.count()).select_from(count_subq))
+    total_count = count_res.scalar() or 0
+
+    result = await db.execute(query.order_by(desc(Community.member_count)).offset(offset).limit(limit))
+    communities = result.scalars().all()
+
+    has_more = (offset + len(communities)) < total_count
+    response.headers["X-Total-Count"] = str(total_count)
+    response.headers["X-Has-More"] = "true" if has_more else "false"
+    response.headers["X-Offset"] = str(offset)
+    response.headers["X-Limit"] = str(limit)
+
+    return communities
 
 
 @router.post("/communities/{community_id}/join")
@@ -318,8 +333,10 @@ async def get_or_create_direct_conversation(
 @router.get("/conversations/{conversation_id}/messages", response_model=List[MessageResponse])
 async def list_conversation_messages(
     conversation_id: str,
+    response: Response,
     q: Optional[str] = Query(None),
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -340,9 +357,23 @@ async def list_conversation_messages(
     if q:
         query = query.where(Message.body.ilike(f"%{q}%"))
 
-    query = query.order_by(Message.created_at.asc()).limit(limit)
+    count_subq = select(func.count(Message.id)).where(
+        and_(Message.conversation_id == conversation_id, Message.is_deleted == False)
+    )
+    if q:
+        count_subq = count_subq.where(Message.body.ilike(f"%{q}%"))
+    count_res = await db.execute(count_subq)
+    total_count = count_res.scalar() or 0
+
+    query = query.order_by(Message.created_at.asc()).offset(offset).limit(limit)
     result = await db.execute(query)
     rows = result.all()
+
+    has_more = (offset + len(rows)) < total_count
+    response.headers["X-Total-Count"] = str(total_count)
+    response.headers["X-Has-More"] = "true" if has_more else "false"
+    response.headers["X-Offset"] = str(offset)
+    response.headers["X-Limit"] = str(limit)
 
     resp = []
     for msg, d_name, handle in rows:

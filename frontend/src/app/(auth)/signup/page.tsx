@@ -1,158 +1,145 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Building2, 
-  ShieldAlert, 
   CheckCircle2, 
   ArrowRight, 
-  Sparkles, 
-  UserCheck, 
   Mail, 
   Lock, 
   Eye, 
   EyeOff, 
   AlertCircle,
-  GraduationCap
+  Sparkles,
+  Info
 } from 'lucide-react';
 import { getColleges, signupUser } from '@/lib/api';
+import { BENGALURU_COLLEGES, detectCollegeFromEmail } from '@/constants/colleges';
 import { College } from '@/types';
+import { TrustBadge } from '@/components/shared/TrustBadge';
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
-  const [colleges, setColleges] = useState<College[]>([]);
-  const [displayName, setDisplayName] = useState('');
-  const [handle, setHandle] = useState('');
+  const searchParams = useSearchParams();
+  const campusParam = searchParams.get('campus');
+
+  const [colleges, setColleges] = useState<College[]>(BENGALURU_COLLEGES);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [selectedCollegeId, setSelectedCollegeId] = useState('');
-  const [courseBranch, setCourseBranch] = useState('B.E. Computer Science');
-  const [gradYear, setGradYear] = useState(2028);
-  const [skills, setSkills] = useState('Python, Next.js, FastAPI');
-  const [interests, setInterests] = useState('Hackathons, Robotics, AI');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Pre-select campus if passed in URL query param
   useEffect(() => {
     async function loadColleges() {
       const list = await getColleges();
-      setColleges(list);
-      if (list.length > 0) setSelectedCollegeId(list[0].id);
+      if (list && list.length > 0) setColleges(list);
+
+      if (campusParam) {
+        const found = (list || BENGALURU_COLLEGES).find(
+          (c) => c.slug.toLowerCase() === campusParam.toLowerCase()
+        );
+        if (found) setSelectedCollegeId(found.id);
+      }
     }
     loadColleges();
-  }, []);
+  }, [campusParam]);
+
+  // Intelligent domain detection:
+  // When user enters name@rvce.edu.in -> detects RVCE & unlocks Verified Student status automatically!
+  const detectedCollege = detectCollegeFromEmail(email);
+
+  useEffect(() => {
+    if (detectedCollege) {
+      setSelectedCollegeId(detectedCollege.id);
+    }
+  }, [detectedCollege]);
+
+  // Auto-suggest display name from email if not already typed
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    const prefix = val.split('@')[0].trim();
+    if (prefix && (!displayName || displayName === val.slice(0, -1))) {
+      const formatted = prefix
+        .replace(/[._0-9]/g, ' ')
+        .trim()
+        .replace(/\b\w/g, (l) => l.toUpperCase());
+      if (formatted) setDisplayName(formatted);
+    }
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
-    if (!displayName.trim()) {
-      setErrorMsg('Please enter your full name');
-      return;
-    }
-    if (!handle.trim()) {
-      setErrorMsg('Please choose a student handle');
-      return;
-    }
-    if (!email.trim() || !email.includes('@')) {
-      setErrorMsg('Please provide a valid email address');
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setErrorMsg('Please enter a valid email address');
       return;
     }
     if (password.length < 6) {
       setErrorMsg('Password must be at least 6 characters');
       return;
     }
-    if (password !== confirmPassword) {
-      setErrorMsg('Passwords do not match');
-      return;
-    }
+
+    const resolvedCollegeId = detectedCollege?.id || selectedCollegeId || colleges[0]?.id;
+    const resolvedName = displayName.trim() || cleanEmail.split('@')[0] || 'Student Builder';
+    const cleanHandle = cleanEmail
+      .split('@')[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '')
+      .slice(0, 30) || `student_${Math.floor(Math.random() * 9000 + 1000)}`;
 
     setIsSubmitting(true);
     try {
-      const skillsArr = skills.split(',').map((s) => s.trim()).filter(Boolean);
-      const interestsArr = interests.split(',').map((i) => i.trim()).filter(Boolean);
-
       const res = await signupUser({
-        email: email.trim().toLowerCase(),
+        email: cleanEmail,
         password,
-        handle: handle.trim().toLowerCase().replace('@', ''),
-        display_name: displayName.trim(),
-        college_id: selectedCollegeId || undefined,
-        course_branch: courseBranch,
-        graduation_year: Number(gradYear),
-        skills: skillsArr,
-        interests: interestsArr,
+        handle: cleanHandle,
+        display_name: resolvedName,
+        college_id: resolvedCollegeId,
+        skills: [],
+        interests: [],
       });
 
-      setSuccessMsg(`Account created for @${res.profile.handle}! Directing you to the Bengaluru pulse radar...`);
+      setSuccessMsg(`Welcome to CommonGround, @${res.profile.handle}! Directing you to the live feed...`);
       setTimeout(() => {
         router.push('/city');
-      }, 900);
+      }, 700);
     } catch (err: any) {
-      setErrorMsg(err?.detail || err?.message || 'Failed to create student account. Please try another handle or email.');
+      setErrorMsg(err?.detail || err?.message || 'Failed to create student account. Please try another email.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const selectedCollege = colleges.find((c) => c.id === selectedCollegeId);
-  const isInstitutionalEmail = email.toLowerCase().endsWith('.edu.in') || email.toLowerCase().endsWith('.ac.in');
+  const isInstitutional = !!detectedCollege;
 
   return (
-    <div className="max-w-2xl mx-auto py-8 px-4">
-      <div className="celestial-card p-6 md:p-8 border border-purple-400/30 relative overflow-hidden shadow-2xl backdrop-blur-2xl">
+    <div className="max-w-md mx-auto py-8 px-4">
+      <div className="celestial-card p-6 sm:p-8 border border-purple-400/30 relative overflow-hidden shadow-2xl backdrop-blur-2xl">
         {/* Glow corners */}
-        <div className="absolute -top-20 -right-20 w-44 h-44 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-20 -left-20 w-44 h-44 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 -right-16 w-36 h-36 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-36 h-36 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
 
         <div className="text-center mb-6">
           <Link href="/" className="inline-flex items-center gap-2 group mb-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#2E1065] to-[#120836] border border-amber-400/50 flex items-center justify-center text-[#FBBF24] font-display font-extrabold text-lg shadow-[0_0_20px_rgba(251,191,36,0.35)] transition-transform group-hover:scale-105">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#2E1065] to-[#120836] border border-amber-400/40 flex items-center justify-center text-[#FBBF24] font-display font-extrabold text-base shadow-[0_0_15px_rgba(251,191,36,0.35)] transition-transform group-hover:scale-105">
               CG
             </div>
           </Link>
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[#F8F7FF] tracking-tight">
-            Create Your <span className="text-celestial-gradient">Student Account</span>
+            Join <span className="text-celestial-gradient">CommonGround</span>
           </h1>
           <p className="text-xs font-mono text-[#C4B5FD] mt-1">
-            Join thousands of student builders across Bengaluru campuses
+            Connect across Bengaluru's student network in 30 seconds
           </p>
-        </div>
-
-        {/* Staged Trust Model Disclosure */}
-        <div className={`mb-6 p-4 rounded-2xl border transition-all duration-200 flex items-start gap-3.5 ${
-          isInstitutionalEmail
-            ? 'bg-emerald-500/10 border-emerald-400/40'
-            : 'bg-amber-500/10 border-amber-400/30'
-        }`}>
-          {isInstitutionalEmail ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-          ) : (
-            <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-          )}
-          <div className="text-xs font-mono leading-relaxed">
-            <span className={`font-bold uppercase tracking-wider block mb-1 ${
-              isInstitutionalEmail ? 'text-emerald-300' : 'text-amber-300'
-            }`}>
-              {isInstitutionalEmail
-                ? '✦ Stage 3: Instant Institutional Verification Detected!'
-                : 'Stage 1: Provisional Status Disclosure'}
-            </span>
-            {isInstitutionalEmail ? (
-              <span className="text-emerald-200">
-                Your email matches an accredited academic institution domain. You will receive the <strong>"Verified Student"</strong> badge immediately upon registration.
-              </span>
-            ) : (
-              <span className="text-amber-200">
-                Registering with personal email grants provisional student access (badge: <strong>"Provisional Student — Self-Reported"</strong>). You can link an institutional <code>.edu.in</code> email at any time to upgrade.
-              </span>
-            )}
-          </div>
         </div>
 
         {errorMsg && (
@@ -169,208 +156,148 @@ export default function SignupPage() {
           </div>
         )}
 
+        {/* Two-Field Fast Signup Form (Apple HIG Principle) */}
         <form onSubmit={handleSignup} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1">
-                Full Display Name:
-              </label>
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="e.g. Aarav Patel"
-                className="celestial-input w-full text-xs font-mono py-2.5 px-3 text-[#F8F7FF]"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1">
-                Unique Student Handle:
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 font-mono text-xs">
-                  @
-                </span>
-                <input
-                  type="text"
-                  value={handle}
-                  onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                  placeholder="aarav_builder"
-                  className="celestial-input w-full text-xs font-mono py-2.5 pl-7 pr-3 text-[#F8F7FF]"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
+          {/* 1. Email Field with Instant Campus Detection */}
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1">
-              Email Address:
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-mono uppercase tracking-wider text-[#C4B5FD]">
+                College or Personal Email
+              </label>
+              {isInstitutional && (
+                <span className="text-[10px] font-mono text-emerald-300 flex items-center gap-1 font-semibold">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>{detectedCollege.short_name} Verified</span>
+                </span>
+              )}
+            </div>
             <div className="relative">
-              <Mail className="w-4 h-4 text-purple-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Mail className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@rvce.edu.in (or personal email)"
-                className="celestial-input w-full text-xs font-mono py-2.5 pl-9 pr-3 text-[#F8F7FF]"
+                onChange={(e) => handleEmailChange(e.target.value)}
+                placeholder="you@rvce.edu.in (or personal email)"
+                className="celestial-input w-full text-xs font-mono py-2.5 pl-10 pr-3 text-[#F8F7FF] placeholder:text-[#7C6FA6]"
                 required
+                autoFocus
               />
             </div>
+
+            {/* Smart Detection Feedback Pill */}
+            {detectedCollege ? (
+              <div className="mt-2 p-2 rounded-xl bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-between text-[11px] font-mono text-emerald-300">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>{detectedCollege.name} detected</span>
+                </span>
+                <TrustBadge stage="STAGE_3_INSTITUTIONAL_VERIFIED" size="sm" interactive={false} />
+              </div>
+            ) : email.includes('@') ? (
+              <div className="mt-2 p-2 rounded-xl bg-amber-500/10 border border-amber-400/25 flex items-center justify-between text-[11px] font-mono text-amber-300">
+                <span>Personal email (Provisional status)</span>
+                <TrustBadge stage="STAGE_1_PROVISIONAL" size="sm" interactive={false} />
+              </div>
+            ) : null}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* If personal email or no detected college, choose campus simply */}
+          {!detectedCollege && (
             <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1">
-                Password:
+              <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1.5">
+                Select Your Bengaluru Campus:
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-purple-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min 6 characters"
-                  className="celestial-input w-full text-xs font-mono py-2.5 pl-9 pr-10 text-[#F8F7FF]"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-400 hover:text-white"
+                <Building2 className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <select
+                  value={selectedCollegeId}
+                  onChange={(e) => setSelectedCollegeId(e.target.value)}
+                  className="celestial-input w-full text-xs font-mono py-2.5 pl-10 pr-8 text-[#F8F7FF] cursor-pointer appearance-none bg-[#090420]"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                  {colleges.map((col) => (
+                    <option key={col.id} value={col.id} className="bg-[#090420] text-white">
+                      {col.name} ({col.short_name})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
+          )}
 
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1">
-                Confirm Password:
-              </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-purple-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter password"
-                  className="celestial-input w-full text-xs font-mono py-2.5 pl-9 pr-3 text-[#F8F7FF]"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* College Selection */}
+          {/* 2. Password Field (Single field with show/hide toggle as per Apple HIG) */}
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1">
-              Select Your Bengaluru College / Campus:
+            <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1.5">
+              Password
             </label>
             <div className="relative">
-              <Building2 className="w-4 h-4 text-purple-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <select
-                value={selectedCollegeId}
-                onChange={(e) => setSelectedCollegeId(e.target.value)}
-                className="celestial-input w-full text-xs font-mono py-2.5 pl-9 pr-8 text-[#F8F7FF] cursor-pointer appearance-none bg-[#090420]"
-              >
-                {colleges.map((col) => (
-                  <option key={col.id} value={col.id} className="bg-[#090420] text-white">
-                    {col.name} ({col.short_name}) — Bengaluru
-                  </option>
-                ))}
-              </select>
-            </div>
-            {selectedCollege && (
-              <p className="text-[10px] font-mono text-[#7C6FA6] mt-1">
-                Accepted institutional domains: {selectedCollege.email_domains.join(', ')}
-              </p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1">
-                Course & Major:
-              </label>
+              <Lock className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
-                type="text"
-                value={courseBranch}
-                onChange={(e) => setCourseBranch(e.target.value)}
-                placeholder="B.E. Computer Science"
-                className="celestial-input w-full text-xs font-mono py-2 px-3 text-[#F8F7FF]"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 6 characters"
+                className="celestial-input w-full text-xs font-mono py-2.5 pl-10 pr-10 text-[#F8F7FF] placeholder:text-[#7C6FA6]"
+                required
               />
-            </div>
-
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1">
-                Graduation Year:
-              </label>
-              <select
-                value={gradYear}
-                onChange={(e) => setGradYear(Number(e.target.value))}
-                className="celestial-input w-full text-xs font-mono py-2 px-3 text-[#F8F7FF] bg-[#090420]"
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-purple-400 hover:text-white"
+                title={showPassword ? 'Hide password' : 'Show password'}
               >
-                {[2025, 2026, 2027, 2028, 2029].map((yr) => (
-                  <option key={yr} value={yr} className="bg-[#090420] text-white">
-                    Class of {yr}
-                  </option>
-                ))}
-              </select>
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
+          {/* Optional Display Name (Auto-suggested from email, easily editable) */}
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1">
-              Skills (comma separated):
+            <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1.5">
+              Your Name <span className="text-[10px] text-[#7C6FA6] lowercase font-normal">(optional)</span>
             </label>
             <input
               type="text"
-              value={skills}
-              onChange={(e) => setSkills(e.target.value)}
-              placeholder="Python, React, Figma, C++, PyTorch"
-              className="celestial-input w-full text-xs font-mono py-2 px-3 text-[#F8F7FF]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1">
-              Collaboration Interests:
-            </label>
-            <input
-              type="text"
-              value={interests}
-              onChange={(e) => setInterests(e.target.value)}
-              placeholder="Hackathons, Robotics, Study Groups, Open Source"
-              className="celestial-input w-full text-xs font-mono py-2 px-3 text-[#F8F7FF]"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="e.g. Aarav Patel"
+              className="celestial-input w-full text-xs font-mono py-2 px-3 text-[#F8F7FF] placeholder:text-[#7C6FA6]"
             />
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="btn-campus-amber w-full py-3 text-xs font-mono uppercase tracking-wider flex items-center justify-center gap-2 font-bold shadow-xl mt-3"
+            className="btn-campus-amber w-full py-3 text-xs font-mono uppercase tracking-wider flex items-center justify-center gap-2 font-bold shadow-lg mt-2"
           >
-            <span>{isSubmitting ? 'Creating Student Profile...' : 'Complete Registration & Join Pulse'}</span>
+            <span>{isSubmitting ? 'Creating Account...' : 'Get Started Free'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
         <div className="mt-6 pt-5 border-t border-purple-500/20 text-center">
           <p className="text-xs font-mono text-[#C4B5FD]">
-            Already registered on CommonGround?{' '}
+            Already have an account?{' '}
             <Link
               href="/login"
               className="text-[#FDE68A] hover:underline font-semibold"
             >
-              Sign in to your account
+              Sign in
             </Link>
           </p>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-md mx-auto py-12 text-center text-xs font-mono text-[#C4B5FD]">
+        Loading signup...
+      </div>
+    }>
+      <SignupForm />
+    </Suspense>
   );
 }

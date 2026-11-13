@@ -1,9 +1,9 @@
 import hashlib
 import secrets
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, delete
+from sqlalchemy import select, and_, or_, delete, func
 
 from app.core.database import get_db
 from app.core.security import get_current_user, get_current_user_id, get_optional_current_user_id, create_access_token
@@ -275,8 +275,11 @@ router = APIRouter(prefix="/profiles", tags=["Identity & Profiles"])
 
 @router.get("", response_model=List[StudentProfileResponse])
 async def list_profiles(
+    response: Response,
     skill: Optional[str] = None,
     college_id: Optional[str] = None,
+    limit: int = Query(60, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user_id: Optional[str] = Depends(get_optional_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -299,8 +302,18 @@ async def list_profiles(
             )
         )
 
-    result = await db.execute(query.order_by(StudentProfile.created_at.desc()).limit(60))
+    count_subq = query.order_by(None).subquery()
+    count_res = await db.execute(select(func.count()).select_from(count_subq))
+    total_count = count_res.scalar() or 0
+
+    result = await db.execute(query.order_by(StudentProfile.created_at.desc()).offset(offset).limit(limit))
     profile_rows = result.all()
+
+    has_more = (offset + len(profile_rows)) < total_count
+    response.headers["X-Total-Count"] = str(total_count)
+    response.headers["X-Has-More"] = "true" if has_more else "false"
+    response.headers["X-Offset"] = str(offset)
+    response.headers["X-Limit"] = str(limit)
 
     response = []
     for p, college_name in profile_rows:

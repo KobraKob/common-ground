@@ -105,30 +105,71 @@ export function getActiveProfile(): StudentProfile | null {
   return cachedUserProfile;
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(activeAuthToken ? { 'Authorization': `Bearer ${activeAuthToken}` } : {}),
-    ...(options.headers || {}),
-  };
+// In-flight request deduplication store for concurrent GET requests
+const inFlightRequests = new Map<string, Promise<any>>();
 
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+export interface PaginatedResult<T> {
+  items: T[];
+  totalCount: number;
+  hasMore: boolean;
+  nextOffset: number;
+}
 
-  if (!res.ok) {
-    let errDetail = `HTTP ${res.status}: ${res.statusText}`;
-    try {
-      const errJson = await res.json();
-      if (errJson) {
-        errDetail = errJson.detail || errJson.message || errJson.error || errDetail;
-      }
-    } catch {}
-    throw new ApiError(res.status, errDetail);
+export async function requestWithMeta<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<{ data: T; headers: Headers; status: number }> {
+  const method = (options.method || 'GET').toUpperCase();
+  const isGet = method === 'GET';
+  const dedupKey = isGet ? `${method}:${endpoint}:${activeAuthToken || 'anon'}` : null;
+
+  if (dedupKey && inFlightRequests.has(dedupKey)) {
+    return inFlightRequests.get(dedupKey)!;
   }
 
-  return await res.json();
+  const fetchPromise = (async () => {
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(activeAuthToken ? { 'Authorization': `Bearer ${activeAuthToken}` } : {}),
+        ...(options.headers || {}),
+      };
+
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+      });
+
+      if (!res.ok) {
+        let errDetail = `HTTP ${res.status}: ${res.statusText}`;
+        try {
+          const errJson = await res.json();
+          if (errJson) {
+            errDetail = errJson.detail || errJson.message || errJson.error || errDetail;
+          }
+        } catch {}
+        throw new ApiError(res.status, errDetail);
+      }
+
+      const data = await res.json();
+      return { data, headers: res.headers, status: res.status };
+    } finally {
+      if (dedupKey) {
+        inFlightRequests.delete(dedupKey);
+      }
+    }
+  })();
+
+  if (dedupKey) {
+    inFlightRequests.set(dedupKey, fetchPromise);
+  }
+
+  return fetchPromise;
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const result = await requestWithMeta<T>(endpoint, options);
+  return result.data;
 }
 
 // ----------------------------------------------------
@@ -199,11 +240,39 @@ export async function getMyProfile(): Promise<StudentProfile | null> {
 }
 
 export async function getStudents(skill?: string): Promise<StudentProfile[]> {
+  const res = await getStudentsPaginated({ skill, limit: 60, offset: 0 });
+  return res.items;
+}
+
+export async function getStudentsPaginated({
+  skill,
+  collegeId,
+  limit = 20,
+  offset = 0,
+}: {
+  skill?: string;
+  collegeId?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<PaginatedResult<StudentProfile>> {
   try {
-    const query = skill && skill !== 'ALL' ? `?skill=${encodeURIComponent(skill)}` : '';
-    return await request<StudentProfile[]>(`/profiles${query}`);
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+      ...(skill && skill !== 'ALL' ? { skill } : {}),
+      ...(collegeId ? { college_id: collegeId } : {}),
+    });
+    const { data, headers } = await requestWithMeta<StudentProfile[]>(`/profiles?${params}`);
+    const totalCount = Number(headers.get('x-total-count') || data.length);
+    const hasMore = headers.get('x-has-more') === 'true' || offset + data.length < totalCount;
+    return {
+      items: data,
+      totalCount,
+      hasMore,
+      nextOffset: offset + data.length,
+    };
   } catch {
-    return [];
+    return { items: [], totalCount: 0, hasMore: false, nextOffset: offset };
   }
 }
 
@@ -232,11 +301,39 @@ export async function unblockUser(targetUserId: string): Promise<{ message: stri
 // ----------------------------------------------------
 
 export async function getPosts(scope: 'campus' | 'city' | 'commons' | 'opportunities', tag?: string): Promise<Post[]> {
+  const res = await getPostsPaginated({ scope, tag, limit: 50, offset: 0 });
+  return res.items;
+}
+
+export async function getPostsPaginated({
+  scope,
+  tag,
+  limit = 20,
+  offset = 0,
+}: {
+  scope: 'campus' | 'city' | 'commons' | 'opportunities';
+  tag?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<PaginatedResult<Post>> {
   try {
-    const query = new URLSearchParams({ scope, ...(tag ? { tag } : {}) }).toString();
-    return await request<Post[]>(`/posts?${query}`);
+    const params = new URLSearchParams({
+      scope,
+      limit: String(limit),
+      offset: String(offset),
+      ...(tag ? { tag } : {}),
+    });
+    const { data, headers } = await requestWithMeta<Post[]>(`/posts?${params}`);
+    const totalCount = Number(headers.get('x-total-count') || data.length);
+    const hasMore = headers.get('x-has-more') === 'true' || offset + data.length < totalCount;
+    return {
+      items: data,
+      totalCount,
+      hasMore,
+      nextOffset: offset + data.length,
+    };
   } catch {
-    return [];
+    return { items: [], totalCount: 0, hasMore: false, nextOffset: offset };
   }
 }
 
@@ -287,11 +384,37 @@ export async function addComment(postId: string, body: string, parentCommentId?:
 // ----------------------------------------------------
 
 export async function getCommunities(collegeId?: string): Promise<Community[]> {
+  const res = await getCommunitiesPaginated({ collegeId, limit: 50, offset: 0 });
+  return res.items;
+}
+
+export async function getCommunitiesPaginated({
+  collegeId,
+  communityType,
+  search,
+  limit = 20,
+  offset = 0,
+}: {
+  collegeId?: string;
+  communityType?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<PaginatedResult<Community>> {
   try {
-    const query = collegeId ? `?college_id=${collegeId}` : '';
-    return await request<Community[]>(`/communities${query}`);
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+      ...(collegeId ? { college_id: collegeId } : {}),
+      ...(communityType ? { community_type: communityType } : {}),
+      ...(search ? { search } : {}),
+    });
+    const { data, headers } = await requestWithMeta<Community[]>(`/communities?${params}`);
+    const totalCount = Number(headers.get('x-total-count') || data.length);
+    const hasMore = headers.get('x-has-more') === 'true' || offset + data.length < totalCount;
+    return { items: data, totalCount, hasMore, nextOffset: offset + data.length };
   } catch {
-    return [];
+    return { items: [], totalCount: 0, hasMore: false, nextOffset: offset };
   }
 }
 
@@ -308,10 +431,33 @@ export async function getConversations(): Promise<Conversation[]> {
 }
 
 export async function getMessages(conversationId: string): Promise<MessageItem[]> {
+  const res = await getMessagesPaginated({ conversationId, limit: 50, offset: 0 });
+  return res.items;
+}
+
+export async function getMessagesPaginated({
+  conversationId,
+  limit = 50,
+  offset = 0,
+  q,
+}: {
+  conversationId: string;
+  limit?: number;
+  offset?: number;
+  q?: string;
+}): Promise<PaginatedResult<MessageItem>> {
   try {
-    return await request<MessageItem[]>(`/conversations/${conversationId}/messages`);
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+      ...(q ? { q } : {}),
+    });
+    const { data, headers } = await requestWithMeta<MessageItem[]>(`/conversations/${conversationId}/messages?${params}`);
+    const totalCount = Number(headers.get('x-total-count') || data.length);
+    const hasMore = headers.get('x-has-more') === 'true' || offset + data.length < totalCount;
+    return { items: data, totalCount, hasMore, nextOffset: offset + data.length };
   } catch {
-    return [];
+    return { items: [], totalCount: 0, hasMore: false, nextOffset: offset };
   }
 }
 
@@ -327,10 +473,34 @@ export async function sendMessage(conversationId: string, body: string): Promise
 // ----------------------------------------------------
 
 export async function getProjects(): Promise<ProjectItem[]> {
+  const res = await getProjectsPaginated({ limit: 50, offset: 0 });
+  return res.items;
+}
+
+export async function getProjectsPaginated({
+  stage,
+  skill,
+  limit = 20,
+  offset = 0,
+}: {
+  stage?: string;
+  skill?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<PaginatedResult<ProjectItem>> {
   try {
-    return await request<ProjectItem[]>('/projects');
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+      ...(stage ? { stage } : {}),
+      ...(skill ? { skill } : {}),
+    });
+    const { data, headers } = await requestWithMeta<ProjectItem[]>(`/projects?${params}`);
+    const totalCount = Number(headers.get('x-total-count') || data.length);
+    const hasMore = headers.get('x-has-more') === 'true' || offset + data.length < totalCount;
+    return { items: data, totalCount, hasMore, nextOffset: offset + data.length };
   } catch {
-    return [];
+    return { items: [], totalCount: 0, hasMore: false, nextOffset: offset };
   }
 }
 

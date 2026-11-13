@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import String, Boolean, Integer, Text, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import String, Boolean, Integer, Text, DateTime, ForeignKey, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, GUID
@@ -17,9 +17,9 @@ class Community(Base):
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     slug: Mapped[str] = mapped_column(String(150), unique=True, nullable=False, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    community_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    visibility: Mapped[str] = mapped_column(String(50), default="PUBLIC", nullable=False)
-    college_id: Mapped[str] = mapped_column(GUID, ForeignKey("colleges.id", ondelete="SET NULL"), nullable=True)
+    community_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    visibility: Mapped[str] = mapped_column(String(50), default="PUBLIC", nullable=False, index=True)
+    college_id: Mapped[str] = mapped_column(GUID, ForeignKey("colleges.id", ondelete="SET NULL"), nullable=True, index=True)
     is_official_endorsed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     invite_code: Mapped[str] = mapped_column(String(32), unique=True, nullable=True)
     created_by: Mapped[str] = mapped_column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -29,13 +29,17 @@ class Community(Base):
 
     memberships = relationship("CommunityMembership", back_populates="community", cascade="all, delete-orphan")
 
+    __table_args__ = (
+        Index("ix_communities_college_type", "college_id", "community_type"),
+    )
+
 
 class CommunityMembership(Base):
     __tablename__ = "community_memberships"
 
     id: Mapped[str] = mapped_column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
-    community_id: Mapped[str] = mapped_column(GUID, ForeignKey("communities.id", ondelete="CASCADE"), nullable=False)
-    user_id: Mapped[str] = mapped_column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    community_id: Mapped[str] = mapped_column(GUID, ForeignKey("communities.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     role: Mapped[str] = mapped_column(String(50), default="MEMBER", nullable=False)
     is_muted: Mapped[bool] = mapped_column(Boolean, default=False)
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
@@ -44,4 +48,5 @@ class CommunityMembership(Base):
 
     __table_args__ = (
         UniqueConstraint("community_id", "user_id", name="uq_community_user"),
+        Index("ix_comm_members_user_comm", "user_id", "community_id"),
     )

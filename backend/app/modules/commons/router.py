@@ -1,7 +1,7 @@
 import uuid
 from typing import List, Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc, func
 from sqlalchemy.orm import selectinload
@@ -31,9 +31,11 @@ router = APIRouter(tags=["Commons, Feeds & Search"])
 
 @router.get("/posts", response_model=List[PostResponse])
 async def list_posts(
+    response: Response,
     scope: str = Query("city", pattern="^(campus|city|commons|opportunities)$"),
     tag: Optional[str] = None,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user_id: Optional[str] = Depends(get_optional_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -107,9 +109,21 @@ async def list_posts(
         # Check tag filtering
         query = query.where(Post.tags.ilike(f"%{tag}%"))
 
-    query = query.order_by(Post.is_pinned.desc(), desc(Post.created_at)).limit(limit)
+    # Count total matching for pagination headers
+    count_subq = query.order_by(None).subquery()
+    count_res = await db.execute(select(func.count()).select_from(count_subq))
+    total_count = count_res.scalar() or 0
+
+    query = query.order_by(Post.is_pinned.desc(), desc(Post.created_at)).offset(offset).limit(limit)
     result = await db.execute(query)
     posts = result.scalars().all()
+
+    # Set pagination response headers
+    has_more = (offset + len(posts)) < total_count
+    response.headers["X-Total-Count"] = str(total_count)
+    response.headers["X-Has-More"] = "true" if has_more else "false"
+    response.headers["X-Offset"] = str(offset)
+    response.headers["X-Limit"] = str(limit)
 
     response = []
     for p in posts:

@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc, func
 
@@ -31,8 +31,11 @@ router = APIRouter(tags=["Projects, Tasks & Events"])
 
 @router.get("/projects", response_model=List[ProjectResponse])
 async def list_projects(
+    response: Response,
     stage: Optional[str] = None,
     skill: Optional[str] = None,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     query = select(Project).order_by(desc(Project.created_at))
@@ -41,8 +44,19 @@ async def list_projects(
     if skill:
         query = query.where(Project.skills_needed.ilike(f"%{skill}%"))
 
+    count_subq = query.order_by(None).subquery()
+    count_res = await db.execute(select(func.count()).select_from(count_subq))
+    total_count = count_res.scalar() or 0
+
+    query = query.offset(offset).limit(limit)
     result = await db.execute(query)
     projects = result.scalars().all()
+
+    has_more = (offset + len(projects)) < total_count
+    response.headers["X-Total-Count"] = str(total_count)
+    response.headers["X-Has-More"] = "true" if has_more else "false"
+    response.headers["X-Offset"] = str(offset)
+    response.headers["X-Limit"] = str(limit)
 
     resp = []
     for p in projects:

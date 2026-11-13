@@ -3,6 +3,7 @@ import './globals.css';
 import { GlobalHeader } from '@/components/shared/GlobalHeader';
 import { NavigationSidebar } from '@/components/shared/NavigationSidebar';
 import { CelestialBackground } from '@/components/shared/CelestialBackground';
+import { Providers } from '@/app/providers';
 
 export const metadata: Metadata = {
   title: 'CommonGround — Bengaluru Cross-Campus Night Network',
@@ -25,16 +26,18 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-[#050214] text-[#F8F7FF] antialiased min-h-screen relative overflow-x-hidden selection:bg-purple-600 selection:text-white">
-        <CelestialBackground />
-        <div className="relative z-10 flex flex-col min-h-screen">
-          <GlobalHeader />
-          <div className="flex-1 flex max-w-7xl mx-auto w-full">
-            <NavigationSidebar />
-            <main className="flex-1 p-4 md:p-6 lg:p-8 pb-24 md:pb-8 w-full max-w-full">
-              {children}
-            </main>
+        <Providers>
+          <CelestialBackground />
+          <div className="relative z-10 flex flex-col min-h-screen">
+            <GlobalHeader />
+            <div className="flex-1 flex max-w-7xl mx-auto w-full">
+              <NavigationSidebar />
+              <main className="flex-1 p-4 md:p-6 lg:p-8 pb-24 md:pb-8 w-full max-w-full">
+                {children}
+              </main>
+            </div>
           </div>
-        </div>
+        </Providers>
       </body>
     </html>
   );

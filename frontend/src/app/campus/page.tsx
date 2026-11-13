@@ -6,50 +6,117 @@ import {
   Users, 
   Megaphone, 
   Calendar, 
-  BookOpen, 
-  ExternalLink, 
-  MessageSquare, 
-  Plus, 
-  ShieldAlert, 
-  ShieldCheck, 
-  ArrowUpRight,
-  Send,
-  Flag,
-  Sparkles,
-  ChevronDown
+  Send, 
+  Flag, 
+  ChevronDown,
+  MessageSquare,
+  ShieldAlert,
+  ShieldCheck,
+  CheckCircle2
 } from 'lucide-react';
 import { getColleges, getCampusOverview, createPost } from '@/lib/api';
+import { BENGALURU_COLLEGES } from '@/constants/colleges';
 import { College, Post } from '@/types';
 import { TrustBadge } from '@/components/shared/TrustBadge';
 import { ReportModal } from '@/components/shared/ReportModal';
 import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
 
-export default function CampusPage() {
-  const [colleges, setColleges] = useState<College[]>([]);
-  const [selectedSlug, setSelectedSlug] = useState('rvce');
-  const [overview, setOverview] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'departments' | 'announcements' | 'events'>('overview');
-  const [loading, setLoading] = useState(true);
+// Default starter discussions per campus to prevent blank screens
+const STARTER_CAMPUS_DISCUSSIONS: Record<string, any[]> = {
+  rvce: [
+    {
+      id: 'rvce-disc-1',
+      category: 'DISCUSSION',
+      title: 'RVCE 8th Mile Battle of the Bands Soundcheck 🎸',
+      body: 'Main stage setup in the quadrangle is ready. Audio check running till midnight. Free passes available at the student union booth.',
+      upvotes: 42,
+      comments: 7,
+      created_at: new Date(Date.now() - 3600000 * 3).toISOString(),
+    },
+    {
+      id: 'rvce-disc-2',
+      category: 'QUESTION_QA',
+      title: 'Which technical elective to choose in 6th Sem for AI track?',
+      body: 'Looking for advice between High Performance Computing vs Computer Vision. Which professor is handling HPC this year?',
+      upvotes: 28,
+      comments: 11,
+      created_at: new Date(Date.now() - 3600000 * 8).toISOString(),
+    },
+  ],
+  pesu: [
+    {
+      id: 'pesu-disc-1',
+      category: 'DISCUSSION',
+      title: 'PESU Maya Fest Kinetic Ring Setup 💡',
+      body: 'The 40-foot illuminated kinetic LED ring is up in the open auditorium. Come check out the test sequences after classes!',
+      upvotes: 38,
+      comments: 6,
+      created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
+    },
+  ],
+};
 
-  // New Post state
+export default function CampusPage() {
+  const [colleges, setColleges] = useState<College[]>(BENGALURU_COLLEGES);
+  const [selectedSlug, setSelectedSlug] = useState('rvce');
+  const [activeTab, setActiveTab] = useState<'overview' | 'departments' | 'announcements' | 'events'>('overview');
+  const [loading, setLoading] = useState(false);
+
+  // Initialize with safe fallback data immediately so it never gets stuck on a loading screen
+  const defaultCollege = BENGALURU_COLLEGES.find((c) => c.slug === selectedSlug) || BENGALURU_COLLEGES[0];
+  const [overview, setOverview] = useState<any>({
+    college: defaultCollege,
+    student_created_communities: [
+      { id: 'comm-1', name: 'Computer Science & Engineering', type: 'DEPARTMENT', member_count: 140, description: 'Course discussions, lab manuals, and peer doubt clearing for CSE students.' },
+      { id: 'comm-2', name: 'Campus Robotics Club', type: 'CLUB', member_count: 85, description: 'Autonomous bots, ROS2 workshops, and national rover challenge teams.' },
+      { id: 'comm-3', name: 'Google Developer Group Student Club', type: 'CLUB', member_count: 110, description: 'Web, cloud, and open source workshops for student builders.' },
+    ],
+    pinned_announcements: [
+      { id: 'ann-1', title: 'Upcoming Autonomous End-Semester Exam Schedule', body: 'Hall tickets and exam timetables have been released on the student portal. Lab practicals start next Monday.', created_at: new Date().toISOString() },
+    ],
+    upcoming_events: [
+      { id: 'evt-1', title: 'Annual Inter-College Hackathon 2026', description: '36-hour cross-campus software & hardware sprint. Cash prize pool and incubator referrals.', venue_or_link: 'Main Auditorium & CS Labs', rsvp_count: 94 },
+    ],
+    active_discussions: STARTER_CAMPUS_DISCUSSIONS[selectedSlug] || STARTER_CAMPUS_DISCUSSIONS.rvce,
+  });
+
+  // Post form state
   const [newPostTitle, setNewPostTitle] = useState('');
   const [newPostBody, setNewPostBody] = useState('');
   const [newPostCategory, setNewPostCategory] = useState<'DISCUSSION' | 'QUESTION_QA'>('DISCUSSION');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Report modal state
   const [reportTarget, setReportTarget] = useState<{ id: string; type: any; title: string } | null>(null);
 
   useEffect(() => {
+    let isCancelled = false;
     async function loadData() {
       setLoading(true);
-      const cols = await getColleges();
-      setColleges(cols);
-      const data = await getCampusOverview(selectedSlug);
-      setOverview(data);
-      setLoading(false);
+      try {
+        const [cols, data] = await Promise.all([
+          getColleges(),
+          getCampusOverview(selectedSlug),
+        ]);
+        if (!isCancelled) {
+          if (cols && cols.length > 0) setColleges(cols);
+          if (data && data.college) {
+            setOverview({
+              ...data,
+              active_discussions: (data.active_discussions && data.active_discussions.length > 0)
+                ? data.active_discussions
+                : (STARTER_CAMPUS_DISCUSSIONS[selectedSlug] || STARTER_CAMPUS_DISCUSSIONS.rvce),
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Using local campus fallback data:', err);
+      } finally {
+        if (!isCancelled) setLoading(false);
+      }
     }
     loadData();
+    return () => {
+      isCancelled = true;
+    };
   }, [selectedSlug]);
 
   const handleCreatePost = async (e: React.FormEvent) => {
@@ -72,45 +139,42 @@ export default function CampusPage() {
       }
       setNewPostTitle('');
       setNewPostBody('');
-    } catch (err) {
+    } catch {
       alert('Failed to publish post');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (loading || !overview) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[420px] space-y-4">
-        <div className="w-10 h-10 rounded-2xl bg-purple-900/40 border border-purple-500/40 flex items-center justify-center text-amber-300 animate-spin">
-          ✦
-        </div>
-        <div className="text-xs font-mono tracking-widest text-[#C4B5FD] animate-pulse">
-          TUNING CAMPUS SPACE // BENGALURU NODE...
-        </div>
-      </div>
-    );
-  }
-
-  const college = overview.college;
+  const college = overview.college || defaultCollege;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Panoramic Celestial Campus Hero Banner */}
+      {/* Campus Hero Banner */}
       <CampusHeroBanner
         title={college.name}
-        badgeText={`${college.short_name} CAMPUS BASE • LIVE`}
+        badgeText={`${college.short_name} CAMPUS HUB • LIVE`}
         shortCode={`${college.short_name} // BLR`}
-        subtitle={`Bengaluru academic hub located in ${college.city}. Explore peer-driven study channels, departmental vaults, and after-hours collaboration.`}
-        activeCount={college.member_count || 320}
+        subtitle={`Bengaluru academic hub in ${college.city}. Explore peer-driven study channels, departmental spaces, and campus discussions.`}
         isOfficial={college.is_official_partner}
         actionSlot={
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono text-[#C4B5FD] hidden sm:inline">Campus:</span>
+            <span className="text-xs font-mono text-[#C4B5FD] hidden sm:inline">Campus:</span>
             <div className="relative inline-block">
               <select
                 value={selectedSlug}
-                onChange={(e) => setSelectedSlug(e.target.value)}
+                onChange={(e) => {
+                  const slug = e.target.value;
+                  setSelectedSlug(slug);
+                  const matched = colleges.find((c) => c.slug === slug);
+                  if (matched) {
+                    setOverview((prev: any) => ({
+                      ...prev,
+                      college: matched,
+                      active_discussions: STARTER_CAMPUS_DISCUSSIONS[slug] || STARTER_CAMPUS_DISCUSSIONS.rvce,
+                    }));
+                  }
+                }}
                 className="celestial-input text-xs font-mono py-1.5 pl-3 pr-8 text-[#F8F7FF] cursor-pointer bg-[#160B3E]/90 border-purple-400/40"
               >
                 {colleges.map((c) => (
@@ -125,55 +189,26 @@ export default function CampusPage() {
         }
       />
 
-      {/* Honest Affiliation Status Glass Banner */}
-      <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-400/30 backdrop-blur-md flex items-start gap-3.5 shadow-[0_0_20px_rgba(245,158,11,0.1)]">
-        <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
+      {/* Honest Campus Status Banner */}
+      <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-400/30 flex items-start gap-3">
+        <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
         <div className="text-xs font-mono text-amber-200 leading-relaxed">
           <span className="font-bold uppercase tracking-wider block mb-0.5 text-amber-300">
             {college.is_official_partner
               ? 'Official Institutional Space'
               : 'Student-Led Campus Space • Self-Reported Community'}
           </span>
-          This hub is independently maintained by students from {college.short_name}. CommonGround clearly distinguishes verified student reps from official university administration.
-        </div>
-      </div>
-
-      {/* Quick Metrics Bar in Wet Pavement Glass */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 celestial-card">
-        <div>
-          <div className="text-[10px] font-mono uppercase tracking-wider text-[#7C6FA6]">Enrolled Students</div>
-          <div className="text-xl font-mono font-bold text-[#F8F7FF] mt-1 flex items-baseline gap-1">
-            <span>{college.member_count || 280}+</span>
-            <span className="text-[10px] text-amber-400">✦</span>
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] font-mono uppercase tracking-wider text-[#7C6FA6]">Campus Cohorts</div>
-          <div className="text-xl font-mono font-bold text-[#F8F7FF] mt-1">
-            {college.community_count || 14} Groups
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] font-mono uppercase tracking-wider text-[#7C6FA6]">Active Threads</div>
-          <div className="text-xl font-mono font-bold text-[#F8F7FF] mt-1">
-            {overview.active_discussions?.length || 5} Active
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] font-mono uppercase tracking-wider text-[#7C6FA6]">Verified Domain</div>
-          <div className="text-xs font-mono text-[#FDE68A] mt-2 truncate bg-purple-950/60 px-2 py-1 rounded border border-purple-400/20">
-            @{college.email_domains?.[0] || 'rvce.edu.in'}
-          </div>
+          This hub is maintained by students from {college.short_name}. Use your <code className="text-white">@{college.email_domains?.[0] || 'edu.in'}</code> email to unlock verified voting.
         </div>
       </div>
 
       {/* Campus Tabs Navigation */}
       <div className="flex border-b border-purple-500/20 gap-2 overflow-x-auto pb-1">
         {[
-          { key: 'overview', label: 'Feed & Discussions', icon: Building2 },
-          { key: 'departments', label: 'Departments & Cohorts', icon: Users },
-          { key: 'announcements', label: 'Pinned Announcements', icon: Megaphone },
-          { key: 'events', label: 'Campus Events', icon: Calendar },
+          { key: 'overview', label: 'Discussions & Feed', icon: Building2 },
+          { key: 'departments', label: 'Departments & Clubs', icon: Users },
+          { key: 'announcements', label: 'Announcements', icon: Megaphone },
+          { key: 'events', label: 'Events', icon: Calendar },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -181,10 +216,10 @@ export default function CampusPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-mono rounded-t-xl transition-all duration-200 ${
+              className={`flex items-center gap-2 px-3.5 py-2 text-xs font-mono rounded-t-xl transition-all duration-150 ${
                 isActive
-                  ? 'border-b-2 border-amber-400 text-[#FDE68A] font-semibold bg-gradient-to-t from-purple-900/30 to-transparent shadow-[0_2px_12px_rgba(251,191,36,0.15)]'
-                  : 'text-[#C4B5FD] hover:text-[#F8F7FF] hover:bg-purple-900/20'
+                  ? 'border-b-2 border-amber-400 text-[#FDE68A] font-bold bg-purple-900/20'
+                  : 'text-[#C4B5FD] hover:text-[#F8F7FF] hover:bg-purple-900/10'
               }`}
             >
               <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-[#FBBF24]' : 'text-[#7C6FA6]'}`} />
@@ -194,21 +229,23 @@ export default function CampusPage() {
         })}
       </div>
 
-      {/* Tab 1: Overview & Feed */}
+      {/* TAB 1: OVERVIEW & POSTS */}
       {activeTab === 'overview' && (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {/* Post Composer */}
-          <div className="celestial-card p-5">
-            <div className="flex items-center justify-between mb-3.5">
-              <span className="text-xs font-mono uppercase tracking-wider font-semibold text-[#FDE68A] flex items-center gap-1.5">
-                <span>✦ Post to {college.short_name} Stream</span>
+          <div className="celestial-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono font-bold text-[#FDE68A]">
+                Post to {college.short_name} Feed
               </span>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5 text-xs font-mono">
                 <button
                   type="button"
                   onClick={() => setNewPostCategory('DISCUSSION')}
-                  className={`pill-glass text-[10px] ${
-                    newPostCategory === 'DISCUSSION' ? 'pill-glass-active' : ''
+                  className={`px-2.5 py-0.5 rounded-full border text-[10px] ${
+                    newPostCategory === 'DISCUSSION'
+                      ? 'border-amber-400 bg-amber-500/15 text-[#FDE68A] font-bold'
+                      : 'border-purple-400/20 text-[#7C6FA6]'
                   }`}
                 >
                   Discussion
@@ -216,86 +253,78 @@ export default function CampusPage() {
                 <button
                   type="button"
                   onClick={() => setNewPostCategory('QUESTION_QA')}
-                  className={`pill-glass text-[10px] ${
-                    newPostCategory === 'QUESTION_QA' ? 'pill-glass-active' : ''
+                  className={`px-2.5 py-0.5 rounded-full border text-[10px] ${
+                    newPostCategory === 'QUESTION_QA'
+                      ? 'border-amber-400 bg-amber-500/15 text-[#FDE68A] font-bold'
+                      : 'border-purple-400/20 text-[#7C6FA6]'
                   }`}
                 >
-                  Q&A Question
+                  Question
                 </button>
               </div>
             </div>
 
-            <form onSubmit={handleCreatePost} className="space-y-3">
+            <form onSubmit={handleCreatePost} className="space-y-2.5">
               {newPostCategory === 'QUESTION_QA' && (
                 <input
                   type="text"
                   value={newPostTitle}
                   onChange={(e) => setNewPostTitle(e.target.value)}
                   placeholder="Question title (e.g. Which elective for 5th sem?)"
-                  className="celestial-input w-full text-xs font-mono p-3"
+                  className="celestial-input w-full text-xs font-mono p-2.5 text-white"
                 />
               )}
               <textarea
                 value={newPostBody}
                 onChange={(e) => setNewPostBody(e.target.value)}
-                placeholder={`Share an update, question, or study moment with ${college.short_name} students...`}
+                placeholder={`Share an update or question with ${college.short_name} students...`}
                 rows={3}
-                className="celestial-input w-full text-xs p-3 leading-relaxed"
+                className="celestial-input w-full text-xs p-2.5 leading-relaxed text-white"
               />
               <div className="flex justify-end pt-1">
                 <button
                   type="submit"
                   disabled={isSubmitting || !newPostBody.trim()}
-                  className="btn-campus-amber text-xs font-mono px-5 py-2"
+                  className="btn-campus-amber text-xs font-mono px-4 py-1.5 font-bold flex items-center gap-1.5"
                 >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>{isSubmitting ? 'Posting...' : 'Publish to Feed'}</span>
+                  <Send className="w-3 h-3" />
+                  <span>{isSubmitting ? 'Posting...' : 'Post to Campus'}</span>
                 </button>
               </div>
             </form>
           </div>
 
-          {/* Active Discussions / Posts Stream */}
-          <div className="space-y-4">
+          {/* Active Discussions Stream */}
+          <div className="space-y-3.5">
             {overview.active_discussions?.map((post: any) => (
-              <div key={post.id} className="celestial-card p-5 hover:border-purple-400/40 transition-all">
-                <div className="flex items-center justify-between gap-2 mb-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="neo-badge text-[10px] bg-purple-900/50 text-[#C4B5FD] border-purple-400/30">
-                      {post.category}
-                    </span>
-                    <span className="text-xs font-mono text-[#7C6FA6]">
-                      {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
+              <div key={post.id} className="celestial-card p-4 sm:p-5 hover:border-purple-400/40 transition-all space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="neo-badge text-[10px] bg-purple-900/50 text-[#C4B5FD] border-purple-400/30">
+                    {post.category || 'DISCUSSION'}
+                  </span>
                   <button
                     onClick={() => setReportTarget({ id: post.id, type: 'POST', title: post.title || post.body })}
-                    className="text-[#7C6FA6] hover:text-rose-400 transition-colors p-1"
-                    title="Report content"
+                    className="text-[#7C6FA6] hover:text-rose-400 p-1"
                   >
-                    <Flag className="w-3.5 h-3.5" />
+                    <Flag className="w-3 h-3" />
                   </button>
                 </div>
 
                 {post.title && (
-                  <h3 className="font-display text-lg font-bold mb-1.5 text-[#F8F7FF]">
+                  <h3 className="font-display text-sm font-bold text-[#F8F7FF]">
                     {post.title}
                   </h3>
                 )}
-                <p className="text-xs text-[#C4B5FD] leading-relaxed mb-4">
+                <p className="text-xs text-[#C4B5FD] leading-relaxed">
                   {post.body}
                 </p>
 
-                <div className="flex items-center justify-between text-xs font-mono text-[#7C6FA6] pt-3 border-t border-purple-500/20">
-                  <div className="flex items-center gap-4">
-                    <span className="hover:text-[#FDE68A] cursor-pointer transition-colors">
-                      ▲ {post.upvotes || post.upvotes_count || 0} Upvotes
-                    </span>
+                <div className="flex items-center justify-between text-xs font-mono text-[#7C6FA6] pt-2 border-t border-purple-500/20">
+                  <div className="flex items-center gap-3">
+                    <span>▲ {post.upvotes || post.upvotes_count || 0} Upvotes</span>
                     <span>💬 {post.comments || post.comments_count || 0} Replies</span>
                   </div>
-                  <button className="text-[11px] text-[#FBBF24] hover:text-[#FDE68A] transition-colors font-semibold">
-                    View Thread →
-                  </button>
+                  <span className="text-[11px] text-[#FBBF24]">View Thread →</span>
                 </div>
               </div>
             ))}
@@ -303,13 +332,13 @@ export default function CampusPage() {
         </div>
       )}
 
-      {/* Tab 2: Departments & Cohorts */}
+      {/* TAB 2: DEPARTMENTS & CLUBS */}
       {activeTab === 'departments' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {overview.student_created_communities?.map((comm: any) => (
-            <div key={comm.id} className="celestial-card p-5 flex flex-col justify-between">
+            <div key={comm.id} className="celestial-card p-4 flex flex-col justify-between space-y-3">
               <div>
-                <div className="flex items-center justify-between gap-2 mb-2.5">
+                <div className="flex items-center justify-between mb-1.5">
                   <span className="neo-badge text-[10px] bg-purple-900/60 text-[#C4B5FD] border-purple-400/30">
                     {comm.type}
                   </span>
@@ -317,21 +346,21 @@ export default function CampusPage() {
                     {comm.member_count} Members
                   </span>
                 </div>
-                <h3 className="font-display text-base font-bold text-[#F8F7FF] mb-1.5">
+                <h3 className="font-display text-sm font-bold text-[#F8F7FF] mb-1">
                   {comm.name}
                 </h3>
-                <p className="text-xs text-[#C4B5FD] leading-relaxed mb-4">
+                <p className="text-xs text-[#C4B5FD] leading-relaxed">
                   {comm.description}
                 </p>
               </div>
 
-              <div className="pt-3 border-t border-purple-500/20 flex justify-end">
+              <div className="pt-2 border-t border-purple-500/20 flex justify-end">
                 <a
                   href="/messages"
-                  className="btn-campus-amber text-xs font-mono px-4 py-1.5"
+                  className="btn-campus-amber text-xs font-mono px-3.5 py-1.5 flex items-center gap-1.5 font-bold"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
-                  <span>Open Space</span>
+                  <span>Join Channel</span>
                 </a>
               </div>
             </div>
@@ -339,23 +368,23 @@ export default function CampusPage() {
         </div>
       )}
 
-      {/* Tab 3: Pinned Announcements */}
+      {/* TAB 3: ANNOUNCEMENTS */}
       {activeTab === 'announcements' && (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {overview.pinned_announcements?.map((ann: any) => (
-            <div key={ann.id} className="celestial-card-amber p-5">
-              <div className="flex items-center justify-between gap-2 mb-2.5">
+            <div key={ann.id} className="celestial-card p-4 sm:p-5 border-amber-400/40 space-y-2">
+              <div className="flex items-center justify-between">
                 <span className="neo-badge text-[10px] bg-amber-500/20 text-[#FDE68A] border-amber-400/40 font-bold">
                   ✦ PINNED ANNOUNCEMENT
                 </span>
-                <span className="text-xs font-mono text-[#FDE68A]/80">
+                <span className="text-xs font-mono text-[#7C6FA6]">
                   {new Date(ann.created_at).toLocaleDateString()}
                 </span>
               </div>
-              <h3 className="font-display text-lg font-bold text-[#F8F7FF] mb-2">
+              <h3 className="font-display text-base font-bold text-[#F8F7FF]">
                 {ann.title}
               </h3>
-              <p className="text-xs text-[#FDE68A]/90 leading-relaxed">
+              <p className="text-xs text-[#C4B5FD] leading-relaxed">
                 {ann.body}
               </p>
             </div>
@@ -363,33 +392,36 @@ export default function CampusPage() {
         </div>
       )}
 
-      {/* Tab 4: Campus Events */}
+      {/* TAB 4: EVENTS */}
       {activeTab === 'events' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {overview.upcoming_events?.map((evt: any) => (
-            <div key={evt.id} className="celestial-card p-5 flex flex-col justify-between">
+            <div key={evt.id} className="celestial-card p-4 flex flex-col justify-between space-y-3">
               <div>
-                <div className="flex items-center justify-between gap-2 mb-2.5">
+                <div className="flex items-center justify-between mb-1.5">
                   <span className="neo-badge text-[10px] bg-sky-500/15 text-sky-200 border-sky-400/40">
                     CAMPUS EVENT
                   </span>
-                  <span className="text-xs font-mono font-semibold text-[#FDE68A]">
+                  <span className="text-xs font-mono text-[#FDE68A]">
                     {evt.rsvp_count} RSVP'd
                   </span>
                 </div>
-                <h3 className="font-display text-base font-bold text-[#F8F7FF] mb-1.5">
+                <h3 className="font-display text-base font-bold text-[#F8F7FF] mb-1">
                   {evt.title}
                 </h3>
-                <p className="text-xs text-[#C4B5FD] leading-relaxed mb-3">
+                <p className="text-xs text-[#C4B5FD] leading-relaxed mb-2">
                   {evt.description}
                 </p>
-                <div className="text-xs font-mono text-[#7C6FA6] mb-4 bg-purple-950/40 p-2 rounded-lg border border-purple-500/20">
+                <div className="text-[11px] font-mono text-[#7C6FA6] bg-purple-950/40 p-2 rounded-lg border border-purple-500/20">
                   📍 {evt.venue_or_link}
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-purple-500/20 flex justify-end">
-                <button className="btn-campus-amber text-xs font-mono px-4 py-1.5">
+              <div className="pt-2 border-t border-purple-500/20 flex justify-end">
+                <button
+                  onClick={() => alert(`RSVP registered for ${evt.title}!`)}
+                  className="btn-campus-amber text-xs font-mono px-3.5 py-1.5 font-bold"
+                >
                   RSVP Going
                 </button>
               </div>

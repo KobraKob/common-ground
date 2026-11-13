@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Sparkles, Users, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Users, ShieldAlert, ShieldCheck } from 'lucide-react';
 
 interface CampusHeroBannerProps {
   title: string;
@@ -9,24 +9,26 @@ interface CampusHeroBannerProps {
   subtitle?: string;
   shortCode?: string;
   activeCount?: number;
+  showActiveCount?: boolean;
   isOfficial?: boolean;
   actionSlot?: React.ReactNode;
 }
 
 export function CampusHeroBanner({
   title,
-  badgeText = 'BENGALURU NIGHT NETWORK • LIVE',
+  badgeText = 'BENGALURU CAMPUS NETWORK',
   subtitle,
   shortCode,
-  activeCount = 142,
+  activeCount,
+  showActiveCount = false,
   isOfficial = false,
   actionSlot,
 }: CampusHeroBannerProps) {
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-purple-400/30 shadow-2xl min-h-[250px] md:min-h-[290px] flex flex-col justify-between p-6 md:p-8 bg-[#090422]">
+    <div className="relative overflow-hidden rounded-3xl border border-purple-400/30 shadow-2xl min-h-[220px] md:min-h-[260px] flex flex-col justify-between p-6 md:p-8 bg-[#090422]">
       {/* Background Reference Image Layer */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-45 mix-blend-screen scale-105"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40 mix-blend-screen scale-105"
         style={{
           backgroundImage: `url('/assets/celestial-campus-nightscape.png')`,
         }}
@@ -52,20 +54,13 @@ export function CampusHeroBanner({
         <rect width="100%" height="100%" fill="url(#skyGrad)" />
 
         {/* Lit Campus Window Silhouettes in the distance */}
-        <g opacity="0.35" transform="translate(0, 140)">
-          {/* Building silhouette blocks */}
+        <g opacity="0.35" transform="translate(0, 130)">
           <rect x="5%" y="40" width="80" height="70" fill="#0B0524" />
           <rect x="7%" y="48" width="6" height="8" fill="url(#windowGlow)" />
           <rect x="16%" y="48" width="6" height="8" fill="url(#windowGlow)" />
-          <rect x="7%" y="62" width="6" height="8" fill="url(#windowGlow)" />
-          <rect x="16%" y="62" width="6" height="8" fill="url(#windowGlow)" />
-
           <rect x="40%" y="20" width="110" height="90" fill="#0B0524" />
           <rect x="42%" y="28" width="7" height="10" fill="url(#windowGlow)" />
           <rect x="52%" y="28" width="7" height="10" fill="url(#windowGlow)" />
-          <rect x="42%" y="45" width="7" height="10" fill="url(#windowGlow)" />
-          <rect x="52%" y="45" width="7" height="10" fill="url(#windowGlow)" />
-
           <rect x="80%" y="30" width="90" height="80" fill="#0B0524" />
           <rect x="83%" y="38" width="6" height="9" fill="url(#windowGlow)" />
           <rect x="91%" y="38" width="6" height="9" fill="url(#windowGlow)" />
@@ -92,24 +87,26 @@ export function CampusHeroBanner({
       </div>
 
       {/* Center Headline & Content */}
-      <div className="relative z-10 my-4">
-        <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-celestial-gradient drop-shadow-md">
+      <div className="relative z-10 my-3">
+        <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-celestial-gradient drop-shadow-md">
           {title}
         </h1>
         {subtitle && (
-          <p className="mt-2 text-sm md:text-base text-[#C4B5FD] font-sans max-w-2xl leading-relaxed">
+          <p className="mt-1.5 text-xs md:text-sm text-[#C4B5FD] font-sans max-w-2xl leading-relaxed">
             {subtitle}
           </p>
         )}
       </div>
 
-      {/* Bottom Wet-Glass Action Bar */}
+      {/* Bottom Action Bar */}
       <div className="relative z-10 pt-3 border-t border-purple-400/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-4 flex-wrap text-xs font-mono">
-          <div className="flex items-center gap-1.5 text-[#FDE68A]">
-            <Users className="w-3.5 h-3.5 text-[#FBBF24]" />
-            <span>{activeCount} Night Owls Active</span>
-          </div>
+          {showActiveCount && activeCount !== undefined && (
+            <div className="flex items-center gap-1.5 text-[#FDE68A]">
+              <Users className="w-3.5 h-3.5 text-[#FBBF24]" />
+              <span>{activeCount} Active Students</span>
+            </div>
+          )}
 
           <div className="flex items-center gap-1.5 text-[#C4B5FD]">
             {isOfficial ? (
@@ -120,7 +117,7 @@ export function CampusHeroBanner({
             ) : (
               <>
                 <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                <span>Student-Led • Independent Hub</span>
+                <span>Student-Led Campus Space</span>
               </>
             )}
           </div>
