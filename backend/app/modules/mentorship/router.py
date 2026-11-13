@@ -125,6 +125,7 @@ async def list_opt_in_mentors(
             StudentProfile.user_id.notin_(blocked_by_ids),
         )
         .order_by(MentorshipProfile.updated_at.desc())
+        .limit(300)
     )
     result = await db.execute(query)
     rows = result.all()
@@ -185,6 +186,8 @@ async def create_mentorship_request(
         select(StudentProfile).where(StudentProfile.user_id == user.id)
     )
     requester_profile = requester_profile_result.scalar_one_or_none()
+    if not requester_profile:
+        raise HTTPException(status_code=409, detail="Complete your student profile before requesting mentorship")
     if mentor_student.dm_permission == "NONE":
         raise HTTPException(status_code=403, detail="This student does not accept new contact requests")
     if mentor_student.dm_permission == "SAME_CAMPUS_OR_COMMUNITY":
