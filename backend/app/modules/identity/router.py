@@ -80,7 +80,8 @@ async def signup(
     if existing_handle.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="This handle is already taken")
 
-    # 3. Determine verification stage
+    # College selection is a profile claim, not proof of mailbox ownership.
+    # New accounts remain unverified until an approved verification workflow completes.
     verification_stage = "STAGE_1_PROVISIONAL"
     college_name = None
     if payload.college_id:
@@ -88,12 +89,6 @@ async def signup(
         college = c_res.scalar_one_or_none()
         if college:
             college_name = college.name
-            user_domain = clean_email.split("@")[-1]
-            if college.email_domains and any(
-                user_domain == d.lower() or user_domain.endswith("." + d.lower())
-                for d in college.email_domains
-            ):
-                verification_stage = "STAGE_3_INSTITUTIONAL_VERIFIED"
 
     # 4. Create user
     new_user = User(
