@@ -1,4 +1,8 @@
 import pytest
+from fastapi import HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
+from app.core.config import settings
+from app.core.security import get_current_user_id, get_optional_current_user_id
 from httpx import AsyncClient
 from app.modules.identity.models import User, StudentProfile
 from app.modules.colleges.models import College
@@ -504,3 +508,23 @@ async def test_list_profiles_and_skill_filtering(client: AsyncClient, db_session
     assert rust_profiles[0]["handle"] == "rust_dev"
 
 
+
+
+@pytest.mark.asyncio
+async def test_production_rejects_spoofed_identity_headers_and_unsigned_tokens(monkeypatch):
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "SECRET_KEY", "test-secret-key-for-production-auth-tests-32chars")
+
+    assert await get_optional_current_user_id(None, "attacker-user-id") is None
+
+    with pytest.raises(HTTPException) as header_error:
+        await get_current_user_id(None, "attacker-user-id")
+    assert header_error.value.status_code == 401
+
+    forged_credentials = HTTPAuthorizationCredentials(
+        scheme="Bearer",
+        credentials="cg-user_attacker-user-id",
+    )
+    with pytest.raises(HTTPException) as token_error:
+        await get_current_user_id(forged_credentials, None)
+    assert token_error.value.status_code == 401
