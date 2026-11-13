@@ -45,75 +45,6 @@ import { ReportModal } from '@/components/shared/ReportModal';
 import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
 import { StudentHoloCard } from '@/components/profile';
 
-// Starter spotlight posts (Real Unsplash photography, no emojis, verified student context)
-const STARTER_SPOTLIGHT_POSTS: Post[] = [
-  {
-    id: 'spotlight-1',
-    author_id: 'aarav-rvce',
-    author_name: 'Aarav Patel',
-    author_handle: 'aarav_builder',
-    college_name: 'RV College of Engineering',
-    author_verification: 'STAGE_3_INSTITUTIONAL_VERIFIED',
-    category: 'HANGOUT_MEME',
-    title: '8th Mile Main Stage Audio Engineering Soundcheck',
-    body: 'Midnight acoustic test completed in the main quadrangle. Sound dispersion across the mechanical engineering block is dialed in for tomorrow evening.',
-    media_url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=900&auto=format&fit=crop&q=80',
-    media_type: 'IMAGE',
-    upvotes_count: 134,
-    comments_count: 18,
-    shares_count: 22,
-    is_cross_campus: true,
-    is_pinned: false,
-    tags: ['RVCE', '8thMile', 'Music'],
-    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-  },
-  {
-    id: 'spotlight-2',
-    author_id: 'diya-pesu',
-    author_name: 'Diya Sharma',
-    author_handle: 'diya_design',
-    college_name: 'PES University',
-    author_verification: 'STAGE_3_INSTITUTIONAL_VERIFIED',
-    category: 'DISCUSSION',
-    title: 'Late Night Coffee and Study Spaces on Outer Ring Road',
-    body: 'Exam preparation season is starting. Which late-night study spots in Bengaluru have reliable Wi-Fi and power outlets?',
-    poll: {
-      id: 'poll-1',
-      question: 'Best midnight study coffee location?',
-      options: [
-        { id: 'opt-1', text: 'Rameshwaram Cafe (Indiranagar)', votes: 82 },
-        { id: 'opt-2', text: 'Third Wave Coffee (Koramangala 24/7)', votes: 65 },
-        { id: 'opt-3', text: 'Campus Dorm Canteen & Chai Tapri', votes: 114 },
-      ],
-    },
-    upvotes_count: 98,
-    comments_count: 24,
-    shares_count: 15,
-    is_cross_campus: true,
-    is_pinned: false,
-    tags: ['CampusLife', 'StudySpots', 'Bengaluru'],
-    created_at: new Date(Date.now() - 3600000 * 5).toISOString(),
-  },
-  {
-    id: 'spotlight-3',
-    author_id: 'rohan-bmsce',
-    author_name: 'Rohan Kumar',
-    author_handle: 'rohan_systems',
-    college_name: 'BMS College of Engineering',
-    author_verification: 'STAGE_3_INSTITUTIONAL_VERIFIED',
-    category: 'OPPORTUNITY',
-    title: 'Recruiting ROS2 Vision Contributor for Precision Agriculture Drone',
-    body: 'Prototyping an autonomous drone for real-time crop disease detection. Looking for a cross-campus collaborator with OpenCV or ROS2 experience.',
-    upvotes_count: 56,
-    comments_count: 9,
-    shares_count: 11,
-    is_cross_campus: true,
-    is_pinned: false,
-    tags: ['Robotics', 'BuildSquad', 'BMSCE'],
-    created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
-  },
-];
-
 export default function CityPage() {
   const [activeTab, setActiveTab] = useState<'feed' | 'directory' | 'communities'>('feed');
   const [posts, setPosts] = useState<Post[]>([]);
@@ -168,14 +99,14 @@ export default function CityPage() {
           getStudents(),
         ]);
         if (!pData || pData.length === 0) {
-          setPosts(STARTER_SPOTLIGHT_POSTS);
+          setPosts([]);
         } else {
           setPosts(pData);
         }
         setCommunities((cData || []).filter((c) => c.community_type === 'CROSS_CAMPUS_INTEREST' || !c.college_id));
         setStudents(peers || []);
       } catch (err) {
-        console.warn('Using starter spotlight posts:', err);
+        console.warn('Could not load the city feed:', err);
         setPosts(STARTER_SPOTLIGHT_POSTS);
       } finally {
         setLoading(false);
