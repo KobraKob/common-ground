@@ -25,9 +25,9 @@ import { TrustBadge } from '@/components/shared/TrustBadge';
 import { ReportModal } from '@/components/shared/ReportModal';
 import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
 
-export default function CampusPage() {
+export function CampusPageContent({ initialSlug }: { initialSlug?: string }) {
   const [colleges, setColleges] = useState<College[]>(BENGALURU_COLLEGES);
-  const [selectedSlug, setSelectedSlug] = useState(() => typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('college') || 'rvce' : 'rvce');
+  const [selectedSlug, setSelectedSlug] = useState(() => initialSlug || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('college') || 'rvce' : 'rvce'));
   const [activeTab, setActiveTab] = useState<'overview' | 'departments' | 'announcements' | 'events'>('overview');
   const [loading, setLoading] = useState(false);
 
@@ -434,4 +434,8 @@ export default function CampusPage() {
       )}
     </div>
   );
+}
+
+export default function CampusPage() {
+  return <CampusPageContent />;
 }
