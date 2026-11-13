@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ArrowUpRight, Flag, MessageSquare, Pin, Search, Send, Users } from 'lucide-react';
@@ -26,15 +26,15 @@ export default function MessagesPage() {
   const [showMobileList, setShowMobileList] = useState(true);
   const [notice, setNotice] = useState('');
   const [myProfile, setMyProfile] = useState<StudentProfile | null>(null);
-  const [reportTarget, setReportTarget] = useState<{ id: string; type: string; title: string } | null>(null);
+  const [reportTarget, setReportTarget] = useState<{ id: string; title: string } | null>(null);
 
-  async function loadMessages(conversationId: string) {
+  const loadMessages = useCallback(async (conversationId: string) => {
     const page = await getMessagesPaginated({ conversationId, limit: 50, offset: 0 });
     setMessages(page.items);
     setMessagesOffset(page.nextOffset);
     setHasMoreMessages(page.hasMore);
     setMessageSearch('');
-  }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -67,7 +67,7 @@ export default function MessagesPage() {
     }
     void loadData();
     return () => { active = false; };
-  }, []);
+  }, [loadMessages]);
 
   const currentConversation = conversations.find((conversation) => conversation.id === selectedConvId) || conversations[0];
   const isGroupConversation = currentConversation?.conversation_type !== 'DIRECT';
@@ -94,6 +94,7 @@ export default function MessagesPage() {
     setSelectedConvId(conversationId);
     setShowMobileList(false);
     setNotice('');
+    setThreadTab('chat');
     setMessages([]);
     setMessagesOffset(0);
     setHasMoreMessages(false);
@@ -196,7 +197,7 @@ export default function MessagesPage() {
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
               {hasMoreMessages && <div className="flex justify-center"><button type="button" onClick={()=>void loadOlderMessages()} disabled={isLoadingOlder} className="min-h-11 rounded-full border border-[var(--cg-border)] px-4 text-xs cg-muted disabled:opacity-50">{isLoadingOlder?'Loading older messages…':'Load older messages'}</button></div>}
               {filteredMessages.length ? filteredMessages.map((message)=><article key={message.id} className={`max-w-[88%] space-y-2 rounded-2xl border p-4 sm:max-w-[75%] ${message.sender_id===myProfile?.user_id?'ml-auto border-[var(--cg-accent)]/30 bg-[var(--cg-elevated)]':'mr-auto border-[var(--cg-border)]'}`}>
-                <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-xs font-semibold">{message.sender_name || 'Student'}</p><p className="mt-0.5 text-[10px] cg-muted">@{message.sender_handle || 'student'} · {new Date(message.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</p></div><button type="button" onClick={()=>setReportTarget({id:message.id,type:'MESSAGE',title:message.body})} className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-full cg-muted hover:bg-[var(--cg-elevated)]" aria-label="Report message"><Flag size={14}/></button></div>
+                <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-xs font-semibold">{message.sender_name || 'Student'}</p><p className="mt-0.5 text-[10px] cg-muted">@{message.sender_handle || 'student'} · {new Date(message.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</p></div><button type="button" onClick={()=>setReportTarget({id:message.id,title:message.body})} className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-full cg-muted hover:bg-[var(--cg-elevated)]" aria-label="Report message"><Flag size={14}/></button></div>
                 <p className="whitespace-pre-wrap break-words text-sm leading-6">{message.body}</p>
                 {message.is_pinned && <span className="inline-flex items-center gap-1 text-[10px] cg-muted"><Pin size={11}/>Pinned</span>}
               </article>) : <div className="py-12 text-center"><MessageSquare size={24} className="mx-auto cg-muted"/><p className="mt-3 text-sm font-medium">{threadTab==='vault'?'No pinned messages yet':'No messages in this view yet'}</p><p className="mt-1 text-xs cg-muted">Start the conversation when you are ready.</p></div>}
@@ -212,6 +213,6 @@ export default function MessagesPage() {
       </section>
     </div>
 
-    {reportTarget && <ReportModal isOpen onClose={()=>setReportTarget(null)} targetType={reportTarget.type} targetId={reportTarget.id} targetTitle={reportTarget.title}/>}
+    {reportTarget && <ReportModal isOpen onClose={()=>setReportTarget(null)} targetType="MESSAGE" targetId={reportTarget.id} targetTitle={reportTarget.title}/>}
   </div>;
 }
