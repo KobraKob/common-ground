@@ -66,6 +66,7 @@ class ConversationResponse(BaseModel):
     created_at: datetime
     last_message_at: datetime
     last_message: Optional[str] = None
+    member_role: Optional[str] = None
 
     class Config:
         from_attributes = True
