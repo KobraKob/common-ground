@@ -38,7 +38,7 @@ export function NavigationSidebar() {
               <Icon size={17} aria-hidden="true" /><span>{label}</span>
             </Link>
           ))}
-          {isModerator && <Link href="/moderation" className="ml-auto inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-[var(--cg-muted)] hover:bg-[var(--cg-elevated)]"><ShieldCheck size={17}/>Moderation</Link>}
+          {isModerator && <div className="ml-auto flex items-center gap-1"><Link href="/insights" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-[var(--cg-muted)] hover:bg-[var(--cg-elevated)]"><ShieldCheck size={17}/>Insights</Link><Link href="/moderation" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-[var(--cg-muted)] hover:bg-[var(--cg-elevated)]"><ShieldCheck size={17}/>Moderation</Link></div>}
         </div>
       </nav>
       <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-50 flex min-h-[58px] items-center justify-around border-t border-[var(--cg-border)] bg-[var(--cg-surface)]/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
