@@ -13,7 +13,10 @@ type Summary = {
   cross_campus_interactions: number;
   projects_created: number;
   events_created: number;
-  event_rsvps: number;
+  event_registrations: number;
+  weekly_retention_rate: number | null;
+  search_to_connection_rate: number | null;
+  feed_load_p75_ms: number | null;
   connections_created: number;
   public_communities: number;
   searches: number;
@@ -42,12 +45,16 @@ export default function InsightsPage() {
     { label: 'Tracked active students · 7d', value: summary.active_students_7d, icon: Activity },
     { label: 'Cross-campus collaborations', value: summary.cross_campus_interactions, icon: Network },
     { label: 'Projects created · 30d', value: summary.projects_created, icon: FolderKanban },
-    { label: 'Event RSVPs · 30d', value: summary.event_rsvps, icon: CalendarDays },
+    { label: 'Event registrations · 30d', value: summary.event_registrations, icon: CalendarDays },
     { label: 'Community connections · 30d', value: summary.connections_created, icon: MessageCircle },
     { label: 'Searches · 30d', value: summary.searches, icon: Search },
     { label: 'Searchers who opened a profile', value: summary.search_to_profile_open_rate === null ? 'No data' : `${summary.search_to_profile_open_rate}%`, icon: Users },
     { label: 'Average feed load', value: summary.average_feed_load_ms === null ? 'No data' : `${summary.average_feed_load_ms.toLocaleString()} ms`, icon: Gauge },
     { label: 'Feed timing samples', value: summary.feed_load_samples, icon: Activity },
+    { label: 'Weekly retention', value: summary.weekly_retention_rate === null ? 'No data' : `${summary.weekly_retention_rate}%`, icon: Activity },
+    { label: 'Searchers who connected', value: summary.search_to_connection_rate === null ? 'No data' : `${summary.search_to_connection_rate}%`, icon: Users },
+    { label: 'Feed load · p75', value: summary.feed_load_p75_ms === null ? 'No data' : `${summary.feed_load_p75_ms.toLocaleString()} ms`, icon: Gauge },
+
     { label: 'Events created · 30d', value: summary.events_created, icon: CalendarDays },
     { label: 'Public communities', value: summary.public_communities, icon: BookOpen },
   ] : [];
