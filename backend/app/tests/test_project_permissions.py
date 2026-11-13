@@ -2,6 +2,7 @@ import pytest
 from httpx import AsyncClient
 
 from app.modules.identity.models import StudentProfile, User
+from app.modules.colleges.models import College
 from app.modules.projects.models import Project
 
 
