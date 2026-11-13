@@ -86,6 +86,33 @@ async def create_direct_conversation(
         raise HTTPException(status_code=404, detail="Student profile not found")
     recipient_name = recipient_profile.display_name
 
+    if not existing:
+        member_a = aliased(ConversationMember)
+        member_b = aliased(ConversationMember)
+        legacy_result = await db.execute(
+            select(Conversation)
+            .join(member_a, member_a.conversation_id == Conversation.id)
+            .join(member_b, member_b.conversation_id == Conversation.id)
+            .where(
+                Conversation.conversation_type == "DIRECT",
+                Conversation.direct_key.is_(None),
+                member_a.user_id == user.id,
+                member_b.user_id == recipient_id,
+            )
+            .limit(1)
+        )
+        legacy = legacy_result.scalar_one_or_none()
+        if legacy:
+            member_count_result = await db.execute(
+                select(func.count(ConversationMember.id)).where(
+                    ConversationMember.conversation_id == legacy.id
+                )
+            )
+            if int(member_count_result.scalar() or 0) == 2:
+                legacy.direct_key = key
+                await db.commit()
+                existing = legacy
+
     if existing:
         return {
             "id": existing.id,
