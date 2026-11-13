@@ -44,8 +44,15 @@ async def test_verification_request_creates_pending_claim(client: AsyncClient, d
         short_name="VC",
         city="Bengaluru",
         state="Karnataka",
+        email_domains=["college.edu.in"],
     )
-    db_session.add_all([user, college])
+    profile = StudentProfile(
+        user_id=user.id,
+        handle="verificationstudent",
+        display_name="Verification Student",
+        college_id=college.id,
+    )
+    db_session.add_all([user, college, profile])
     await db_session.commit()
 
     response = await client.post(
