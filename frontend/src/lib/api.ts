@@ -403,10 +403,11 @@ export async function executeModerationAction(payload: any): Promise<any> {
 // Unified Search
 // ----------------------------------------------------
 
-export async function unifiedSearch(q: string): Promise<any> {
+export async function unifiedSearch(q: string, signal?: AbortSignal): Promise<any> {
   try {
-    return await request<any>(`/search?q=${encodeURIComponent(q)}`);
-  } catch {
+    return await request<any>(`/search?q=${encodeURIComponent(q)}`, { signal });
+  } catch (error) {
+    if (signal?.aborted) throw error;
     return {
       students: [],
       communities: [],
