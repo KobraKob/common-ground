@@ -125,7 +125,8 @@ export default function CampusPage() {
         subtitle={`Bengaluru academic hub in ${college.city}. Explore peer-driven study channels, departmental spaces, and campus discussions.`}
         isOfficial={college.is_official_partner}
         actionSlot={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <a href="/discover" className="cg-link inline-flex min-h-11 items-center text-sm font-medium">Campus network map</a>
             <span className="text-xs font-mono text-slate-400 hidden sm:inline">Campus:</span>
             <div className="relative inline-block">
               <select
