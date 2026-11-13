@@ -49,6 +49,8 @@ Staging data must be synthetic or anonymized. Never copy production personal dat
 
 ## 5. Database access and row-level security
 
+Migration `009_direct_conversation_identity.sql` adds a unique, nullable identity for each direct-message pair. Apply it before enabling the messaging UI in production. The authenticated messaging API enforces conversation membership, recipient contact preferences and mutual block checks on both thread creation and message delivery. Message attachments are not accepted by the current API.
+
 Migration `007_enable_application_rls.sql` enables RLS on application tables and intentionally creates no direct `anon` or `authenticated` table policies. The browser accesses application data through the FastAPI service, which enforces profile visibility, blocks, membership and moderator permissions. The backend `DATABASE_URL` must use a trusted table-owner/service database role that can perform the API's queries. Verify this role in staging before applying the migration; never use an anonymous or end-user database role for the backend.
 
 ## 6. Database backup and restore
