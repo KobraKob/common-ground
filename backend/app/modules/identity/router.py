@@ -680,11 +680,45 @@ async def request_verification(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if not payload.institutional_email:
+        raise HTTPException(status_code=422, detail="Institutional email is required for a verification request")
+
+    college_result = await db.execute(select(College).where(College.id == payload.college_id))
+    college = college_result.scalar_one_or_none()
+    if not college:
+        raise HTTPException(status_code=404, detail="College not found")
+
+    profile_result = await db.execute(
+        select(StudentProfile.college_id).where(StudentProfile.user_id == user.id)
+    )
+    profile_college_id = profile_result.scalar_one_or_none()
+    if not profile_college_id or profile_college_id != college.id:
+        raise HTTPException(status_code=409, detail="Set this college as your profile institution before requesting verification")
+
+    approved_domains = {
+        str(domain).strip().lower().lstrip("@")
+        for domain in (college.email_domains or [])
+        if str(domain).strip()
+    }
+    submitted_domain = str(payload.institutional_email).rsplit("@", 1)[-1].lower()
+    if approved_domains and submitted_domain not in approved_domains:
+        raise HTTPException(status_code=400, detail="Use an email domain listed for your selected institution")
+
+    pending_result = await db.execute(
+        select(AffiliationClaim.id).where(
+            AffiliationClaim.user_id == user.id,
+            AffiliationClaim.status == "PENDING",
+        ).limit(1)
+    )
+    existing_claim_id = pending_result.scalar_one_or_none()
+    if existing_claim_id:
+        raise HTTPException(status_code=409, detail="You already have a pending verification request")
+
     claim = AffiliationClaim(
         user_id=user.id,
-        college_id=payload.college_id,
+        college_id=college.id,
         claimed_stage=payload.claimed_stage,
-        institutional_email=payload.institutional_email,
+        institutional_email=str(payload.institutional_email),
         status="PENDING",
     )
     db.add(claim)
