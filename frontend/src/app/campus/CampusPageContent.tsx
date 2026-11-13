@@ -109,7 +109,7 @@ export function CampusPageContent({ initialSlug }: { initialSlug?: string }) {
   const college = overview.college || defaultCollege;
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto py-2">
+    <div className="cg-page space-y-8">
       {/* Campus Hero Banner */}
       <CampusHeroBanner
         title={college.name}
