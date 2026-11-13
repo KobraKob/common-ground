@@ -21,42 +21,46 @@ async def list_colleges(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(College).where(College.is_active_cluster == True).order_by(College.name)
+    # Aggregate counts in the database instead of issuing two extra queries per campus.
+    member_counts = (
+        select(StudentProfile.college_id, func.count(StudentProfile.user_id).label("member_count"))
+        .group_by(StudentProfile.college_id)
+        .subquery()
+    )
+    community_counts = (
+        select(Community.college_id, func.count(Community.id).label("community_count"))
+        .group_by(Community.college_id)
+        .subquery()
+    )
+    query = (
+        select(
+            College,
+            func.coalesce(member_counts.c.member_count, 0),
+            func.coalesce(community_counts.c.community_count, 0),
+        )
+        .outerjoin(member_counts, member_counts.c.college_id == College.id)
+        .outerjoin(community_counts, community_counts.c.college_id == College.id)
+        .where(College.is_active_cluster.is_(True))
+        .order_by(College.name)
+    )
     result = await db.execute(query)
-    colleges = result.scalars().all()
-
-    response = []
-    for c in colleges:
-        # Count members
-        m_res = await db.execute(
-            select(func.count(StudentProfile.user_id)).where(StudentProfile.college_id == c.id)
+    return [
+        CollegeResponse(
+            id=college.id,
+            name=college.name,
+            slug=college.slug,
+            short_name=college.short_name,
+            city=college.city,
+            state=college.state,
+            email_domains=college.email_domains,
+            is_official_partner=college.is_official_partner,
+            is_active_cluster=college.is_active_cluster,
+            member_count=member_count,
+            community_count=community_count,
+            created_at=college.created_at,
         )
-        member_count = m_res.scalar() or 0
-
-        # Count communities
-        comm_res = await db.execute(
-            select(func.count(Community.id)).where(Community.college_id == c.id)
-        )
-        community_count = comm_res.scalar() or 0
-
-        response.append(
-            CollegeResponse(
-                id=c.id,
-                name=c.name,
-                slug=c.slug,
-                short_name=c.short_name,
-                city=c.city,
-                state=c.state,
-                email_domains=c.email_domains,
-                is_official_partner=c.is_official_partner,
-                is_active_cluster=c.is_active_cluster,
-                member_count=member_count,
-                community_count=community_count,
-                created_at=c.created_at,
-            )
-        )
-    return response
-
+        for college, member_count, community_count in result.all()
+    ]
 
 @router.get("/{slug}", response_model=CampusHubOverview)
 @cache_response(ttl_seconds=60, namespace="colleges_slug")
