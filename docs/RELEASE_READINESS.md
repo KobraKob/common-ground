@@ -6,13 +6,16 @@ This document defines the controls expected before a production release. It is d
 
 Required for every pull request:
 - Backend unit/integration suite: `cd backend && pytest -q`.
-- Frontend lint and production build: `cd frontend && npm ci && npm run lint && npm run build`.
+- Frontend static type validation and production build: `cd frontend && npm ci && npm run typecheck && npm run build`.
+- Production-route HTTP smoke checks after the server starts.
+- Playwright + axe checks for core routes, responsive overflow, theme switching, campus-map selection, mentorship guest state and reduced motion.
+- Mobile-throttled Lighthouse collection for landing, discovery, city, Commons and Build; current budgets warn on LCP, CLS and total blocking time.
 - Python dependency audit: `pip-audit -r backend/requirements.txt`.
 - npm audit: `npm audit --audit-level=high` from `frontend/`.
 - Secret scanning and dependency-change review.
 - Human review of authorization, privacy, migrations, configuration and third-party changes.
 
-The current repository does not contain a dedicated browser E2E suite. The production build and existing API integration tests are not a substitute for browser E2E coverage. Add Playwright journeys for signup/login, onboarding, campus discovery, messaging, community privacy/block boundaries and moderation before claiming full E2E coverage.
+The repository now contains a browser smoke suite using Playwright and axe. It checks route rendering, desktop/mobile horizontal overflow, selected accessible interactions and serious/critical automated accessibility violations. It is not full authenticated journey coverage. Add multi-user journeys for signup/login, onboarding, messaging, community privacy/block boundaries, project collaboration, event attendance and moderation before claiming complete E2E coverage. A Lighthouse lab run is not a substitute for real-device field INP measurement.
 
 ## 2. Dependency reproducibility
 
