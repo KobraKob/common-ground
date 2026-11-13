@@ -56,6 +56,7 @@ class ProjectResponse(BaseModel):
     is_cross_campus_open: bool
     repo_or_demo_links: List[dict] = []
     members_count: int = 1
+    my_role: Optional[str] = None
     created_at: datetime
 
     class Config:
