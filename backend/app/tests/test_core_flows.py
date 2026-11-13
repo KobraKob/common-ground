@@ -185,7 +185,7 @@ async def test_auth_signup_and_login_flow(client: AsyncClient, db_session):
     data1 = res1.json()
     assert data1["profile"]["handle"] == "ankit_builds"
     assert data1["profile"]["verification_stage"] == "STAGE_1_PROVISIONAL"
-    assert data1["token"].startswith("cg-user_")
+    assert len(data1["token"].split(".")) == 3
 
     # 2. Signup with institutional domain -> Stage 3 Verified
     signup_payload_verified = {
