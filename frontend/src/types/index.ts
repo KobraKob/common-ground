@@ -62,6 +62,7 @@ export interface College {
 
 export interface StudentProfile {
   user_id: string;
+  platform_role?: PlatformRole;
   handle: string;
   display_name: string;
   bio?: string;
