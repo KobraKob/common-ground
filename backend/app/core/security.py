@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 
 import httpx
-from fastapi import Depends, HTTPException, status, Header
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
