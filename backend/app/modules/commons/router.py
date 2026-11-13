@@ -517,38 +517,38 @@ async def share_post(
 async def list_resources(
     subject: Optional[str] = None,
     community_id: Optional[str] = None,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Resource).where(Resource.is_public_commons == True)
+    query = (
+        select(Resource, StudentProfile.display_name)
+        .outerjoin(StudentProfile, StudentProfile.user_id == Resource.uploader_id)
+        .where(Resource.is_public_commons.is_(True))
+    )
     if community_id:
         query = query.where(Resource.community_id == community_id)
     if subject:
         query = query.where(Resource.subject_tags.ilike(f"%{subject}%"))
 
-    result = await db.execute(query.order_by(Resource.is_pinned.desc(), desc(Resource.created_at)).limit(limit))
-    resources = result.scalars().all()
-
-    resp = []
-    for r in resources:
-        up_res = await db.execute(select(StudentProfile.display_name).where(StudentProfile.user_id == r.uploader_id))
-        uploader_name = up_res.scalar_one_or_none() or "Student"
-        resp.append(
-            ResourceResponse(
-                id=r.id,
-                uploader_id=r.uploader_id,
-                uploader_name=uploader_name,
-                title=r.title,
-                description=r.description,
-                file_url=r.file_url,
-                external_link=r.external_link,
-                subject_tags=r.subject_tags or [],
-                is_pinned=r.is_pinned,
-                is_public_commons=r.is_public_commons,
-                created_at=r.created_at,
-            )
+    result = await db.execute(
+        query.order_by(Resource.is_pinned.desc(), desc(Resource.created_at)).limit(limit)
+    )
+    return [
+        ResourceResponse(
+            id=resource.id,
+            uploader_id=resource.uploader_id,
+            uploader_name=uploader_name or "Student",
+            title=resource.title,
+            description=resource.description,
+            file_url=resource.file_url,
+            external_link=resource.external_link,
+            subject_tags=resource.subject_tags or [],
+            is_pinned=resource.is_pinned,
+            is_public_commons=resource.is_public_commons,
+            created_at=resource.created_at,
         )
-    return resp
+        for resource, uploader_name in result.all()
+    ]
 
 
 @router.post("/resources", response_model=ResourceResponse)
