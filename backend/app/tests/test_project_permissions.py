@@ -178,6 +178,12 @@ async def test_only_project_lead_can_review_pending_join_requests(client: AsyncC
         headers={"X-User-Id": owner.id},
     )
     assert accepted.status_code == 200
+    cannot_review_twice = await client.patch(
+        "/api/v1/projects/join-requests-project/members/pending-application",
+        json={"status": "DECLINED"},
+        headers={"X-User-Id": owner.id},
+    )
+    assert cannot_review_twice.status_code == 409
 
     empty_queue = await client.get(
         "/api/v1/projects/join-requests-project/join-requests",
