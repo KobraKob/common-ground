@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { 
   Search, 
   Moon, 
-  Orbit, 
+  Sun, 
   X, 
   LogOut, 
   LogIn, 
@@ -97,19 +97,19 @@ export function GlobalHeader() {
   const currentProfile = getActiveProfile();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#0A0C12]/85 backdrop-blur-2xl">
+    <header className="cg-header sticky top-0 z-40 w-full border-b border-[var(--cg-border)] bg-[var(--cg-bg)]/95 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
         {/* Brand / Logo */}
         <div className="flex items-center gap-3 shrink-0">
           <Link href="/" className="flex items-center gap-2.5 group">
             {/* Minimal Geometric Node Logo */}
-            <div className="w-9 h-9 rounded-xl bg-[#161926] border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-sm transition-transform duration-150 group-hover:scale-105">
-              <span className="font-display font-extrabold text-xs tracking-wider text-amber-300">CG</span>
+            <div className="w-9 h-9 rounded-xl bg-[var(--cg-elevated)] border border-[var(--cg-border)] flex items-center justify-center text-[var(--cg-accent)] transition-colors">
+              <span className="font-display font-bold text-xs tracking-wider text-[var(--cg-accent)]">CG</span>
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
-                <span className="font-display text-base sm:text-lg font-bold tracking-tight text-white group-hover:text-amber-300 transition-colors">
-                  Common<span className="text-amber-400">Ground</span>
+                <span className="font-display text-base sm:text-lg font-bold tracking-tight text-[var(--cg-text)] group-hover:text-[var(--cg-accent)] transition-colors">
+                  Common<span className="text-[var(--cg-accent)]">Ground</span>
                 </span>
                 
               </div>
