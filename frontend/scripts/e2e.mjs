@@ -44,6 +44,13 @@ try {
     await page.locator('main').waitFor();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     if (overflow) throw new Error(`Mobile horizontal overflow detected on ${route}`);
+    const undersizedButtons = await page.evaluate(() =>
+      [...document.querySelectorAll('button')].filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && rect.height < 44;
+      }).length
+    );
+    if (undersizedButtons) throw new Error(`Found ${undersizedButtons} buttons smaller than 44px on ${route}`);
     console.log(`PASS mobile ${route}`);
   }
 
@@ -57,8 +64,8 @@ try {
   const campusPin = page.getByRole('button', { name: /Select RV College of Engineering/ });
   await campusPin.waitFor();
   await campusPin.click();
-  if (!(await page.getByText('RV College of Engineering').count())) {
-    throw new Error('Campus map pin did not select its campus');
+  if (await campusPin.getAttribute('aria-pressed') !== 'true') {
+    throw new Error('Campus map pin did not update its selected state');
   }
 
   await page.goto(new URL('/mentorship', baseUrl), { waitUntil: 'domcontentloaded' });
@@ -67,8 +74,20 @@ try {
   }
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  const motionDuration = await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior);
-  if (motionDuration !== 'auto') throw new Error('Reduced-motion preference is not respected');
+  const motionDuration = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.animationDuration = '2s';
+    document.body.appendChild(probe);
+    const duration = getComputedStyle(probe).animationDuration;
+    probe.remove();
+    return duration.endsWith('ms') ? Number.parseFloat(duration) : Number.parseFloat(duration) * 1000;
+  });
+  if (motionDuration > 0.1) throw new Error('Reduced-motion preference is not respected');
+
+  await page.goto(new URL('/', baseUrl), { waitUntil: 'domcontentloaded' });
+  await page.keyboard.press('Tab');
+  const focusOutline = await page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle);
+  if (focusOutline === 'none') throw new Error('Keyboard focus indicator is missing');
 
   console.log('PASS browser navigation, theme, map interaction, mentorship guest state and reduced motion');
 } finally {
