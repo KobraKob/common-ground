@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { VirtualizedFeed } from '@/components/shared/VirtualizedFeed';
+import { OptimizedImage } from '@/components/shared/OptimizedImage';
 import { useInfinitePostsQuery } from '@/lib/queries';
 import Link from 'next/link';
 import { 
@@ -363,14 +364,14 @@ export default function CityPage() {
                   {post.media_url && (
                     <div
                       onClick={() => setLightboxImage({ url: post.media_url!, title: post.title, author: post.author_name || 'Student' })}
-                      className="rounded-xl overflow-hidden border border-white/10 max-h-96 cursor-pointer bg-black/50 relative group"
+                      className="aspect-video max-h-96 cursor-pointer overflow-hidden rounded-xl border border-[var(--cg-border)] bg-black/30 relative group"
                     >
-                      <img
+                      <OptimizedImage
                         src={post.media_url}
                         alt={post.title || 'Post media'}
-                        className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-[1.01]"
-                        loading="lazy"
-                        decoding="async"
+                        fill
+                        containerClassName="absolute inset-0"
+                        className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.01]"
                       />
                     </div>
                   )}
