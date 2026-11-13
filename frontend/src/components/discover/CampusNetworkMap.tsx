@@ -6,7 +6,7 @@ import { BENGALURU_COLLEGES } from '@/constants/colleges';
 import type { College } from '@/types';
 
 const BOUNDS = { west: 77.43, east: 77.77, south: 12.82, north: 13.06 };
-const OSM_EMBED = 'https://www.openstreetmap.org/export/embed.html?bbox=77.47%2C12.80%2C77.70%2C13.08&layer=mapnik';
+const OSM_EMBED = 'https://www.openstreetmap.org/export/embed.html?bbox=77.43%2C12.82%2C77.77%2C13.06&layer=mapnik';
 
 const CAMPUS_DETAILS: Record<string, { label: string; source: string; sourceLabel: string }> = {
   rvce: { label: 'Mysuru Road · RV Vidyaniketan', source: 'https://dev.rvu.edu.in/wp-content/uploads/2026/01/UGC-Public-Self-Disclosure.pdf', sourceLabel: 'Institutional disclosure' },
