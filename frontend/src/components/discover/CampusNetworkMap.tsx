@@ -5,7 +5,7 @@ import { ExternalLink, MapPin } from 'lucide-react';
 import { BENGALURU_COLLEGES } from '@/constants/colleges';
 import type { College } from '@/types';
 
-const BOUNDS = { west: 77.47, east: 77.70, south: 12.80, north: 13.08 };
+const BOUNDS = { west: 77.43, east: 77.77, south: 12.82, north: 13.06 };
 const OSM_EMBED = 'https://www.openstreetmap.org/export/embed.html?bbox=77.47%2C12.80%2C77.70%2C13.08&layer=mapnik';
 
 const CAMPUS_DETAILS: Record<string, { label: string; source: string; sourceLabel: string }> = {
@@ -51,7 +51,7 @@ export function CampusNetworkMap({ colleges }: { colleges: College[] }) {
       <div><p className="cg-eyebrow">BENGALURU CAMPUS NETWORK</p><h2 className="mt-2 text-xl font-semibold">Find a campus</h2><p className="mt-1 text-sm cg-muted">Select a pin to see its location and open directions.</p></div>
       <span className="rounded-full bg-[var(--cg-elevated)] px-3 py-1.5 text-xs cg-muted">{campuses.length} mapped campuses</span>
     </div>
-    <div className="relative aspect-[4/3] w-full overflow-hidden border-y border-[var(--cg-border)] bg-[var(--cg-elevated)] sm:aspect-[16/8]">
+    <div className="relative aspect-[4/3] w-full overflow-hidden border-y border-[var(--cg-border)] bg-[var(--cg-elevated)]">
       <iframe title="OpenStreetMap of Bengaluru campuses" src={OSM_EMBED} loading="lazy" className="pointer-events-none absolute inset-0 h-full w-full border-0" />
       <div className="pointer-events-none absolute inset-0">
         {campuses.map((campus) => {
