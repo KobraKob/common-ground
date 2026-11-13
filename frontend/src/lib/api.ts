@@ -239,6 +239,29 @@ export async function getMyProfile(): Promise<StudentProfile | null> {
   }
 }
 
+export async function updateMyProfile(payload: Partial<StudentProfile>): Promise<StudentProfile> {
+  const updated = await request<StudentProfile>('/auth/me', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+  cachedUserProfile = updated;
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('cg_user_profile', JSON.stringify(updated));
+  }
+  return updated;
+}
+
+export async function requestVerificationClaim(payload: {
+  college_id: string;
+  claimed_stage?: string;
+  institutional_email?: string;
+}): Promise<{ message: string; claim_id: string }> {
+  return await request<{ message: string; claim_id: string }>('/auth/verify/request', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function getStudents(skill?: string): Promise<StudentProfile[]> {
   const res = await getStudentsPaginated({ skill, limit: 60, offset: 0 });
   return res.items;
