@@ -159,7 +159,7 @@ export default function CampusPage() {
               ? 'Official Institutional Space'
               : 'Student-Led Campus Space • Self-Reported Community'}
           </span>
-          This hub is maintained by students from {college.short_name}. Use your <code className="text-white">@{college.email_domains?.[0] || 'edu.in'}</code> email to unlock verified voting and campus vaults.
+          This hub is maintained by students from {college.short_name}. {college.email_domains?.length ? <>Use your <code className="text-white">@{college.email_domains[0]}</code> email for institutional verification.</> : <>Use your institutional email for verification when your college domain is supported.</>}
         </div>
       </div>
 
