@@ -54,14 +54,23 @@ class JSONList(TypeDecorator):
 
 from app.core.config import settings
 
-# Engine configuration
-connect_args = {"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=False,
-    connect_args=connect_args,
-    future=True,
-)
+# Engine configuration: bounded pool and connection liveness for PostgreSQL.
+is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+connect_args = {"check_same_thread": False} if is_sqlite else {}
+engine_options = {
+    "echo": False,
+    "connect_args": connect_args,
+    "future": True,
+}
+if not is_sqlite:
+    engine_options.update({
+        "pool_size": settings.DB_POOL_SIZE,
+        "max_overflow": settings.DB_MAX_OVERFLOW,
+        "pool_timeout": settings.DB_POOL_TIMEOUT,
+        "pool_recycle": settings.DB_POOL_RECYCLE,
+        "pool_pre_ping": True,
+    })
+engine = create_async_engine(settings.DATABASE_URL, **engine_options)
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
