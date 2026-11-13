@@ -34,7 +34,7 @@ class ProfileUpdateRequest(BaseModel):
 class VerificationClaimRequest(BaseModel):
     college_id: str
     claimed_stage: Literal["STAGE_3_INSTITUTIONAL_VERIFIED"] = "STAGE_3_INSTITUTIONAL_VERIFIED"
-    institutional_email: Optional[str] = None
+    institutional_email: Optional[EmailStr] = None
     invite_code: Optional[str] = None
 
 
