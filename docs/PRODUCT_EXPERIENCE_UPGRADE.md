@@ -24,7 +24,7 @@ Prioritise meaningful collaboration and repeat utility over vanity engagement me
 - Added public circle creation and joining through the existing community service.
 - Added exact skill-tag matching for projects and opportunity posts. This is deterministic matching, not an opaque AI score.
 - Added a Campus Passport assembled from profile verification, skills, interests and accepted project memberships with role titles.
-- Added a Build workspace with project creation, join requests, and task creation for project leads and accepted members.
+- Added a Build workspace with project creation, join requests, accepted-member roster, task creation, task status controls and project-lead assignment permissions.
 - Added a moderator-only Campus Intelligence page with aggregated activity and platform inventory metrics.
 - Removed client-side fallback content that presented invented posts, resources, announcements, events or community counts as real activity.
 
@@ -69,7 +69,7 @@ These are intentionally not represented as shipped functionality:
 - Campus representatives should verify approximate map pins before they are treated as authoritative entrances or travel/safety guidance. Coordinate provenance and limitations are recorded in docs/CAMPUS_COORDINATE_SOURCES.md.
 - A durable contribution ledger for event participation, accepted project work, peer mentoring and community contributions. Campus Passport currently shows verified profile details and accepted project memberships; it does not yet claim event attendance or mentoring activity it cannot verify.
 - Mentor discovery and matching, including consent, availability and safeguarding rules.
-- Task status editing, assignment management, milestones and activity history in project workspaces.
+- Milestone history, activity timeline and richer task dependencies in project workspaces.
 - Full infinite-scroll/virtualized feed integration. Pagination and a reusable virtualized feed primitive exist in the codebase, but the current city feed still needs end-to-end integration.
 - Broader TanStack Query migration for server-state caching and invalidation across legacy pages.
 - A full WCAG 2.2 AA audit with keyboard/screen-reader testing across every route and modal.
