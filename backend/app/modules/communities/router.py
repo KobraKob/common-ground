@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
@@ -535,6 +536,25 @@ async def send_message(
     if int(recent_count_result.scalar() or 0) >= 30:
         raise HTTPException(status_code=429, detail="Message rate limit reached. Try again shortly.")
 
+    if user.is_suspended:
+        raise HTTPException(status_code=403, detail="Suspended accounts cannot send messages")
+
+    body = payload.body.strip()
+    if not body:
+        raise HTTPException(status_code=422, detail="Message cannot be empty")
+    if len(body) > 5000:
+        raise HTTPException(status_code=422, detail="Message exceeds the 5000 character limit")
+
+    recent_since = datetime.now(timezone.utc) - timedelta(minutes=1)
+    recent_count_result = await db.execute(
+        select(func.count(Message.id)).where(
+            Message.sender_id == user.id,
+            Message.created_at >= recent_since,
+        )
+    )
+    if int(recent_count_result.scalar() or 0) >= 30:
+        raise HTTPException(status_code=429, detail="Message rate limit reached. Try again shortly.")
+
     # Verify membership
     mem_res = await db.execute(
         select(ConversationMember).where(
@@ -572,8 +592,8 @@ async def send_message(
         if other_user_id:
             await verify_can_dm(user.id, other_user_id, db)
 
-    from datetime import datetime, timezone
     now = datetime.now(timezone.utc)
+    member.last_read_at = now
     msg = Message(
         conversation_id=conversation_id,
         sender_id=user.id,
