@@ -20,7 +20,7 @@ class ProjectJoinRequest(BaseModel):
 
 
 class MemberStatusUpdateRequest(BaseModel):
-    status: str  # ACCEPTED, DECLINED
+    status: Literal['ACCEPTED', 'DECLINED']  # ACCEPTED, DECLINED
 
 
 class TaskCreateRequest(BaseModel):
@@ -110,3 +110,13 @@ class EventResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ProjectJoinRequestResponse(BaseModel):
+    member_id: str
+    user_id: str
+    display_name: str
+    handle: str
+    role_title: str
+    pitch_note: str
+    requested_at: datetime
