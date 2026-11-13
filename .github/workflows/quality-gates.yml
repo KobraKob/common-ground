@@ -69,6 +69,14 @@ jobs:
           exit 1
       - name: Smoke test rendered routes
         run: npm run smoke
+      - name: Install pinned browser test tooling
+        run: npm install --prefix /tmp/cg-e2e --no-save --package-lock=false playwright@1.54.0 @axe-core/playwright@4.10.2
+      - name: Install Chromium
+        run: /tmp/cg-e2e/node_modules/.bin/playwright install --with-deps chromium
+      - name: Browser and accessibility checks
+        run: npm run e2e
+        env:
+          NODE_PATH: /tmp/cg-e2e/node_modules
       - name: Collect mobile Lighthouse reports
         run: npx --yes @lhci/cli@0.14.0 autorun --config=./lighthouserc.json
       - name: Upload Lighthouse reports
