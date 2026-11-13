@@ -419,7 +419,9 @@ export async function getCommunitiesPaginated({
 }
 
 export async function joinCommunity(communityId: string): Promise<any> {
-  return await request<any>(`/communities/${communityId}/join`, { method: 'POST' });
+  const result = await request<any>(`/communities/${communityId}/join`, { method: 'POST' });
+  void trackAnalyticsEvent('community_joined', 'discover');
+  return result;
 }
 
 export async function createCommunity(payload: {
@@ -429,10 +431,12 @@ export async function createCommunity(payload: {
   community_type: 'CROSS_CAMPUS_INTEREST';
   visibility: 'PUBLIC';
 }): Promise<Community> {
-  return await request<Community>('/communities', {
+  const created = await request<Community>('/communities', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+  void trackAnalyticsEvent('circle_created', 'discover');
+  return created;
 }
 
 export async function getConversations(): Promise<Conversation[]> {
@@ -518,10 +522,12 @@ export async function getProjectsPaginated({
 }
 
 export async function createProject(payload: any): Promise<ProjectItem> {
-  return await request<ProjectItem>('/projects', {
+  const created = await request<ProjectItem>('/projects', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+  void trackAnalyticsEvent('project_created', 'build');
+  return created;
 }
 
 export async function getEvents(): Promise<EventItem[]> {
@@ -533,7 +539,9 @@ export async function getEvents(): Promise<EventItem[]> {
 }
 
 export async function rsvpEvent(eventId: string, status: 'GOING' | 'INTERESTED'): Promise<any> {
-  return await request<any>(`/events/${eventId}/rsvp?status_choice=${status}`, { method: 'POST' });
+  const result = await request<any>(`/events/${eventId}/rsvp?status_choice=${status}`, { method: 'POST' });
+  void trackAnalyticsEvent('event_rsvp', 'discover');
+  return result;
 }
 
 // ----------------------------------------------------
@@ -583,6 +591,18 @@ export async function executeModerationAction(payload: any): Promise<any> {
 }
 
 // ----------------------------------------------------
+export async function trackAnalyticsEvent(
+  event_name: 'page_view' | 'search_performed' | 'post_created' | 'project_created' | 'event_rsvp' | 'community_joined' | 'circle_created',
+  surface?: 'landing' | 'city' | 'campus' | 'commons' | 'build' | 'discover' | 'messages' | 'profile' | 'passport'
+): Promise<void> {
+  if (!isAuthenticated()) return;
+  try {
+    await request('/analytics/events', { method: 'POST', body: JSON.stringify({ event_name, surface }) });
+  } catch {
+    // Analytics are best-effort and must never block a student action.
+  }
+}
+
 // Unified Search
 // ----------------------------------------------------
 
