@@ -190,13 +190,13 @@ export default function ProfilePage() {
 
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10">
               <div className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-semibold mb-1">
-                Institutional Course Branch
+                Course and campus
               </div>
               <div className="text-sm font-sans font-bold text-white">
                 {profile.course_branch}
               </div>
               <div className="text-xs font-mono text-slate-400 mt-0.5">
-                Class of {profile.graduation_year} • Bengaluru Student Directory
+                Class of {profile.graduation_year} • CommonGround student community
               </div>
             </div>
 
@@ -209,7 +209,7 @@ export default function ProfilePage() {
             {/* Skills Badges */}
             <div className="pt-3 border-t border-white/10">
               <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-2.5 font-semibold">
-                Verified Skill Stacks
+                Skills
               </div>
               <div className="flex flex-wrap gap-2">
                 {profile.skills.map((s) => (
@@ -226,15 +226,15 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* 4-Stage Trust Architecture Visualizer */}
+      {/* Verification stages */}
       <div className="celestial-card p-6 md:p-8 rounded-xl border border-white/10 bg-[#12151F] space-y-4">
         <div>
           <h3 className="font-display text-lg font-bold text-[#F8F7FF] flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-amber-400" />
-            <span>The 4-Stage Trust Architecture</span>
+            <span>How verification works</span>
           </h3>
           <p className="text-xs text-slate-400 font-mono mt-1">
-            CommonGround enforces strict honesty in student affiliations to protect cross-campus trust.
+            Your affiliation is displayed according to the checks completed on your account.
           </p>
         </div>
 
