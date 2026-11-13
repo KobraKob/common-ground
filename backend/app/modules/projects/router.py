@@ -29,6 +29,67 @@ router = APIRouter(tags=["Projects, Tasks & Events"])
 # Projects Endpoints
 # ----------------------------------------------------
 
+@router.get("/projects/mine", response_model=List[ProjectResponse])
+async def list_my_projects(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    creator_profiles = (
+        select(StudentProfile.user_id, StudentProfile.display_name, StudentProfile.college_id)
+        .subquery()
+    )
+    member_counts = (
+        select(ProjectMember.project_id, func.count(ProjectMember.id).label("members_count"))
+        .where(ProjectMember.status == "ACCEPTED")
+        .group_by(ProjectMember.project_id)
+        .subquery()
+    )
+    query = (
+        select(
+            Project,
+            ProjectMember.role_title,
+            creator_profiles.c.display_name,
+            College.name,
+            func.coalesce(member_counts.c.members_count, 1),
+        )
+        .join(
+            ProjectMember,
+            and_(
+                ProjectMember.project_id == Project.id,
+                ProjectMember.user_id == user.id,
+                ProjectMember.status == "ACCEPTED",
+            ),
+        )
+        .outerjoin(creator_profiles, creator_profiles.c.user_id == Project.creator_id)
+        .outerjoin(College, College.id == creator_profiles.c.college_id)
+        .outerjoin(member_counts, member_counts.c.project_id == Project.id)
+        .order_by(desc(Project.created_at))
+        .limit(100)
+    )
+    result = await db.execute(query)
+    return [
+        ProjectResponse(
+            id=project.id,
+            creator_id=project.creator_id,
+            creator_name=creator_name or "Student",
+            creator_college_name=college_name,
+            college_id=project.college_id,
+            title=project.title,
+            pitch=project.pitch,
+            description=project.description,
+            stage=project.stage,
+            skills_needed=project.skills_needed or [],
+            open_roles=project.open_roles or [],
+            is_cross_campus_open=project.is_cross_campus_open,
+            repo_or_demo_links=project.repo_or_demo_links or [],
+            members_count=members_count,
+            my_role=role_title,
+            created_at=project.created_at,
+        )
+        for project, role_title, creator_name, college_name, members_count in result.all()
+    ]
+
+
 @router.get("/projects", response_model=List[ProjectResponse])
 async def list_projects(
     response: Response,
