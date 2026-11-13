@@ -16,7 +16,7 @@ import {
   Tag,
   ArrowRight
 } from 'lucide-react';
-import { getPosts, createPost, getResources, getActiveProfile } from '@/lib/api';
+import { getPostsPaginated, createPost, getResources } from '@/lib/api';
 import { Post, ResourceItem } from '@/types';
 import { ReportModal } from '@/components/shared/ReportModal';
 import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
@@ -28,6 +28,9 @@ export default function CommonsPage() {
   const [searchFilter, setSearchFilter] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
+  const [hasMorePosts, setHasMorePosts] = useState(false);
+  const [nextPostOffset, setNextPostOffset] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Tip contextual discovery prompt
   const [showSubjectTip, setShowSubjectTip] = useState(true);
@@ -44,12 +47,14 @@ export default function CommonsPage() {
     async function loadData() {
       setLoading(true);
       try {
-        const [postsData, resData] = await Promise.all([
-          getPosts('commons'),
+        const [postPage, resData] = await Promise.all([
+          getPostsPaginated({ scope: 'commons', limit: 12, offset: 0 }),
           getResources(),
         ]);
-        const qPosts = (postsData || []).filter((p) => p.category === 'QUESTION_QA' || p.category === 'DISCUSSION');
+        const qPosts = postPage.items.filter((p) => p.category === 'QUESTION_QA' || p.category === 'DISCUSSION');
         setPosts(qPosts);
+        setHasMorePosts(postPage.hasMore);
+        setNextPostOffset(postPage.nextOffset);
         setResources(resData || []);
       } catch (err) {
         console.warn('Could not load the knowledge commons:', err);
@@ -59,6 +64,22 @@ export default function CommonsPage() {
     }
     loadData();
   }, []);
+
+  const loadMoreQuestions = async () => {
+    if (loadingMore || !hasMorePosts) return;
+    setLoadingMore(true);
+    try {
+      const page = await getPostsPaginated({ scope: 'commons', limit: 12, offset: nextPostOffset });
+      setPosts((current) => {
+        const seen = new Set(current.map((post) => post.id));
+        return [...current, ...page.items.filter((post) => !seen.has(post.id) && (post.category === 'QUESTION_QA' || post.category === 'DISCUSSION'))];
+      });
+      setHasMorePosts(page.hasMore);
+      setNextPostOffset(page.nextOffset);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const handleAskQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -314,6 +335,14 @@ export default function CommonsPage() {
                 </div>
               );
             })
+          )}
+          {hasMorePosts && (
+            <div className="col-span-full flex justify-center pt-2">
+              <button type="button" onClick={loadMoreQuestions} disabled={loadingMore}
+                className="min-h-11 rounded-full border border-[var(--cg-border)] px-5 text-sm font-medium text-[var(--cg-text)] hover:bg-[var(--cg-elevated)] disabled:opacity-50">
+                {loadingMore ? 'Loading questions…' : 'Load more questions'}
+              </button>
+            </div>
           )}
         </div>
       )}
