@@ -102,3 +102,8 @@ These are intentionally not represented as shipped functionality:
 - Manual mobile checks confirm no horizontal overflow, no nested scroll traps and usable 44px targets.
 - Measure LCP, CLS and INP on a mid-range Android device over 4G before claiming performance targets have been met.
 - Apply migrations 004–006 in staging, rehearse rollback and verify the event-attendance and mentorship constraints against the production database engine.
+
+
+## Messaging readiness
+
+The frontend Messages screen calls conversation endpoints, but the backend currently has messaging models without an authenticated messaging router. Treat the screen as unavailable for production until secure conversation, membership, block and contact-permission enforcement is implemented and tested. The profile contact setting currently governs mentorship requests only.
