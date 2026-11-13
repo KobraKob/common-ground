@@ -38,66 +38,78 @@ async def list_projects(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Project).order_by(desc(Project.created_at))
+    # Aggregate creator and member details in SQL instead of issuing extra queries per project.
+    base_query = select(Project)
+    if stage:
+        base_query = base_query.where(Project.stage == stage)
+    if skill:
+        base_query = base_query.where(Project.skills_needed.ilike(f"%{skill}%"))
+
+    count_result = await db.execute(
+        select(func.count()).select_from(base_query.order_by(None).subquery())
+    )
+    total_count = count_result.scalar() or 0
+
+    creator_profiles = (
+        select(StudentProfile.user_id, StudentProfile.display_name, StudentProfile.college_id)
+        .subquery()
+    )
+    member_counts = (
+        select(
+            ProjectMember.project_id,
+            func.count(ProjectMember.id).label("members_count"),
+        )
+        .where(ProjectMember.status == "ACCEPTED")
+        .group_by(ProjectMember.project_id)
+        .subquery()
+    )
+    query = (
+        select(
+            Project,
+            creator_profiles.c.display_name,
+            College.name,
+            func.coalesce(member_counts.c.members_count, 1),
+        )
+        .outerjoin(creator_profiles, creator_profiles.c.user_id == Project.creator_id)
+        .outerjoin(College, College.id == creator_profiles.c.college_id)
+        .outerjoin(member_counts, member_counts.c.project_id == Project.id)
+    )
     if stage:
         query = query.where(Project.stage == stage)
     if skill:
         query = query.where(Project.skills_needed.ilike(f"%{skill}%"))
 
-    count_subq = query.order_by(None).subquery()
-    count_res = await db.execute(select(func.count()).select_from(count_subq))
-    total_count = count_res.scalar() or 0
+    result = await db.execute(
+        query.order_by(desc(Project.created_at)).offset(offset).limit(limit)
+    )
+    rows = result.all()
 
-    query = query.offset(offset).limit(limit)
-    result = await db.execute(query)
-    projects = result.scalars().all()
-
-    has_more = (offset + len(projects)) < total_count
+    has_more = (offset + len(rows)) < total_count
     response.headers["X-Total-Count"] = str(total_count)
     response.headers["X-Has-More"] = "true" if has_more else "false"
     response.headers["X-Offset"] = str(offset)
     response.headers["X-Limit"] = str(limit)
 
-    resp = []
-    for p in projects:
-        # Creator profile
-        c_res = await db.execute(select(StudentProfile).where(StudentProfile.user_id == p.creator_id))
-        creator_prof = c_res.scalar_one_or_none()
-
-        col_name = None
-        if creator_prof and creator_prof.college_id:
-            col_res = await db.execute(select(College.name).where(College.id == creator_prof.college_id))
-            col_name = col_res.scalar_one_or_none()
-
-        # Members count
-        m_count_res = await db.execute(
-            select(func.count(ProjectMember.id)).where(
-                and_(ProjectMember.project_id == p.id, ProjectMember.status == "ACCEPTED")
-            )
+    return [
+        ProjectResponse(
+            id=project.id,
+            creator_id=project.creator_id,
+            creator_name=creator_name or "Student",
+            creator_college_name=college_name,
+            college_id=project.college_id,
+            title=project.title,
+            pitch=project.pitch,
+            description=project.description,
+            stage=project.stage,
+            skills_needed=project.skills_needed or [],
+            open_roles=project.open_roles or [],
+            is_cross_campus_open=project.is_cross_campus_open,
+            repo_or_demo_links=project.repo_or_demo_links or [],
+            members_count=members_count,
+            created_at=project.created_at,
         )
-        m_count = m_count_res.scalar() or 1
-
-        resp.append(
-            ProjectResponse(
-                id=p.id,
-                creator_id=p.creator_id,
-                creator_name=creator_prof.display_name if creator_prof else "Student",
-                creator_college_name=col_name,
-                college_id=p.college_id,
-                title=p.title,
-                pitch=p.pitch,
-                description=p.description,
-                stage=p.stage,
-                skills_needed=p.skills_needed or [],
-                open_roles=p.open_roles or [],
-                is_cross_campus_open=p.is_cross_campus_open,
-                repo_or_demo_links=p.repo_or_demo_links or [],
-                members_count=m_count,
-                created_at=p.created_at,
-            )
-        )
-    return resp
-
+        for project, creator_name, college_name, members_count in rows
+    ]
 
 @router.post("/projects", response_model=ProjectResponse)
 async def create_project(
