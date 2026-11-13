@@ -771,7 +771,7 @@ export async function getAnalyticsSummary(days = 30): Promise<any> {
 
 export async function trackAnalyticsEvent(
   event_name: 'page_view' | 'search_performed' | 'post_created' | 'project_created' | 'event_rsvp' | 'community_joined' | 'circle_created' | 'connection_created' | 'feed_load_completed' | 'profile_opened',
-  surface?: 'landing' | 'city' | 'campus' | 'commons' | 'build' | 'discover' | 'messages' | 'profile' | 'passport' | 'mentorship' | 'insights' | 'privacy' | 'terms' | 'search',
+  surface?: 'landing' | 'city' | 'campus' | 'commons' | 'build' | 'discover' | 'messages' | 'profile' | 'passport' | 'mentorship' | 'insights' | 'privacy' | 'terms' | 'search' | 'opportunities',
   durationMs?: number
 ): Promise<void> {
   if (!isAuthenticated()) return;
