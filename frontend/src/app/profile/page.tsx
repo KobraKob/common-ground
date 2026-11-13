@@ -152,7 +152,7 @@ export default function ProfilePage() {
           </div>
           <div className="text-[11px] font-mono text-slate-400 mt-3 flex items-center gap-1.5 text-center">
             <Sparkles className="w-3.5 h-3.5 text-[#FBBF24]" />
-            <span>Interactive Holographic Student Pass (Tilt &amp; Hover)</span>
+            <span>Student identity card</span>
           </div>
         </div>
 
