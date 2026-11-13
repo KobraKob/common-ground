@@ -24,15 +24,15 @@ const TIER_DETAILS = {
     label: 'Vouched',
     title: 'Community vouched',
     description: 'Confirmed by trusted campus representatives or a verified peer invitation.',
-    badgeClass: 'bg-sky-500/10 border-sky-500/25 text-sky-300',
+    badgeClass: 'bg-sky-500/10 border-sky-500/25 text-[var(--cg-info)]',
     icon: CheckCircle2,
-    iconColor: 'text-sky-400',
+    iconColor: 'text-[var(--cg-info)]',
   },
   STAGE_3_INSTITUTIONAL_VERIFIED: {
     label: 'Verified',
     title: 'Institutionally verified student',
     description: 'Institutional college email confirmed. This does not imply college endorsement.',
-    badgeClass: 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400 font-semibold',
+    badgeClass: 'bg-emerald-500/10 border-emerald-500/25 text-[var(--cg-success)] font-semibold',
     icon: ShieldCheck,
     iconColor: 'text-emerald-400',
   },
@@ -57,7 +57,7 @@ export function TrustBadge({
   const Icon = config.icon;
 
   const sizeClasses = {
-    sm: 'text-[10px] px-2 py-0.5 gap-1',
+    sm: 'text-xs px-2 py-0.5 gap-1',
     md: 'text-xs px-2.5 py-1 gap-1.5',
     lg: 'text-xs px-3 py-1.5 gap-2',
   }[size];
