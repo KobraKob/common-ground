@@ -289,10 +289,36 @@ async def list_profiles(
     current_user_id: Optional[str] = Depends(get_optional_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
+    visibility_conditions = [StudentProfile.profile_visibility == "PUBLIC"]
+    if current_user_id:
+        viewer_college_result = await db.execute(
+            select(StudentProfile.college_id).where(StudentProfile.user_id == current_user_id)
+        )
+        viewer_college_id = viewer_college_result.scalar_one_or_none()
+        if viewer_college_id:
+            visibility_conditions.append(
+                and_(
+                    StudentProfile.profile_visibility == "CAMPUS_ONLY",
+                    StudentProfile.college_id == viewer_college_id,
+                )
+            )
+        viewer_community_ids = select(CommunityMembership.community_id).where(
+            CommunityMembership.user_id == current_user_id
+        )
+        shared_community_users = select(CommunityMembership.user_id).where(
+            CommunityMembership.community_id.in_(viewer_community_ids)
+        )
+        visibility_conditions.append(
+            and_(
+                StudentProfile.profile_visibility == "SHARED_COMMUNITIES_ONLY",
+                StudentProfile.user_id.in_(shared_community_users),
+            )
+        )
+
     query = (
         select(StudentProfile, College.name)
         .outerjoin(College, StudentProfile.college_id == College.id)
-        .where(StudentProfile.profile_visibility == "PUBLIC")
+        .where(or_(*visibility_conditions))
     )
     if college_id:
         query = query.where(StudentProfile.college_id == college_id)
