@@ -57,6 +57,18 @@ jobs:
         run: npm run typecheck
       - name: Production build
         run: npm run build
+      - name: Start production server
+        run: npm run start > /tmp/commonground-next.log 2>&1 &
+      - name: Wait for production server
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/commonground-next.log
+          exit 1
+      - name: Smoke test rendered routes
+        run: npm run smoke
       - name: Audit npm dependencies
         run: npm audit --audit-level=high
 
