@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Building2, CalendarDays, ExternalLink, Layers3, MapPin, Users } from 'lucide-react';
-import { getColleges, getCommunities, getEvents, getProjects, getMyProfile, getPosts, joinCommunity, createCommunity, rsvpEvent, isAuthenticated } from '@/lib/api';
+import { getColleges, getCommunities, getEvents, getProjects, getMyProfile, getActiveProfile, getPosts, joinCommunity, createCommunity, rsvpEvent, isAuthenticated } from '@/lib/api';
 import type { College, Community, EventItem, Post, ProjectItem, StudentProfile } from '@/types';
 import { CampusNetworkMap } from '@/components/discover/CampusNetworkMap';
 
@@ -16,8 +16,9 @@ type DiscoveryData = { colleges: College[]; circles: Community[]; projects: Proj
 export default function DiscoverPage() {
   const [section, setSection] = useState<Section>('campuses');
   const queryClient = useQueryClient();
+  const cacheScope = getActiveProfile()?.user_id || 'anonymous';
   const discoveryQuery = useQuery<DiscoveryData>({
-    queryKey: ['discover', 'hub'],
+    queryKey: ['discover', 'hub', cacheScope],
     queryFn: async () => {
       const [campusData, circleData, projectData, eventData, myProfile, opportunityData] = await Promise.all([
         getColleges(),
@@ -68,7 +69,7 @@ export default function DiscoverPage() {
 
   async function joinCircle(circle: Community) {
     setBusyId(circle.id); setNotice('');
-    try { await joinCommunity(circle.id); await queryClient.invalidateQueries({ queryKey: ['discover', 'hub'] }); setNotice(`Joined ${circle.name}.`); }
+    try { await joinCommunity(circle.id); await queryClient.invalidateQueries({ queryKey: ['discover', 'hub', cacheScope] }); setNotice(`Joined ${circle.name}.`); }
     catch { setNotice('Could not join this circle. Sign in and try again.'); }
     finally { setBusyId(''); }
   }
@@ -88,7 +89,7 @@ export default function DiscoverPage() {
     const slug = cleanName.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Math.random().toString(36).slice(2, 7);
     try {
       const created = await createCommunity({ name: cleanName, slug, description: cleanDescription, community_type: 'CROSS_CAMPUS_INTEREST', visibility: 'PUBLIC' });
-      queryClient.setQueryData<DiscoveryData>(['discover', 'hub'], (current) => current ? { ...current, circles: [created, ...current.circles] } : current);
+      queryClient.setQueryData<DiscoveryData>(['discover', 'hub', cacheScope], (current) => current ? { ...current, circles: [created, ...current.circles] } : current);
       setCircleName(''); setCircleDescription(''); setShowCircleForm(false);
       setNotice('Your circle is live. Invite students who share the interest.');
     } catch { setNotice('Could not create the circle. Sign in and try again.'); }
