@@ -413,6 +413,12 @@ async def send_message(
         other_user_id = other_result.scalar_one_or_none()
         if other_user_id and await _has_block_between(db, user.id, other_user_id):
             raise HTTPException(status_code=403, detail="Messaging is unavailable between these accounts")
+        if other_user_id:
+            contact_result = await db.execute(
+                select(StudentProfile.dm_permission).where(StudentProfile.user_id == other_user_id)
+            )
+            if contact_result.scalar_one_or_none() == "NONE":
+                raise HTTPException(status_code=403, detail="This student has disabled direct messages")
 
     since = utc_now() - timedelta(minutes=1)
     recent_count_result = await db.execute(
