@@ -27,7 +27,7 @@ import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
 
 export default function CampusPage() {
   const [colleges, setColleges] = useState<College[]>(BENGALURU_COLLEGES);
-  const [selectedSlug, setSelectedSlug] = useState('rvce');
+  const [selectedSlug, setSelectedSlug] = useState(() => typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('college') || 'rvce' : 'rvce');
   const [activeTab, setActiveTab] = useState<'overview' | 'departments' | 'announcements' | 'events'>('overview');
   const [loading, setLoading] = useState(false);
 
@@ -46,13 +46,6 @@ export default function CampusPage() {
   const [newPostCategory, setNewPostCategory] = useState<'DISCUSSION' | 'QUESTION_QA'>('DISCUSSION');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reportTarget, setReportTarget] = useState<{ id: string; type: any; title: string } | null>(null);
-
-  useEffect(() => {
-    const requestedCampus = new URLSearchParams(window.location.search).get('college');
-    if (requestedCampus && BENGALURU_COLLEGES.some((item) => item.slug === requestedCampus)) {
-      setSelectedSlug(requestedCampus);
-    }
-  }, []);
 
   useEffect(() => {
     let isCancelled = false;
