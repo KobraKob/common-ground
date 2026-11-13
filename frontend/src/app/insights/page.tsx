@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Activity, CalendarDays, FolderKanban, Users, Network, ShieldAlert } from 'lucide-react';
+import { Activity, CalendarDays, FolderKanban, Users, Network, ShieldAlert, Search, Gauge, UserCheck } from 'lucide-react';
 import { getAnalyticsSummary } from '@/lib/api';
 
 type Summary = {
@@ -13,6 +13,11 @@ type Summary = {
   cross_campus_interactions: number;
   projects_created: number;
   events_created: number;
+  event_registrations: number;
+  weekly_retention_rate: number;
+  search_to_connection_rate: number;
+  feed_load_p75_ms: number | null;
+  feed_load_samples: number;
   public_communities: number;
   event_rsvps: number;
   searches: number;
@@ -39,9 +44,13 @@ export default function InsightsPage() {
   const metrics = summary ? [
     { label: 'Tracked active students · 24h', value: summary.active_students_24h, icon: Users },
     { label: 'Tracked active students · 7d', value: summary.active_students_7d, icon: Activity },
+    { label: '7-day retention', value: `${summary.weekly_retention_rate}%`, icon: UserCheck },
+    { label: 'Search → connection', value: `${summary.search_to_connection_rate}%`, icon: Search },
     { label: 'Cross-campus collaborations', value: summary.cross_campus_interactions, icon: Network },
     { label: 'Projects created · 30d', value: summary.projects_created, icon: FolderKanban },
     { label: 'Events created · 30d', value: summary.events_created, icon: CalendarDays },
+    { label: 'Event registrations · 30d', value: summary.event_registrations, icon: CalendarDays },
+    { label: `City feed load · p75 (n=${summary.feed_load_samples})`, value: summary.feed_load_p75_ms === null ? 'No samples' : `${summary.feed_load_p75_ms.toLocaleString()} ms`, icon: Gauge },
     { label: 'Public communities', value: summary.public_communities, icon: Users },
     { label: 'Event registrations · 30d', value: summary.event_rsvps, icon: CalendarDays },
     { label: 'Searches · 30d', value: summary.searches, icon: Activity },
