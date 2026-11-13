@@ -78,7 +78,7 @@ export function GlobalHeader() {
     const timer = window.setTimeout(async () => {
       try {
         const results = await unifiedSearch(query, controller.signal);
-        if (!controller.signal.aborted) setSearchResults(results);
+        if (!controller.signal.aborted) { setSearchResults(results); void trackAnalyticsEvent('search_performed', 'search'); }
       } catch (error) {
         if (!controller.signal.aborted) {
           setSearchResults(null);
@@ -185,8 +185,8 @@ export function GlobalHeader() {
                     {searchResults.students.map((s: any) => (
                       <Link
                         key={s.id || s.user_id}
-                        href="/profile"
-                        onClick={() => setSearchResults(null)}
+                        href={'/students/' + encodeURIComponent(s.handle)}
+                        onClick={() => { void trackAnalyticsEvent('profile_opened', 'search'); setSearchResults(null); }}
                         className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 text-xs font-mono transition-colors"
                       >
                         <span className="font-semibold text-white">
