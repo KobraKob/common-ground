@@ -140,7 +140,10 @@ async def list_opt_in_mentors(
         .where(
             MentorshipProfile.is_available.is_(True),
             StudentProfile.profile_visibility == "PUBLIC",
-            or_(\n                StudentProfile.dm_permission == "EVERYONE",\n                and_(StudentProfile.dm_permission == "SAME_CAMPUS_OR_COMMUNITY", or_(*same_campus_or_community)),\n            ),
+            or_(
+                StudentProfile.dm_permission == "EVERYONE",
+                and_(StudentProfile.dm_permission == "SAME_CAMPUS_OR_COMMUNITY", or_(*same_campus_or_community)),
+            ),
             MentorshipProfile.user_id != user.id,
             StudentProfile.user_id.notin_(blocked_ids),
             StudentProfile.user_id.notin_(blocked_by_ids),
