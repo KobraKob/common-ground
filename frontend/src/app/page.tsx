@@ -25,7 +25,7 @@ const stories = [
   },
   {
     label: 'Q&A',
-    title: 'Get answers from students who've been there.',
+    title: "Get answers from students who've been there.",
     body: 'Accepted answers, notes and course discussions, free for every student.',
     href: '/commons',
     action: 'Visit Q&A',
@@ -112,7 +112,7 @@ export default function LandingPage() {
       <section className="mx-auto max-w-3xl py-8 text-center sm:py-14" aria-labelledby="trust-heading">
         <h2 id="trust-heading" className="text-3xl font-semibold sm:text-4xl">Honest verification. Clear identity.</h2>
         <p className="mx-auto mt-4 max-w-2xl text-base leading-7 cg-muted">
-          Accounts show how a student's college affiliation was confirmed. Institutional verification does not imply college endorsement.
+          Accounts show how a student&apos;s college affiliation was confirmed. Institutional verification does not imply college endorsement.
         </p>
         <div className="mt-8 grid gap-3 text-left sm:grid-cols-2">
           {verificationLevels.map(({ label, detail, icon: Icon, className }) => (
