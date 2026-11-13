@@ -5,6 +5,7 @@ import { VirtualizedFeed } from '@/components/shared/VirtualizedFeed';
 import { OptimizedImage } from '@/components/shared/OptimizedImage';
 import { useInfinitePostsQuery } from '@/lib/queries';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { 
   Compass, 
   Users, 
@@ -46,7 +47,10 @@ import { Post, Community, StudentProfile, Comment } from '@/types';
 import { TrustBadge } from '@/components/shared/TrustBadge';
 import { ReportModal } from '@/components/shared/ReportModal';
 import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
-import { StudentHoloCard } from '@/components/profile';
+const StudentHoloCard = dynamic(() => import('@/components/profile').then((module) => module.StudentHoloCard), {
+  ssr: false,
+  loading: () => <div className="h-64 animate-pulse rounded-2xl bg-[var(--cg-elevated)]" aria-label="Loading student profile card"/>,
+});
 
 export default function CityPage() {
   const [activeTab, setActiveTab] = useState<'feed' | 'directory' | 'communities'>('feed');
