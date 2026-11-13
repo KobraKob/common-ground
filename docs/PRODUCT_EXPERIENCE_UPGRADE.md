@@ -39,6 +39,14 @@ Prioritise meaningful collaboration and repeat utility over vanity engagement me
 - Protected runtime metrics and metric reset endpoints behind moderator/admin authorization.
 - Added privacy-limited authenticated analytics events. Only allowlisted event names and coarse product surfaces are accepted; no free-form search terms, message content or personal activity payloads are collected.
 - Added moderator-only aggregated analytics and performance indexes for discovery, collaboration and analytics query paths.
+- Removed feed N+1 queries by joining author/community/college data and batching reaction lookups.
+- Replaced resource uploader N+1 lookups with one joined query and bounded resource pagination.
+- Added explicit 12-item page loading for City and Commons feeds, so the first render does not request 50 posts.
+- Avoided JSON content-type headers on bodyless GET requests to reduce unnecessary cross-origin preflights.
+- Made profile privacy controls persist through the authenticated profile update endpoint.
+- Connected institutional verification requests to the existing claim workflow; the interface accurately describes a pending review and does not claim to send an OTP.
+- Added a functional Ctrl/Command+K search shortcut, keyboard Escape handling and a skip-to-content link.
+- Added production-route smoke checks to CI and tests for profile privacy persistence and verification claim submission.
 - Added tests for analytics authorization/ingestion and project workspace/campus-boundary permissions.
 
 ## Measurement definitions
@@ -70,10 +78,10 @@ These are intentionally not represented as shipped functionality:
 - A durable contribution ledger for event participation, accepted project work, peer mentoring and community contributions. Campus Passport currently shows verified profile details and accepted project memberships; it does not yet claim event attendance or mentoring activity it cannot verify.
 - Mentor discovery and matching, including consent, availability and safeguarding rules.
 - Milestone history, activity timeline and richer task dependencies in project workspaces.
-- Full infinite-scroll/virtualized feed integration. Pagination and a reusable virtualized feed primitive exist in the codebase, but the current city feed still needs end-to-end integration.
+- Automatic infinite-scroll integration. City and Commons currently use explicit accessible “Load more” pagination; the reusable virtualized feed primitive is not yet wired into those routes.
 - Broader TanStack Query migration for server-state caching and invalidation across legacy pages.
 - A full WCAG 2.2 AA audit with keyboard/screen-reader testing across every route and modal.
-- A production browser E2E suite and verified deployment/restore drills. CI results must pass before merge.
+- A full browser-based E2E suite and verified deployment/restore drills. CI includes production-route HTTP smoke checks, but these do not replace real browser interaction tests.
 - A reviewed Privacy Policy and Terms of Service. Do not publish generated legal copy as approved policy.
 
 ## Acceptance gates
