@@ -80,7 +80,7 @@ async def test_direct_messaging_is_private_and_idempotent(client: AsyncClient, d
         f"/api/v1/conversations/{conversation_id}/messages",
         headers={"X-User-Id": stranger.id},
     )
-    assert stranger_messages.status_code == 404
+    assert stranger_messages.status_code == 403
 
 
 @pytest.mark.asyncio
