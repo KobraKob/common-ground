@@ -110,13 +110,9 @@ export function GlobalHeader() {
                 <span className="font-display text-base sm:text-lg font-bold tracking-tight text-white group-hover:text-amber-300 transition-colors">
                   Common<span className="text-amber-400">Ground</span>
                 </span>
-                <span className="hidden sm:inline-block text-[9px] px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/25 font-mono">
-                  BLR
-                </span>
+                
               </div>
-              <span className="text-[9px] font-mono tracking-widest text-slate-500 uppercase hidden sm:block">
-                CROSS-CAMPUS STUDENT NETWORK
-              </span>
+              
             </div>
           </Link>
         </div>
