@@ -98,3 +98,69 @@ async def test_verification_rejects_unlisted_institutional_email_domain(client: 
         headers={"X-User-Id": user.id},
     )
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_campus_only_profiles_are_visible_only_to_same_campus(client: AsyncClient, db_session):
+    campus_a = College(
+        id="visibility-campus-a",
+        name="Visibility Campus A",
+        slug="visibility-campus-a",
+        short_name="VCA",
+        city="Bengaluru",
+        state="Karnataka",
+    )
+    campus_b = College(
+        id="visibility-campus-b",
+        name="Visibility Campus B",
+        slug="visibility-campus-b",
+        short_name="VCB",
+        city="Bengaluru",
+        state="Karnataka",
+    )
+    viewer = User(id="visibility-viewer", email="viewer@visibility.test", platform_role="USER")
+    same_campus = User(id="visibility-same", email="same@visibility.test", platform_role="USER")
+    other_campus = User(id="visibility-other", email="other@visibility.test", platform_role="USER")
+    db_session.add_all([campus_a, campus_b, viewer, same_campus, other_campus])
+    db_session.add_all([
+        StudentProfile(
+            user_id=viewer.id,
+            handle="visibilityviewer",
+            display_name="Visibility Viewer",
+            college_id=campus_a.id,
+        ),
+        StudentProfile(
+            user_id=same_campus.id,
+            handle="samecampusstudent",
+            display_name="Same Campus Student",
+            college_id=campus_a.id,
+            profile_visibility="CAMPUS_ONLY",
+        ),
+        StudentProfile(
+            user_id=other_campus.id,
+            handle="othercampusstudent",
+            display_name="Other Campus Student",
+            college_id=campus_b.id,
+            profile_visibility="CAMPUS_ONLY",
+        ),
+    ])
+    await db_session.commit()
+
+    same_profile = await client.get(
+        "/api/v1/profiles/samecampusstudent",
+        headers={"X-User-Id": viewer.id},
+    )
+    other_profile = await client.get(
+        "/api/v1/profiles/othercampusstudent",
+        headers={"X-User-Id": viewer.id},
+    )
+    directory = await client.get(
+        "/api/v1/profiles",
+        headers={"X-User-Id": viewer.id},
+    )
+
+    assert same_profile.status_code == 200
+    assert other_profile.status_code == 403
+    visible_handles = {profile["handle"] for profile in directory.json()}
+    assert "samecampusstudent" in visible_handles
+    assert "othercampusstudent" not in visible_handles
