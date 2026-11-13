@@ -2,7 +2,10 @@ import time
 import logging
 from typing import Dict, Any, List
 from collections import defaultdict, deque
-from fastapi import Request, Response, APIRouter
+from fastapi import Request, Response, APIRouter, HTTPException, Depends
+from app.core.config import settings
+from app.core.security import get_current_user
+from app.modules.identity.models import User
 from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger("commonground.monitoring")
@@ -104,18 +107,22 @@ metrics_tracker = MetricsTracker()
 class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Normalize route path to avoid exploding keys with variable UUIDs
-        path = request.url.path
+        raw_path = request.url.path
         start_time = time.perf_counter()
 
         try:
             response: Response = await call_next(request)
         except Exception:
             duration_ms = (time.perf_counter() - start_time) * 1000.0
-            metrics_tracker.record_request(request.method, path, 500, duration_ms)
+            route = request.scope.get('route')
+            route_path = getattr(route, 'path', raw_path)
+            metrics_tracker.record_request(request.method, route_path, 500, duration_ms)
             raise
 
         duration_ms = (time.perf_counter() - start_time) * 1000.0
-        metrics_tracker.record_request(request.method, path, response.status_code, duration_ms)
+        route = request.scope.get('route')
+        route_path = getattr(route, 'path', raw_path)
+        metrics_tracker.record_request(request.method, route_path, response.status_code, duration_ms)
 
         response.headers["X-Response-Time"] = f"{duration_ms:.2f}ms"
         response.headers["Server-Timing"] = f"app;dur={duration_ms:.2f};desc=\"FastAPI processing\""
@@ -128,12 +135,22 @@ monitoring_router = APIRouter(prefix="/system", tags=["Monitoring & Performance"
 
 @monitoring_router.get("/metrics")
 async def get_performance_metrics():
-    """Retrieve runtime performance telemetry, latency percentiles, and bottleneck identification."""
+    """Expose detailed route telemetry only in non-production environments."""
+    if settings.ENVIRONMENT.lower() not in {"development", "dev", "local", "test"}:
+        raise HTTPException(status_code=404, detail="Not found")
+    return metrics_tracker.get_summary()
+
+
+@monitoring_router.get("/admin/metrics")
+async def get_admin_performance_metrics(user: User = Depends(get_current_user)):
+    if user.platform_role not in {"ADMIN", "MODERATOR"}:
+        raise HTTPException(status_code=404, detail="Not found")
     return metrics_tracker.get_summary()
 
 
 @monitoring_router.post("/metrics/reset")
-async def reset_performance_metrics():
-    """Reset telemetry tracking."""
+async def reset_performance_metrics(user: User = Depends(get_current_user)):
+    if user.platform_role not in {"ADMIN", "MODERATOR"}:
+        raise HTTPException(status_code=404, detail="Not found")
     metrics_tracker.reset()
     return {"message": "Metrics reset successfully"}
