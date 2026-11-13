@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, desc
 
@@ -57,6 +57,17 @@ async def get_moderation_queue(
         .order_by(desc(Report.created_at))
     )
     result = await db.execute(query)
+    return result.scalars().all()
+
+
+@router.get("/moderation/audit", response_model=List[ModerationActionResponse])
+async def get_moderation_audit(
+    limit: int = Query(50, ge=1, le=100),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_platform_role(user, ["MODERATOR", "ADMIN"])
+    result = await db.execute(select(ModerationAction).order_by(desc(ModerationAction.created_at)).limit(limit))
     return result.scalars().all()
 
 
