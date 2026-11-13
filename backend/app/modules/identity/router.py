@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, delete
 
 from app.core.database import get_db
-from app.core.security import get_current_user, get_current_user_id, get_optional_current_user_id
+from app.core.security import get_current_user, get_current_user_id, get_optional_current_user_id, create_access_token
 from app.core.permissions import check_users_not_blocked
 from app.modules.identity.models import User, StudentProfile, AffiliationClaim, VerificationRecord, UserBlock, UserMute
 from app.modules.identity.schemas import (
@@ -25,17 +25,38 @@ from app.modules.communities.models import Community, CommunityMembership
 
 
 def hash_password(password: str) -> str:
-    salt = secrets.token_hex(16)
-    key = hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
-    return f"{salt}${key}"
+    """Hash passwords with PBKDF2-HMAC-SHA256 and a per-password random salt."""
+    iterations = 310_000
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
+    return f"pbkdf2_sha256\${iterations}\${salt.hex()}\${digest.hex()}"
 
 
 def verify_password(plain_password: str, hashed_password: Optional[str]) -> bool:
-    if not hashed_password or "$" not in hashed_password:
+    if not hashed_password:
         return False
-    salt, key = hashed_password.split("$", 1)
-    test_key = hashlib.sha256((salt + plain_password).encode("utf-8")).hexdigest()
-    return secrets.compare_digest(key, test_key)
+
+    parts = hashed_password.split("$")
+    if len(parts) == 4 and parts[0] == "pbkdf2_sha256":
+        try:
+            iterations = int(parts[1])
+            if iterations < 100_000 or iterations > 2_000_000:
+                return False
+            salt = bytes.fromhex(parts[2])
+            expected = parts[3]
+            actual = hashlib.pbkdf2_hmac(
+                "sha256", plain_password.encode("utf-8"), salt, iterations
+            ).hex()
+            return secrets.compare_digest(expected, actual)
+        except (ValueError, TypeError):
+            return False
+
+    # Verify legacy salted SHA-256 hashes once, then upgrade them after login.
+    if len(parts) == 2:
+        salt, expected = parts
+        actual = hashlib.sha256((salt + plain_password).encode("utf-8")).hexdigest()
+        return secrets.compare_digest(expected, actual)
+    return False
 
 
 auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -121,7 +142,7 @@ async def signup(
     await db.commit()
     await db.refresh(profile)
 
-    token = f"cg-user_{new_user.id}"
+    token = create_access_token(new_user.id)
     prof_resp = StudentProfileResponse(
         user_id=profile.user_id,
         handle=profile.handle,
@@ -173,12 +194,16 @@ async def login(
     if not user.password_hash or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    if not user.password_hash.startswith("pbkdf2_sha256$"):
+        user.password_hash = hash_password(payload.password)
+        await db.commit()
+
     college_name = None
     if profile and profile.college_id:
         c_res = await db.execute(select(College.name).where(College.id == profile.college_id))
         college_name = c_res.scalar_one_or_none()
 
-    token = f"cg-user_{user.id}"
+    token = create_access_token(user.id)
     prof_resp = StudentProfileResponse(
         user_id=profile.user_id if profile else user.id,
         handle=profile.handle if profile else user.email.split("@")[0],
