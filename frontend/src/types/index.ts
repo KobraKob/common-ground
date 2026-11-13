@@ -228,6 +228,7 @@ export interface ProjectItem {
   is_cross_campus_open: boolean;
   repo_or_demo_links: { label: string; url: string }[];
   members_count: number;
+  my_role?: string;
   created_at: string;
 }
 
