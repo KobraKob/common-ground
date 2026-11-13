@@ -263,7 +263,7 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
 .cg-surface{background:var(--cg-surface);border:1px solid var(--cg-border);border-radius:var(--cg-radius)}
 .cg-link{color:var(--cg-accent);text-decoration:none}.cg-link:hover{text-decoration:underline;text-underline-offset:3px}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
-@media(max-width:767px){body{padding-bottom:calc(68px + env(safe-area-inset-bottom))}}
+@media(max-width:767px){body:has(nav[aria-label="Mobile navigation"]){padding-bottom:calc(68px + env(safe-area-inset-bottom))}input,select,textarea{font-size:16px!important}button{min-height:44px}}
 
 /* Light appearance compatibility for legacy Tailwind surfaces during migration. */
 :root[data-theme="light"] [class~="text-white"] { color: var(--cg-text) !important; }
