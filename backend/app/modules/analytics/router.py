@@ -142,7 +142,7 @@ async def analytics_summary(
     feed_samples_result = await db.execute(
         select(AnalyticsEvent.event_metadata).where(
             AnalyticsEvent.created_at >= since,
-            AnalyticsEvent.event_name == "feed_loaded",
+            AnalyticsEvent.event_name.in_(["feed_loaded", "feed_load_completed"]),
         ).limit(5000)
     )
     feed_durations = [
