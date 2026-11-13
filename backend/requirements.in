@@ -1,7 +1,7 @@
 # Input manifest for the Python dependency lock.
 # Generate backend/requirements.lock with:
 #   pip-compile --generate-hashes --resolver=backtracking --output-file=requirements.lock requirements.in
-fastapi>=0.111.0
+fastapi>=0.162.2
 uvicorn>=0.30.0
 pydantic>=2.7.0
 pydantic-settings>=2.2.0
