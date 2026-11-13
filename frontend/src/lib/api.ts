@@ -517,6 +517,7 @@ export type MyContributions = {
   posts_created: number;
   questions_asked: number;
   useful_answers: number;
+  tasks_marked_done: number;
   communities: { id: string; name: string; slug: string; joined_at: string }[];
   events_attended: { id: string; title: string; starts_at: string; attended_at: string }[];
   attendance_note: string;
