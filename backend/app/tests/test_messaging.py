@@ -88,7 +88,9 @@ async def test_direct_messaging_respects_blocks_and_contact_permissions(client: 
     requester = User(id="20000000-0000-4000-8000-000000000001", email="requester@messages.test")
     blocked_user = User(id="20000000-0000-4000-8000-000000000002", email="blocked@messages.test")
     restricted_user = User(id="20000000-0000-4000-8000-000000000003", email="restricted@messages.test")
-    db_session.add_all([requester, blocked_user, restricted_user])
+    campus_only_user = User(id="20000000-0000-4000-8000-000000000004", email="campus-only@messages.test")
+    shared_only_user = User(id="20000000-0000-4000-8000-000000000005", email="shared-only@messages.test")
+    db_session.add_all([requester, blocked_user, restricted_user, campus_only_user, shared_only_user])
     db_session.add_all([
         StudentProfile(
             user_id=requester.id,
@@ -111,6 +113,20 @@ async def test_direct_messaging_respects_blocks_and_contact_permissions(client: 
             profile_visibility="PUBLIC",
             dm_permission="SAME_CAMPUS_OR_COMMUNITY",
         ),
+        StudentProfile(
+            user_id=campus_only_user.id,
+            handle="campusonlytarget",
+            display_name="Campus Only Target",
+            profile_visibility="CAMPUS_ONLY",
+            dm_permission="EVERYONE",
+        ),
+        StudentProfile(
+            user_id=shared_only_user.id,
+            handle="sharedonlytarget",
+            display_name="Shared Community Target",
+            profile_visibility="SHARED_COMMUNITIES_ONLY",
+            dm_permission="EVERYONE",
+        ),
     ])
     db_session.add(UserBlock(blocker_id=blocked_user.id, blocked_id=requester.id))
     await db_session.commit()
@@ -128,3 +144,17 @@ async def test_direct_messaging_respects_blocks_and_contact_permissions(client: 
         headers={"X-User-Id": requester.id},
     )
     assert restricted_response.status_code == 403, restricted_response.text
+
+    campus_only_response = await client.post(
+        "/api/v1/conversations/direct",
+        json={"recipient_user_id": campus_only_user.id},
+        headers={"X-User-Id": requester.id},
+    )
+    assert campus_only_response.status_code == 403, campus_only_response.text
+
+    shared_only_response = await client.post(
+        "/api/v1/conversations/direct",
+        json={"recipient_user_id": shared_only_user.id},
+        headers={"X-User-Id": requester.id},
+    )
+    assert shared_only_response.status_code == 403, shared_only_response.text
