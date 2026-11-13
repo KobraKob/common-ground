@@ -130,7 +130,7 @@ export async function requestWithMeta<T>(
   const fetchPromise = (async () => {
     try {
       const headers = {
-        'Content-Type': 'application/json',
+        ...(typeof options.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
         ...(activeAuthToken ? { 'Authorization': `Bearer ${activeAuthToken}` } : {}),
         ...(options.headers || {}),
       };
