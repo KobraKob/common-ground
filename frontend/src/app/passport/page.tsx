@@ -69,6 +69,7 @@ export default function PassportPage() {
     <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Contribution summary">
       {stats.map(({label,value,icon:Icon})=><article key={label} className="cg-surface p-4 sm:p-5"><Icon size={18} className="text-[var(--cg-accent)]"/><p className="mt-3 text-2xl font-semibold tabular-nums">{value.toLocaleString()}</p><p className="mt-1 text-xs leading-5 cg-muted">{label}</p></article>)}
     </section>
+    <p className="text-xs cg-muted">Task totals reflect workspace status marked DONE. They are collaboration records, not independently audited work credentials.</p>
 
     <div className="grid gap-4 lg:grid-cols-2">
       <section className="cg-surface p-6"><div className="flex items-center gap-2"><GraduationCap className="text-[var(--cg-accent)]"/><h2 className="text-lg font-semibold">Student identity</h2></div><dl className="mt-5 space-y-3 text-sm"><div className="flex justify-between gap-4"><dt className="cg-muted">Institution</dt><dd className="text-right">{profile.college_name || 'Not provided'}</dd></div><div className="flex justify-between gap-4"><dt className="cg-muted">Course / branch</dt><dd className="text-right">{profile.course_branch || 'Not provided'}</dd></div><div className="flex justify-between gap-4"><dt className="cg-muted">Graduation year</dt><dd className="text-right">{profile.graduation_year || 'Not provided'}</dd></div></dl></section>
