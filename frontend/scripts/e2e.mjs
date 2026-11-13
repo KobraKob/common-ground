@@ -61,7 +61,7 @@ try {
   if (theme !== 'light') throw new Error('Appearance control did not switch to light mode');
 
   await page.goto(new URL('/discover', baseUrl), { waitUntil: 'domcontentloaded' });
-  const campusPin = page.getByRole('button', { name: /Select RV College of Engineering/ });
+  const campusPin = page.getByRole('button', { name: /Select PES University/ });
   await campusPin.waitFor();
   await campusPin.click();
   if (await campusPin.getAttribute('aria-pressed') !== 'true') {
