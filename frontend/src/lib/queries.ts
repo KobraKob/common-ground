@@ -12,9 +12,25 @@ import {
   getStudents, 
   createPost, 
   reactToPost, 
-  getMyProfile 
+  getMyProfile,
+  getProjects,
+  createProject,
+  requestToJoinProject,
+  getCommunitiesPaginated,
+  joinCommunity,
+  createCommunity,
+  getEvents,
+  createEvent,
+  rsvpEvent,
+  getProject,
+  getProjectTasks,
+  createProjectTask,
+  updateProjectTask,
+  getMyPassport,
+  getAdminAnalytics,
+  getAdminPerformanceMetrics,
 } from './api';
-import { Post, College, Community, StudentProfile } from '@/types';
+import { Post, College, Community, StudentProfile, ProjectItem, EventItem, TaskItem } from '@/types';
 
 // Query Keys
 export const queryKeys = {
@@ -24,6 +40,9 @@ export const queryKeys = {
   communities: (collegeId?: string) => ['communities', collegeId ?? 'all'] as const,
   students: (skill?: string) => ['students', skill ?? 'all'] as const,
   profile: ['profile', 'me'] as const,
+  projects: ['projects'] as const,
+  interestCircles: ['communities', 'cross-campus-interest'] as const,
+  events: ['events'] as const,
 };
 
 // 1. Infinite Posts Query for Infinite Scrolling
@@ -116,4 +135,119 @@ export function useReactPostMutation() {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
     },
   });
+}
+
+
+// Project discovery and collaboration
+export function useProjectsQuery() {
+  return useQuery({ queryKey: queryKeys.projects, queryFn: getProjects, staleTime: 30_000 });
+}
+
+export function useCreateProjectMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof createProject>[0]) => createProject(payload),
+    onSuccess: (project) => queryClient.setQueryData<ProjectItem[]>(queryKeys.projects, (current = []) => [project, ...current]),
+  });
+}
+
+export function useJoinProjectMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, roleTitle, pitchNote }: { projectId: string; roleTitle: string; pitchNote: string }) =>
+      requestToJoinProject(projectId, roleTitle, pitchNote),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.projects }),
+  });
+}
+
+export function useProjectQuery(projectId: string) {
+  return useQuery({ queryKey: ['project', projectId], queryFn: () => getProject(projectId), enabled: Boolean(projectId) });
+}
+
+export function useProjectTasksQuery(projectId: string, enabled: boolean) {
+  return useQuery({ queryKey: ['project', projectId, 'tasks'], queryFn: () => getProjectTasks(projectId), enabled: Boolean(projectId) && enabled, staleTime: 15_000 });
+}
+
+export function useCreateProjectTaskMutation(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { title: string; status?: string; assignee_id?: string }) => createProjectTask(projectId, payload),
+    onSuccess: (task) => queryClient.setQueryData<TaskItem[]>(['project', projectId, 'tasks'], (current = []) => [...current, task]),
+  });
+}
+
+export function useUpdateProjectTaskMutation(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, status }: { taskId: string; status: string }) => updateProjectTask(projectId, taskId, { status }),
+    onSuccess: (task) => queryClient.setQueryData<TaskItem[]>(['project', projectId, 'tasks'], (current = []) => current.map((item) => item.id === task.id ? task : item)),
+  });
+}
+
+// Cross-campus interest circles
+export function useInterestCirclesQuery() {
+  return useQuery({
+    queryKey: queryKeys.interestCircles,
+    queryFn: async () => (await getCommunitiesPaginated({ communityType: 'CROSS_CAMPUS_INTEREST', limit: 20, offset: 0 })).items,
+    staleTime: 60_000,
+  });
+}
+
+export function useJoinCircleMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (communityId: string) => joinCommunity(communityId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.interestCircles }),
+  });
+}
+
+export function useCreateCircleMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof createCommunity>[0]) => createCommunity(payload),
+    onSuccess: (circle) => queryClient.setQueryData<Community[]>(queryKeys.interestCircles, (current = []) => [circle, ...current]),
+  });
+}
+
+// Events
+export function useEventsQuery() {
+  return useQuery({ queryKey: queryKeys.events, queryFn: getEvents, staleTime: 30_000 });
+}
+
+export function useCreateEventMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof createEvent>[0]) => createEvent(payload),
+    onSuccess: (event) => queryClient.setQueryData<EventItem[]>(queryKeys.events, (current = []) => [...current, event].sort((a, b) => a.starts_at.localeCompare(b.starts_at))),
+  });
+}
+
+export function useRsvpEventMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, status }: { eventId: string; status: 'GOING' | 'INTERESTED' }) => rsvpEvent(eventId, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.events }),
+  });
+}
+
+// Private student passport
+export function usePassportQuery() {
+  return useQuery({
+    queryKey: ['passport', 'me'],
+    queryFn: async () => {
+      const [profile, stats] = await Promise.all([getMyProfile(), getMyPassport()]);
+      if (!profile) throw new Error('Your profile could not be loaded.');
+      return { profile, stats };
+    },
+    staleTime: 60_000,
+  });
+}
+
+// Restricted platform dashboards
+export function useAdminAnalyticsQuery() {
+  return useQuery({ queryKey: ['admin', 'analytics', 'overview'], queryFn: getAdminAnalytics, staleTime: 60_000, retry: false });
+}
+
+export function useAdminPerformanceMetricsQuery() {
+  return useQuery({ queryKey: ['admin', 'performance', 'metrics'], queryFn: getAdminPerformanceMetrics, refetchInterval: 30_000, retry: false });
 }
