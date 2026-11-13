@@ -262,6 +262,14 @@ export interface ProjectMemberItem {
   joined_at: string;
 }
 
+export interface EventAttendeeItem {
+  user_id: string;
+  display_name: string;
+  handle: string;
+  attended: boolean;
+  attended_at?: string | null;
+}
+
 export interface EventItem {
   id: string;
   organizer_id: string;
