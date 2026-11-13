@@ -152,7 +152,7 @@ export default function DiscoverPage() {
 
   return (
     <div className="cg-page space-y-8">
-      <header className="max-w-3xl space-y-3">
+      <header className="cg-page-hero max-w-3xl space-y-3">
         <p className="cg-eyebrow">DISCOVER COMMON GROUND</p>
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Find your people. Build beyond your campus.</h1>
         <p className="max-w-2xl text-base leading-7 cg-muted">Explore participating colleges, interest circles, student projects and upcoming events across Bengaluru. Listings come from the live CommonGround services.</p>
