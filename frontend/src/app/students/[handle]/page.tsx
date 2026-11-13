@@ -2,22 +2,24 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, ArrowUpRight, BookOpen, Flag, GraduationCap, ShieldCheck, UserRound, UserX } from 'lucide-react';
-import { blockUser, getMyProfile, getStudentProfile, isAuthenticated } from '@/lib/api';
+import { blockUser, createDirectConversation, getMyProfile, getStudentProfile, isAuthenticated } from '@/lib/api';
 import type { StudentProfile } from '@/types';
 import { TrustBadge } from '@/components/shared/TrustBadge';
 import { ReportModal } from '@/components/shared/ReportModal';
 
 export default function PublicStudentProfilePage() {
   const params = useParams<{ handle: string }>();
+  const router = useRouter();
   const handle = typeof params.handle === 'string' ? params.handle : '';
   const [signedIn, setSignedIn] = useState(false);
   const [currentUserId, setCurrentUserId] = useState('');
   const [showReport, setShowReport] = useState(false);
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const [isStartingConversation, setIsStartingConversation] = useState(false);
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
@@ -34,6 +36,20 @@ export default function PublicStudentProfilePage() {
   });
   const profile = profileQuery.data;
   const isSelf = Boolean(profile && currentUserId && profile.user_id === currentUserId);
+
+  async function startConversation() {
+    if (!profile) return;
+    setIsStartingConversation(true);
+    setNotice('');
+    try {
+      const conversation = await createDirectConversation(profile.user_id);
+      router.push('/messages?conversation=' + encodeURIComponent(conversation.id));
+    } catch (error: any) {
+      setNotice(error?.detail || 'This student’s contact settings do not allow a new conversation.');
+    } finally {
+      setIsStartingConversation(false);
+    }
+  }
 
   async function confirmBlock() {
     if (!profile) return;
@@ -72,7 +88,7 @@ export default function PublicStudentProfilePage() {
         <section className="cg-surface p-6"><div className="flex items-center gap-2"><GraduationCap className="text-[var(--cg-accent)]"/><h2 className="font-semibold">Education</h2></div><dl className="mt-4 space-y-3 text-sm"><div className="flex justify-between gap-3"><dt className="cg-muted">Institution</dt><dd className="text-right">{profile.college_name || 'Not provided'}</dd></div>{profile.course_branch && <div className="flex justify-between gap-3"><dt className="cg-muted">Course</dt><dd className="text-right">{profile.course_branch}</dd></div>}{profile.graduation_year && <div className="flex justify-between gap-3"><dt className="cg-muted">Graduation year</dt><dd className="text-right">{profile.graduation_year}</dd></div>}</dl></section>
         <section className="cg-surface p-6"><div className="flex items-center gap-2"><BookOpen className="text-[var(--cg-accent)]"/><h2 className="font-semibold">Skills and interests</h2></div><div className="mt-4 flex flex-wrap gap-2">{[...profile.skills,...profile.interests].map((item,index)=><span key={item+index} className="rounded-full bg-[var(--cg-elevated)] px-3 py-1.5 text-xs">{item}</span>)}</div>{profile.skills.length+profile.interests.length===0 && <p className="mt-3 text-sm cg-muted">No skills or interests listed.</p>}</section>
       </div>
-      <section className="cg-surface flex flex-wrap items-center justify-between gap-4 p-5"><div><div className="flex items-center gap-2"><ShieldCheck size={17} className="text-[var(--cg-accent)]"/><h2 className="font-semibold">Privacy and contact</h2></div><p className="mt-1 text-sm cg-muted">{profile.dm_permission === 'NONE' ? 'This student does not accept new direct contact.' : profile.dm_permission === 'SAME_CAMPUS_OR_COMMUNITY' ? 'Contact is limited by this student’s campus and shared-community settings.' : 'This student accepts contact requests from other students.'}</p></div><Link href="/messages" className="cg-link inline-flex min-h-11 items-center text-sm">Open Messages <ArrowUpRight size={15} className="ml-1"/></Link></section>
+      <section className="cg-surface flex flex-wrap items-center justify-between gap-4 p-5"><div><div className="flex items-center gap-2"><ShieldCheck size={17} className="text-[var(--cg-accent)]"/><h2 className="font-semibold">Privacy and contact</h2></div><p className="mt-1 text-sm cg-muted">{profile.dm_permission === 'NONE' ? 'This student does not accept new direct contact.' : profile.dm_permission === 'SAME_CAMPUS_OR_COMMUNITY' ? 'Contact is limited by this student’s campus and shared-community settings.' : 'This student accepts contact requests from other students.'}</p></div>{signedIn && !isSelf && profile.dm_permission !== 'NONE' ? <button type="button" disabled={isStartingConversation} onClick={startConversation} className="btn-campus-amber inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm disabled:opacity-50">{isStartingConversation?'Opening…':'Message student'} <ArrowUpRight size={15}/></button> : !signedIn ? <Link href="/login" className="cg-link inline-flex min-h-11 items-center text-sm">Sign in to message <ArrowUpRight size={15} className="ml-1"/></Link> : <span className="text-xs cg-muted">Direct messages are disabled for this profile.</span>}</section>
     </>}
 
     {showBlockConfirm && <div role="dialog" aria-modal="true" aria-labelledby="block-confirm-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><section className="cg-surface w-full max-w-md space-y-4 p-6"><h2 id="block-confirm-title" className="text-xl font-semibold">Block {profile.display_name}?</h2><p className="text-sm cg-muted">Blocking hides profiles and prevents direct contact in both directions.</p><div className="flex justify-end gap-2"><button type="button" onClick={()=>setShowBlockConfirm(false)} className="min-h-11 rounded-full px-4 text-sm">Cancel</button><button type="button" onClick={confirmBlock} className="min-h-11 rounded-full bg-[var(--cg-danger)] px-4 text-sm font-semibold text-white">Block student</button></div></section></div>}
