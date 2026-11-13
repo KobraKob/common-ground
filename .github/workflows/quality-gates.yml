@@ -69,6 +69,15 @@ jobs:
           exit 1
       - name: Smoke test rendered routes
         run: npm run smoke
+      - name: Collect mobile Lighthouse reports
+        run: npx --yes @lhci/cli@0.14.0 autorun --config=./lighthouserc.json
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: common-ground-lighthouse-reports
+          path: frontend/.lighthouseci
+          if-no-files-found: warn
       - name: Audit npm dependencies
         run: npm audit --audit-level=high
 
