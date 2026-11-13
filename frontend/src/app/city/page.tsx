@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { VirtualizedFeed } from '@/components/shared/VirtualizedFeed';
 import Link from 'next/link';
@@ -119,7 +119,7 @@ export default function CityPage() {
     loadData();
   }, []);
 
-  const loadMorePosts = async () => {
+  const loadMorePosts = useCallback(async () => {
     if (loadingMorePosts || !hasMorePosts) return;
     setLoadingMorePosts(true);
     try {
@@ -133,7 +133,7 @@ export default function CityPage() {
     } finally {
       setLoadingMorePosts(false);
     }
-  };
+  }, [loadingMorePosts, hasMorePosts, nextPostOffset]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
