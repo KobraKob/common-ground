@@ -1,330 +1,149 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { 
-  Search, 
-  Moon, 
-  Orbit, 
-  X, 
-  LogOut, 
-  LogIn, 
-  UserPlus
-} from 'lucide-react';
-import { 
-  unifiedSearch, 
-  getActiveProfile, 
-  clearAuthSession,
-  isAuthenticated
-} from '@/lib/api';
-import { TrustBadge } from './TrustBadge';
+import { usePathname, useRouter } from 'next/navigation';
+import { LogOut, Menu, Moon, Search, Sun, X } from 'lucide-react';
+import { clearAuthSession, getActiveProfile, isAuthenticated, unifiedSearch } from '@/lib/api';
+
+const publicLinks = [
+  { href: '/city', label: 'City' },
+  { href: '/campuses', label: 'Campuses' },
+  { href: '/commons', label: 'Q&A' },
+  { href: '/build', label: 'Build' },
+];
 
 export function GlobalHeader() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any>(null);
   const [isSearching, setIsSearching] = useState(false);
-  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const [isTwilight, setIsTwilight] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  const isAuth = ['/login', '/signup', '/onboarding'].some((path) => pathname.startsWith(path));
+  const isMarketing = pathname === '/' || ['/about', '/privacy', '/terms'].some((path) => pathname.startsWith(path));
+  const showSearch = isLoggedIn && !isAuth && !isMarketing;
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setIsLoggedIn(isAuthenticated());
-      const storedAtmosphere = localStorage.getItem('cg-atmosphere');
-      if (storedAtmosphere === 'twilight') {
-        setIsTwilight(true);
-        document.documentElement.classList.add('atmosphere-twilight');
-      }
-    }
-  }, []);
-
-  const toggleAtmosphere = () => {
-    const nextMode = !isTwilight;
-    setIsTwilight(nextMode);
-    if (nextMode) {
-      document.documentElement.classList.add('atmosphere-twilight');
-      localStorage.setItem('cg-atmosphere', 'twilight');
-    } else {
-      document.documentElement.classList.remove('atmosphere-twilight');
-      localStorage.setItem('cg-atmosphere', 'midnight');
-    }
-  };
-
-  const handleSearch = (val: string) => {
-    setSearchQuery(val);
-    if (val.trim().length < 2) {
-      setSearchResults(null);
-      setIsSearching(false);
-    } else {
-      setIsSearching(true);
-    }
-  };
+    const loggedIn = isAuthenticated();
+    setIsLoggedIn(loggedIn);
+    const profile = getActiveProfile();
+    setProfileName(profile?.display_name || 'Profile');
+    const savedTheme = localStorage.getItem('cg-theme');
+    const systemLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+    const nextTheme = savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : systemLight ? 'light' : 'dark';
+    setTheme(nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+  }, [pathname]);
 
   useEffect(() => {
     const query = searchQuery.trim();
-    if (query.length < 2) return;
-
+    if (query.length < 2) {
+      setSearchResults(null);
+      setIsSearching(false);
+      return;
+    }
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
+      setIsSearching(true);
       try {
         const results = await unifiedSearch(query, controller.signal);
         if (!controller.signal.aborted) setSearchResults(results);
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          setSearchResults(null);
-        }
+      } catch {
+        if (!controller.signal.aborted) setSearchResults(null);
       } finally {
         if (!controller.signal.aborted) setIsSearching(false);
       }
     }, 250);
-
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
   }, [searchQuery]);
 
-  const handleSignOut = () => {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (event.key === '/' && !['INPUT', 'TEXTAREA'].includes((event.target as HTMLElement)?.tagName || '')) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+        setSearchQuery('');
+        searchInputRef.current?.blur();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  function toggleTheme() {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+    localStorage.setItem('cg-theme', nextTheme);
+  }
+
+  function signOut() {
     clearAuthSession();
     setIsLoggedIn(false);
     router.push('/');
-    window.location.reload();
-  };
-
-  const currentProfile = getActiveProfile();
+  }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#0A0C12]/85 backdrop-blur-2xl">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-        {/* Brand / Logo */}
-        <div className="flex items-center gap-3 shrink-0">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            {/* Minimal Geometric Node Logo */}
-            <div className="w-9 h-9 rounded-xl bg-[#161926] border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-sm transition-transform duration-150 group-hover:scale-105">
-              <span className="font-display font-extrabold text-xs tracking-wider text-amber-300">CG</span>
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="font-display text-base sm:text-lg font-bold tracking-tight text-white group-hover:text-amber-300 transition-colors">
-                  Common<span className="text-amber-400">Ground</span>
-                </span>
-                <span className="hidden sm:inline-block text-[9px] px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/25 font-mono">
-                  BLR
-                </span>
-              </div>
-              <span className="text-[9px] font-mono tracking-widest text-slate-500 uppercase hidden sm:block">
-                CROSS-CAMPUS STUDENT NETWORK
-              </span>
-            </div>
-          </Link>
-        </div>
+    <header className="sticky top-0 z-50 h-[52px] border-b border-[var(--separator)] bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] backdrop-blur-xl">
+      <div className="mx-auto flex h-full max-w-[1080px] items-center justify-between gap-3 px-4">
+        <Link href="/" className="flex min-h-[44px] shrink-0 items-center gap-2" aria-label="CommonGround home">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--surface-2)] text-sm font-semibold tracking-tight">CG</span>
+          <span className="text-[17px] font-semibold tracking-tight">CommonGround</span>
+        </Link>
 
-        {/* Global Search Bar (Jakob's Law & Fitts's Law) */}
-        <div className="flex-1 max-w-md relative hidden md:block">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Search peers, courses, notes, hackathons..."
-              className="celestial-input w-full text-xs font-mono py-2 pl-9 pr-12 text-white placeholder:text-slate-500"
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-slate-400">
-              ⌘K
-            </span>
-          </div>
+        {isMarketing && <nav className="hidden items-center gap-7 md:flex" aria-label="Main navigation">
+          {publicLinks.map((item) => <Link key={item.href} href={item.href} className="min-h-[44px] flex items-center text-sm text-[var(--text-secondary)] transition-colors hover:text-[var(--text)]">{item.label}</Link>)}
+        </nav>}
 
-          {/* Search Results Dropdown */}
-          {searchResults && (
-            <div className="absolute top-full left-0 right-0 mt-2 celestial-card p-3 shadow-2xl max-h-96 overflow-y-auto border border-white/15 z-50 animate-entrance">
-              {searchResults.students?.length > 0 && (
-                <div className="mb-3">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 mb-1.5 font-semibold">
-                    Students
-                  </div>
-                  <div className="space-y-1">
-                    {searchResults.students.map((s: any) => (
-                      <Link
-                        key={s.id || s.user_id}
-                        href="/profile"
-                        onClick={() => setSearchResults(null)}
-                        className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 text-xs font-mono transition-colors"
-                      >
-                        <span className="font-semibold text-white">
-                          {s.name || s.display_name}{' '}
-                          <span className="text-slate-500">(@{s.handle})</span>
-                        </span>
-                        <TrustBadge stage={s.stage || s.verification_stage} size="sm" />
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
+        {showSearch && <div className="relative hidden max-w-md flex-1 md:block">
+          <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+          <input ref={searchInputRef} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search students, posts and projects" aria-label="Search CommonGround" className="celestial-input h-10 w-full pl-9 pr-12 text-sm" />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[var(--text-muted)]">⌘K</span>
+          {searchQuery.trim().length >= 2 && <div className="absolute left-0 right-0 top-12 z-50 rounded-xl bg-[var(--surface)] p-3 shadow-2xl">
+            <p className="text-xs text-[var(--text-muted)]">{isSearching ? 'Searching…' : searchResults ? 'Search results are ready' : 'No results to show'}</p>
+            {searchResults && <div className="mt-2 grid gap-1 text-sm">
+              <span>{searchResults.students?.length || 0} students</span>
+              <span>{searchResults.communities?.length || 0} communities</span>
+              <span>{searchResults.commons_posts?.length || 0} posts</span>
+              <span>{searchResults.resources?.length || 0} resources</span>
+            </div>}
+          </div>}
+        </div>}
 
-              {searchResults.commons_posts?.length > 0 && (
-                <div className="mb-3">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 mb-1.5 font-semibold">
-                    Course Q&A & Notes
-                  </div>
-                  <div className="space-y-1">
-                    {searchResults.commons_posts.map((p: any) => (
-                      <Link
-                        key={p.id}
-                        href="/commons"
-                        onClick={() => setSearchResults(null)}
-                        className="block p-2 rounded-lg hover:bg-white/5 text-xs font-mono text-slate-300 hover:text-amber-300 truncate transition-colors"
-                      >
-                        {p.title}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {searchResults.communities?.length > 0 && (
-                <div>
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 mb-1.5 font-semibold">
-                    Campus Communities
-                  </div>
-                  <div className="space-y-1">
-                    {searchResults.communities.map((c: any) => (
-                      <Link
-                        key={c.id}
-                        href="/messages"
-                        onClick={() => setSearchResults(null)}
-                        className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 text-xs font-mono transition-colors"
-                      >
-                        <span className="text-white font-medium">{c.name}</span>
-                        <span className="text-[10px] font-mono text-slate-500">{c.member_count} members</span>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {!searchResults.students?.length && !searchResults.commons_posts?.length && !searchResults.communities?.length && (
-                <div className="p-3 text-center text-xs font-mono text-slate-400">
-                  No matching students, notes, or groups found.
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Right Controls */}
-        <div className="flex items-center gap-2.5">
-          {!isLoggedIn ? (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-white/15 bg-white/5 hover:border-amber-400/50 text-xs font-mono text-slate-300 hover:text-white transition-all"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Sign In</span>
-              </Link>
-
-              <Link
-                href="/signup"
-                className="btn-campus-amber text-xs font-mono px-4 py-1.5 flex items-center gap-1 font-bold shadow-sm"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Join Free</span>
-              </Link>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/profile"
-                className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-white/15 bg-white/5 hover:border-amber-400/50 transition-all"
-                title="My Profile"
-              >
-                <div className="w-6 h-6 rounded-full bg-amber-400 text-[#0A0C12] flex items-center justify-center font-mono font-bold text-[11px] shadow-sm">
-                  {currentProfile?.display_name ? currentProfile.display_name.charAt(0) : 'U'}
-                </div>
-                <span className="text-xs font-mono font-medium hidden sm:inline text-white">
-                  @{currentProfile?.handle || 'me'}
-                </span>
-              </Link>
-
-              <button
-                onClick={handleSignOut}
-                className="p-1.5 rounded-full text-slate-400 hover:text-rose-400 transition-colors"
-                title="Sign out"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
-          {/* Mobile Search Button */}
-          <button
-            onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-            className="md:hidden p-2 rounded-full border border-white/15 bg-white/5 text-slate-300 hover:text-white transition-all"
-            title="Search"
-          >
-            {isMobileSearchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
-          </button>
-
-          {/* Atmosphere Toggle */}
-          <button
-            onClick={toggleAtmosphere}
-            className="p-2 rounded-full border border-white/15 bg-white/5 text-amber-300 hover:border-amber-400/50 transition-all"
-            title={isTwilight ? 'Switch to Deep Midnight' : 'Switch to Twilight Atmosphere'}
-          >
-            {isTwilight ? (
-              <Orbit className="w-4 h-4 text-amber-400" />
-            ) : (
-              <Moon className="w-4 h-4 text-amber-300" />
-            )}
-          </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button onClick={toggleTheme} className="grid h-11 w-11 place-items-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--surface)]" aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button>
+          {isMarketing && !isLoggedIn && <>
+            <Link href="/login" className="hidden min-h-[44px] items-center px-3 text-sm text-[var(--text-secondary)] sm:inline-flex">Sign in</Link>
+            <Link href="/signup" className="btn-primary min-h-[36px] px-4 text-sm">Join</Link>
+          </>}
+          {isMarketing && isLoggedIn && <Link href="/profile" className="hidden min-h-[44px] items-center px-3 text-sm text-[var(--text-secondary)] sm:inline-flex">{profileName}</Link>}
+          {showSearch && <button onClick={() => searchInputRef.current?.focus()} className="grid h-11 w-11 place-items-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--surface)] md:hidden" aria-label="Open search"><Search size={19} /></button>}
+          {isLoggedIn && !isMarketing && <button onClick={signOut} className="hidden h-10 items-center gap-2 rounded-full px-3 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface)] md:flex"><LogOut size={16} /> Sign out</button>}
+          {isMarketing && <button type="button" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="grid h-11 w-11 place-items-center rounded-full md:hidden" aria-label={mobileMenuOpen ? 'Close navigation' : 'Open navigation'}>{mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}</button>}
         </div>
       </div>
 
-      {/* Expandable Mobile Search Drawer */}
-      {isMobileSearchOpen && (
-        <div className="md:hidden border-t border-white/10 px-4 py-3 bg-[#0A0C12]/95 backdrop-blur-2xl">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              autoFocus
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Search peers, courses, notes..."
-              className="celestial-input w-full text-xs font-mono py-2 pl-9 pr-4 text-white"
-            />
-          </div>
-
-          {searchResults && (
-            <div className="mt-2 celestial-card p-3 shadow-2xl max-h-72 overflow-y-auto border border-white/15">
-              {searchResults.students?.length > 0 && (
-                <div className="mb-2">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 mb-1 font-semibold">
-                    Students
-                  </div>
-                  {searchResults.students.map((s: any) => (
-                    <Link
-                      key={s.id || s.user_id}
-                      href="/profile"
-                      onClick={() => {
-                        setSearchResults(null);
-                        setIsMobileSearchOpen(false);
-                      }}
-                      className="flex items-center justify-between p-1.5 rounded-lg hover:bg-white/5 text-xs font-mono"
-                    >
-                      <span>{s.name || s.display_name}</span>
-                      <TrustBadge stage={s.stage || s.verification_stage} size="sm" />
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      {mobileMenuOpen && <nav className="fixed inset-0 top-[52px] z-50 flex h-[calc(100dvh-52px)] flex-col gap-1 bg-[var(--bg)] px-6 py-8 md:hidden" aria-label="Mobile navigation">
+        {publicLinks.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} className="flex min-h-[60px] items-center border-b border-[var(--separator)] text-2xl font-semibold">{item.label}</Link>)}
+        {isLoggedIn ? <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="flex min-h-[60px] items-center border-b border-[var(--separator)] text-2xl font-semibold">Profile</Link> : <>
+          <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="flex min-h-[60px] items-center border-b border-[var(--separator)] text-2xl font-semibold">Sign in</Link>
+          <Link href="/signup" onClick={() => setMobileMenuOpen(false)} className="btn-primary mt-6">Join free</Link>
+        </>}
+      </nav>}
     </header>
   );
 }
