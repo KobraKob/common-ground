@@ -49,6 +49,7 @@ class MuteTargetRequest(BaseModel):
 
 class StudentProfileResponse(BaseModel):
     user_id: str
+    platform_role: Optional[str] = None
     handle: str
     display_name: str
     bio: Optional[str] = None
