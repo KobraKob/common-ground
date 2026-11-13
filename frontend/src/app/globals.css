@@ -260,3 +260,17 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
 .cg-link{color:var(--cg-accent);text-decoration:none}.cg-link:hover{text-decoration:underline;text-underline-offset:3px}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 @media(max-width:767px){body{padding-bottom:calc(68px + env(safe-area-inset-bottom))}}
+
+/* Light appearance compatibility for legacy Tailwind surfaces during migration. */
+:root[data-theme="light"] [class~="text-white"] { color: var(--cg-text) !important; }
+:root[data-theme="light"] button [class~="text-white"],
+:root[data-theme="light"] a [class~="text-white"],
+:root[data-theme="light"] .btn-campus-amber { color: #fff !important; }
+:root[data-theme="light"] [class~="bg-[#12151F]"],
+:root[data-theme="light"] [class~="bg-[#12151F]/95"],
+:root[data-theme="light"] [class~="bg-[#0E1017]"],
+:root[data-theme="light"] [class~="bg-[#0A0C12]"] { background-color: var(--cg-surface) !important; }
+:root[data-theme="light"] [class*="border-white"] { border-color: var(--cg-border) !important; }
+:root[data-theme="light"] [class*="text-slate-300"],
+:root[data-theme="light"] [class*="text-slate-400"],
+:root[data-theme="light"] [class*="text-slate-500"] { color: var(--cg-muted) !important; }
