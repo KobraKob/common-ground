@@ -1,0 +1,27 @@
+name: Staging smoke checks
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Quality gates"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Validate required staging endpoints
+        env:
+          STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+          STAGING_FRONTEND_URL: ${{ vars.STAGING_FRONTEND_URL }}
+        run: |
+          test -n "$STAGING_API_URL"
+          test -n "$STAGING_FRONTEND_URL"
+          curl --fail --silent --show-error "$STAGING_API_URL/health"
+          curl --fail --silent --show-error "$STAGING_API_URL/ready"
+          curl --fail --silent --show-error "$STAGING_FRONTEND_URL" >/dev/null
