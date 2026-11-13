@@ -26,7 +26,7 @@ Prioritise meaningful collaboration and repeat utility over vanity engagement me
 - Added a Campus Passport assembled from profile verification, skills, interests, accepted project memberships, organizer-confirmed event attendance, community memberships and useful-answer activity.
 - Added a durable event-attendance ledger. Only event organizers can mark a GOING RSVP as attended, only after the event ends; RSVP alone never counts as attendance.
 - Added opt-in peer mentorship with public-profile eligibility, explicit availability, topic matching, contact-permission checks, block checks, private requests and accept/decline/cancel controls.
-- Added a Build workspace with project creation, join requests, accepted-member roster, task creation, task status controls and project-lead assignment permissions.
+- Added a Build workspace with project creation, join-request review, accepted-member roster, task creation, task status controls and project-lead assignment permissions.
 - Added opt-in peer mentorship with mentor availability, topic matching, contact-permission enforcement, request acceptance/decline/cancellation and private request history.
 - Added a moderator-only Campus Intelligence page with aggregated activity and platform inventory metrics.
 - Removed client-side fallback content that presented invented posts, resources, announcements, events or community counts as real activity.
@@ -41,7 +41,7 @@ Prioritise meaningful collaboration and repeat utility over vanity engagement me
 - Enforced campus-only project join restrictions server-side.
 - Protected runtime metrics and metric reset endpoints behind moderator/admin authorization.
 - Added privacy-limited authenticated analytics events. Only allowlisted event names and coarse product surfaces are accepted; no free-form search terms, message content or personal activity payloads are collected.
-- Migrated discovery and city feed to account-scoped TanStack Query caching, infinite pagination and window-based virtualization. GET requests no longer send an unnecessary JSON content type.
+- Migrated discovery, mentorship and city feed to account-scoped TanStack Query caching. City feed uses infinite pagination and window-based virtualization. Feed images reserve aspect ratio and use the shared Next Image/native-lazy fallback component; the interactive student profile card is code-split. GET requests no longer send an unnecessary JSON content type.
 - Added moderator-only aggregated analytics and performance indexes for discovery, collaboration and analytics query paths.
 - Removed feed N+1 queries by joining author/community/college data and batching reaction lookups.
 - Replaced resource uploader N+1 lookups with one joined query and bounded resource pagination.
@@ -59,6 +59,10 @@ Prioritise meaningful collaboration and repeat utility over vanity engagement me
 - **Tracked events:** accepted analytics records in the selected period.
 - **Cross-campus collaborations:** accepted project and mentorship connections where the participants belong to different campuses.
 - **Projects and events created:** database counts for the selected period.
+- **Event registrations:** GOING RSVP records created in the selected period; not proof of attendance.
+- **Weekly retention:** percentage of students active in both the previous 7-day window and the current 7-day window.
+- **Search-to-connection:** percentage of distinct searching students with a later connection event in the selected period. This is user-level attribution, not query-level attribution.
+- **City feed p75:** 75th percentile of initial city-feed data-load duration from authenticated client samples. It is not a substitute for LCP/INP/CLS or a full page-load measurement.
 - **Event registrations:** GOING RSVP records created in the selected period; not proof of attendance.
 - **Weekly retention:** percentage of students active in both the previous 7-day window and the current 7-day window.
 - **Search-to-connection:** percentage of distinct searching students with a later connection event in the selected period. This is user-level attribution, not query-level attribution.
