@@ -15,6 +15,7 @@ from app.modules.commons.router import router as commons_router
 from app.modules.projects.router import router as projects_router
 from app.modules.moderation.router import router as moderation_router
 from app.modules.analytics.router import router as analytics_router
+from app.modules.mentorship.router import router as mentorship_router
 
 
 @asynccontextmanager
@@ -128,3 +129,4 @@ app.include_router(commons_router, prefix=settings.API_V1_PREFIX)
 app.include_router(projects_router, prefix=settings.API_V1_PREFIX)
 app.include_router(moderation_router, prefix=settings.API_V1_PREFIX)
 app.include_router(analytics_router, prefix=settings.API_V1_PREFIX)
+app.include_router(mentorship_router, prefix=settings.API_V1_PREFIX)
