@@ -47,7 +47,11 @@ Staging data must be synthetic or anonymized. Never copy production personal dat
 - Validate production values, CORS origins, redirect URLs, TLS certificates, firewall rules and outbound service access during the staging release rehearsal.
 - Configuration changes must be reviewed and version-controlled. Do not put secret values in configuration files or logs.
 
-## 5. Database backup and restore
+## 5. Database access and row-level security
+
+Migration `007_enable_application_rls.sql` enables RLS on application tables and intentionally creates no direct `anon` or `authenticated` table policies. The browser accesses application data through the FastAPI service, which enforces profile visibility, blocks, membership and moderator permissions. The backend `DATABASE_URL` must use a trusted table-owner/service database role that can perform the API's queries. Verify this role in staging before applying the migration; never use an anonymous or end-user database role for the backend.
+
+## 6. Database backup and restore
 
 Before every production deployment that can change data or schema:
 1. Confirm a recent automated backup exists.
@@ -59,9 +63,9 @@ Before every production deployment that can change data or schema:
 
 A successful `pg_dump` is not proof of recoverability. Only a completed isolated restore plus application-level verification counts as a successful restore drill.
 
-## 6. Migration procedure
+## 7. Migration procedure
 
-- Review SQL migration diffs and confirm forward-only/backward compatibility.
+- Review SQL migration diffs (including RLS migration 007) and confirm forward-only/backward compatibility.
 - Prefer expand/contract migrations: add nullable structures first, deploy compatible code, backfill in bounded batches, then enforce constraints/remove old structures in a later release.
 - Snapshot the database immediately before schema/data changes.
 - Test the exact migration order against a fresh database and a production-like staging snapshot with anonymized data.
@@ -70,7 +74,7 @@ A successful `pg_dump` is not proof of recoverability. Only a completed isolated
 - Do not run production migrations from pull-request CI.
 - Record applied migration identifiers and post-migration validation queries.
 
-## 7. Deployment checklist
+## 8. Deployment checklist
 
 - [ ] All required CI jobs green; no skipped security checks.
 - [ ] Peer review completed; high-risk changes receive a second reviewer.
@@ -84,7 +88,7 @@ A successful `pg_dump` is not proof of recoverability. Only a completed isolated
 - [ ] Post-deploy smoke tests, error rates and latency monitored.
 - [ ] Release owner records outcome and any follow-up issues.
 
-## 8. Operational limitations / owner actions
+## 9. Operational limitations / owner actions
 
 GitHub CI cannot safely create production backups, inspect hosting-provider secrets, verify deployed TLS certificates, or prove staging parity without environment-specific credentials and infrastructure access. Those checks remain explicit release-owner tasks until the relevant provider integrations and protected staging environment are configured.
 
