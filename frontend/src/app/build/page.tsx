@@ -1,7 +1,8 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, BriefcaseBusiness, CheckCircle2, ClipboardList, Plus, Users } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
+import { ArrowRight, BriefcaseBusiness, CheckCircle2, Plus, Users } from 'lucide-react';
 import { createProject, createProjectTask, getMyProfile, getProjectTasks, getProjects, requestToJoinProject } from '@/lib/api';
 import type { ProjectItem, StudentProfile, TaskItem } from '@/types';
 
@@ -21,16 +22,11 @@ export default function BuildPage() {
   const [joinNote, setJoinNote] = useState('');
   const [joinRole, setJoinRole] = useState('Collaborator');
   const [workspace, setWorkspace] = useState<ProjectItem | null>(null);
+  const [workspaceError, setWorkspaceError] = useState('');
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [taskTitle, setTaskTitle] = useState('');
   const [taskBusy, setTaskBusy] = useState(false);
   const [filter, setFilter] = useState('ALL');
-
-  async function refresh() {
-    const [items, me] = await Promise.all([getProjects(), getMyProfile()]);
-    setProjects(items || []);
-    setProfile(me || null);
-  }
 
   useEffect(() => {
     let active = true;
@@ -77,9 +73,9 @@ export default function BuildPage() {
   }
 
   async function openWorkspace(project: ProjectItem) {
-    setWorkspace(project); setTasks([]); setNotice('');
+    setWorkspace(project); setTasks([]); setWorkspaceError('');
     try { setTasks(await getProjectTasks(project.id)); }
-    catch { setNotice('Workspace access is limited to the project lead and accepted collaborators.'); }
+    catch { setWorkspaceError('Workspace access is limited to the project lead and accepted collaborators.'); }
   }
 
   async function addTask(event: FormEvent<HTMLFormElement>) {
@@ -131,6 +127,6 @@ export default function BuildPage() {
 
     {joinProject && <div role="dialog" aria-modal="true" aria-labelledby="join-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><form onSubmit={handleJoin} className="cg-surface w-full max-w-lg space-y-4 p-6"><h2 id="join-title" className="text-xl font-semibold">Request to join {joinProject.title}</h2><label className="block text-sm font-medium">Role you want<input value={joinRole} onChange={(e)=>setJoinRole(e.target.value)} className="celestial-input mt-2 w-full px-3"/></label><label className="block text-sm font-medium">Why should the team work with you?<textarea required minLength={5} rows={4} value={joinNote} onChange={(e)=>setJoinNote(e.target.value)} className="celestial-input mt-2 w-full px-3 py-2"/></label><div className="flex justify-end gap-2"><button type="button" onClick={()=>setJoinProject(null)} className="min-h-11 rounded-full px-4 text-sm">Cancel</button><button disabled={submitting} className="btn-campus-amber min-h-11 rounded-full px-5">{submitting?'Sending…':'Send request'}</button></div></form></div>}
 
-    {workspace && <div role="dialog" aria-modal="true" aria-labelledby="workspace-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><section className="cg-surface max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6"><div className="flex items-start justify-between gap-3"><div><p className="cg-eyebrow">PROJECT WORKSPACE</p><h2 id="workspace-title" className="mt-1 text-2xl font-semibold">{workspace.title}</h2></div><button onClick={()=>setWorkspace(null)} aria-label="Close workspace" className="min-h-11 min-w-11 rounded-full bg-[var(--cg-elevated)]">×</button></div><div className="mt-5 space-y-3"><h3 className="font-semibold">Tasks</h3>{tasks.length ? tasks.map((task)=><div key={task.id} className="flex items-center gap-3 rounded-xl bg-[var(--cg-elevated)] p-3 text-sm"><CheckCircle2 size={17} className="text-[var(--cg-success)]"/><span className="flex-1">{task.title}</span><span className="text-xs cg-muted">{task.status.replace(/_/g,' ')}</span></div>) : <p className="text-sm cg-muted">No tasks yet, or workspace access is unavailable.</p>}<form onSubmit={addTask} className="flex flex-wrap gap-2"><input value={taskTitle} onChange={(e)=>setTaskTitle(e.target.value)} minLength={2} placeholder="Add a task" className="celestial-input min-w-0 flex-1 px-3"/><button disabled={taskBusy} className="min-h-11 rounded-full bg-[var(--cg-accent)] px-4 text-sm font-semibold text-white">{taskBusy?'Adding…':'Add task'}</button></form></div></section></div>}
+    {workspace && <div role="dialog" aria-modal="true" aria-labelledby="workspace-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><section className="cg-surface max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6"><div className="flex items-start justify-between gap-3"><div><p className="cg-eyebrow">PROJECT WORKSPACE</p><h2 id="workspace-title" className="mt-1 text-2xl font-semibold">{workspace.title}</h2></div><button onClick={()=>setWorkspace(null)} aria-label="Close workspace" className="min-h-11 min-w-11 rounded-full bg-[var(--cg-elevated)]">×</button></div><div className="mt-5 space-y-3"><h3 className="font-semibold">Tasks</h3>{workspaceError && <p role="alert" className="text-sm text-[var(--cg-danger)]">{workspaceError}</p>}{tasks.length ? tasks.map((task)=><div key={task.id} className="flex items-center gap-3 rounded-xl bg-[var(--cg-elevated)] p-3 text-sm"><CheckCircle2 size={17} className="text-[var(--cg-success)]"/><span className="flex-1">{task.title}</span><span className="text-xs cg-muted">{task.status.replace(/_/g,' ')}</span></div>) : <p className="text-sm cg-muted">No tasks yet, or workspace access is unavailable.</p>}<form onSubmit={addTask} className="flex flex-wrap gap-2"><input value={taskTitle} onChange={(e)=>setTaskTitle(e.target.value)} minLength={2} placeholder="Add a task" className="celestial-input min-w-0 flex-1 px-3"/><button disabled={taskBusy} className="min-h-11 rounded-full bg-[var(--cg-accent)] px-4 text-sm font-semibold text-white">{taskBusy?'Adding…':'Add task'}</button></form></div></section></div>}
   </div>;
 }
