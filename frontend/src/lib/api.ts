@@ -490,7 +490,8 @@ export async function sendMessage(conversationId: string, body: string): Promise
 // ----------------------------------------------------
 
 export async function getMyProjects(): Promise<ProjectItem[]> {
-  return await request<ProjectItem[]>('/projects/mine');
+  try { return await request<ProjectItem[]>('/projects/mine'); }
+  catch { return []; }
 }
 
 export async function getProjects(): Promise<ProjectItem[]> {
