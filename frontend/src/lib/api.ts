@@ -475,6 +475,15 @@ export async function createCommunity(payload: {
   return created;
 }
 
+export async function createDirectConversation(targetUserId: string): Promise<Conversation> {
+  const conversation = await request<Conversation>('/conversations/direct', {
+    method: 'POST',
+    body: JSON.stringify({ target_user_id: targetUserId }),
+  });
+  void trackAnalyticsEvent('connection_created', 'messages');
+  return conversation;
+}
+
 export async function getConversations(): Promise<Conversation[]> {
   try {
     return await request<Conversation[]>('/conversations');
