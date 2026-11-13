@@ -315,7 +315,7 @@ async def update_project_member_status(
             event_name="connection_created",
             college_id=col1,
             is_cross_campus_interaction=is_cross,
-            event_metadata={"surface": "build", "project_id": project_id, "collaborator_id": member.user_id},
+            event_metadata={"surface": "build"},
         )
         db.add(analytics)
 
