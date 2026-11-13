@@ -226,6 +226,30 @@ export async function getCampusOverview(slug: string): Promise<any> {
 // Identity & Profiles
 // ----------------------------------------------------
 
+export interface PassportStats {
+  posts_shared: number;
+  projects_joined: number;
+  circles_joined: number;
+  events_joined: number;
+  recent_activity: { label: string; created_at: string }[];
+}
+
+export async function getMyPassport(): Promise<PassportStats> {
+  return await request<PassportStats>('/me/passport');
+}
+
+export async function getCurrentRole(): Promise<{ platform_role: string }> {
+  return await request<{ platform_role: string }>('/auth/role');
+}
+
+export async function getAdminAnalytics(): Promise<any> {
+  return await request<any>('/analytics/overview');
+}
+
+export async function getAdminPerformanceMetrics(): Promise<any> {
+  return await request<any>('/system/admin/metrics');
+}
+
 export async function getMyProfile(): Promise<StudentProfile | null> {
   try {
     const prof = await request<StudentProfile>('/auth/me');
@@ -418,6 +442,16 @@ export async function getCommunitiesPaginated({
   }
 }
 
+export async function createCommunity(payload: {
+  name: string;
+  slug: string;
+  description: string;
+  community_type: string;
+  visibility: string;
+}): Promise<Community> {
+  return await request<Community>('/communities', { method: 'POST', body: JSON.stringify(payload) });
+}
+
 export async function joinCommunity(communityId: string): Promise<any> {
   return await request<any>(`/communities/${communityId}/join`, { method: 'POST' });
 }
@@ -504,6 +538,22 @@ export async function getProjectsPaginated({
   }
 }
 
+export async function getProject(projectId: string): Promise<ProjectItem> {
+  return await request<ProjectItem>(`/projects/${projectId}`);
+}
+
+export async function getProjectTasks(projectId: string): Promise<TaskItem[]> {
+  return await request<TaskItem[]>(`/projects/${projectId}/tasks`);
+}
+
+export async function createProjectTask(projectId: string, payload: { title: string; status?: string; assignee_id?: string }): Promise<TaskItem> {
+  return await request<TaskItem>(`/projects/${projectId}/tasks`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateProjectTask(projectId: string, taskId: string, payload: { status?: string; assignee_id?: string }): Promise<TaskItem> {
+  return await request<TaskItem>(`/projects/${projectId}/tasks/${taskId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
 export async function createProject(payload: any): Promise<ProjectItem> {
   return await request<ProjectItem>('/projects', {
     method: 'POST',
@@ -517,6 +567,10 @@ export async function getEvents(): Promise<EventItem[]> {
   } catch {
     return [];
   }
+}
+
+export async function createEvent(payload: Partial<EventItem>): Promise<EventItem> {
+  return await request<EventItem>('/events', { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export async function rsvpEvent(eventId: string, status: 'GOING' | 'INTERESTED'): Promise<any> {
@@ -560,6 +614,10 @@ export async function getModerationQueue(): Promise<ReportItem[]> {
   } catch {
     return [];
   }
+}
+
+export async function getModerationAuditLogs(): Promise<any[]> {
+  return await request<any[]>('/moderation/audit?limit=50');
 }
 
 export async function executeModerationAction(payload: any): Promise<any> {
