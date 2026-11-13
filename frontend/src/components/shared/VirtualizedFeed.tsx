@@ -88,7 +88,7 @@ export function VirtualizedFeed<T>({
 
       {isFetchingNextPage && (
         <div className="py-4 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-950/80 border border-purple-400/30 text-xs font-mono text-amber-300">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#12151F] border border-white/10 text-xs font-mono text-amber-300">
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
             <span>Loading older posts...</span>
           </div>

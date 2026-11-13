@@ -65,9 +65,9 @@ export function OptimizedImage({
     }
 
     return (
-      <div className={`flex flex-col items-center justify-center bg-purple-950/40 border border-purple-400/20 text-[#C4B5FD] p-4 text-xs font-mono ${containerClassName} ${className}`}>
-        <ImageIcon className="w-6 h-6 mb-1 text-purple-400/60" />
-        <span className="text-[10px] text-purple-300/80">Image unavailable</span>
+      <div className={`flex flex-col items-center justify-center bg-white/[0.02] border border-white/10 text-slate-400 p-4 text-xs font-mono rounded-xl ${containerClassName} ${className}`}>
+        <ImageIcon className="w-6 h-6 mb-1 text-slate-500" />
+        <span className="text-[10px] text-slate-500">Image unavailable</span>
       </div>
     );
   }
@@ -76,7 +76,7 @@ export function OptimizedImage({
     <div className={`relative overflow-hidden ${containerClassName}`}>
       {/* Loading shimmer skeleton */}
       {isLoading && (
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-950/30 via-purple-900/40 to-purple-950/30 animate-pulse z-10 pointer-events-none" />
+        <div className="absolute inset-0 skeleton-shimmer z-10 pointer-events-none" />
       )}
 
       {canOptimize ? (

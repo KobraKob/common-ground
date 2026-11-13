@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { 
   Compass, 
   Users, 
   Flame, 
-  Sparkles, 
+  Sparkles,
   MessageSquare, 
   Send, 
   Vote, 
@@ -18,15 +17,17 @@ import {
   Film,
   X,
   Check,
-  Lock,
-  ArrowRight,
   UserPlus,
   LogIn,
-  Info
+  AlertCircle,
+  Camera,
+  Coffee,
+  Music,
+  Cpu,
+  HelpCircle
 } from 'lucide-react';
 import { 
   getPosts, 
-  getPostsPaginated,
   getCommunities, 
   getStudents,
   votePoll, 
@@ -40,19 +41,11 @@ import {
 } from '@/lib/api';
 import { Post, Community, StudentProfile, Comment } from '@/types';
 import { TrustBadge } from '@/components/shared/TrustBadge';
-import { OptimizedImage } from '@/components/shared/OptimizedImage';
-import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { ReportModal } from '@/components/shared/ReportModal';
+import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
+import { StudentHoloCard } from '@/components/profile';
 
-const CampusHeroBanner = dynamic(
-  () => import('@/components/shared/CampusHeroBanner').then((m) => m.CampusHeroBanner),
-  { ssr: true, loading: () => <div className="h-60 rounded-3xl celestial-card animate-pulse" /> }
-);
-const ReportModal = dynamic(
-  () => import('@/components/shared/ReportModal').then((m) => m.ReportModal),
-  { ssr: false }
-);
-
-// Pre-seeded starter posts (Apple HIG: Seed the empty feed with clearly labelled starter content)
+// Starter spotlight posts (Real Unsplash photography, no emojis, verified student context)
 const STARTER_SPOTLIGHT_POSTS: Post[] = [
   {
     id: 'spotlight-1',
@@ -62,9 +55,9 @@ const STARTER_SPOTLIGHT_POSTS: Post[] = [
     college_name: 'RV College of Engineering',
     author_verification: 'STAGE_3_INSTITUTIONAL_VERIFIED',
     category: 'HANGOUT_MEME',
-    title: 'RVCE 8th Mile Stage Production Soundcheck 🎸',
-    body: '3 AM soundcheck done for the battle of bands. Bass is vibrating the entire mechanical block! Tomorrow 6 PM main stage kick-off.',
-    media_url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=900',
+    title: '8th Mile Main Stage Audio Engineering Soundcheck',
+    body: 'Midnight acoustic test completed in the main quadrangle. Sound dispersion across the mechanical engineering block is dialed in for tomorrow evening.',
+    media_url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=900&auto=format&fit=crop&q=80',
     media_type: 'IMAGE',
     upvotes_count: 134,
     comments_count: 18,
@@ -82,15 +75,15 @@ const STARTER_SPOTLIGHT_POSTS: Post[] = [
     college_name: 'PES University',
     author_verification: 'STAGE_3_INSTITUTIONAL_VERIFIED',
     category: 'DISCUSSION',
-    title: 'Late Night Coffee & Study Banter ☕',
-    body: 'Exam prep season is officially here. Where are students heading at midnight in Bengaluru?',
+    title: 'Late Night Coffee and Study Spaces on Outer Ring Road',
+    body: 'Exam preparation season is starting. Which late-night study spots in Bengaluru have reliable Wi-Fi and power outlets?',
     poll: {
       id: 'poll-1',
-      question: 'Best midnight study caffeine spot?',
+      question: 'Best midnight study coffee location?',
       options: [
         { id: 'opt-1', text: 'Rameshwaram Cafe (Indiranagar)', votes: 82 },
-        { id: 'opt-2', text: 'Third Wave (Koramangala 24/7)', votes: 65 },
-        { id: 'opt-3', text: 'Dorm Canteen Chai Tapri', votes: 114 },
+        { id: 'opt-2', text: 'Third Wave Coffee (Koramangala 24/7)', votes: 65 },
+        { id: 'opt-3', text: 'Campus Dorm Canteen & Chai Tapri', votes: 114 },
       ],
     },
     upvotes_count: 98,
@@ -98,7 +91,7 @@ const STARTER_SPOTLIGHT_POSTS: Post[] = [
     shares_count: 15,
     is_cross_campus: true,
     is_pinned: false,
-    tags: ['BengaluruPulse', 'CampusLife', 'Coffee'],
+    tags: ['CampusLife', 'StudySpots', 'Bengaluru'],
     created_at: new Date(Date.now() - 3600000 * 5).toISOString(),
   },
   {
@@ -109,8 +102,8 @@ const STARTER_SPOTLIGHT_POSTS: Post[] = [
     college_name: 'BMS College of Engineering',
     author_verification: 'STAGE_3_INSTITUTIONAL_VERIFIED',
     category: 'OPPORTUNITY',
-    title: 'Looking for a ROS2 Vision Contributor for Drone Project',
-    body: 'We are prototyping an autonomous line-of-sight drone for smart agriculture. Looking for a cross-campus teammate with OpenCV or ROS2 experience.',
+    title: 'Recruiting ROS2 Vision Contributor for Precision Agriculture Drone',
+    body: 'Prototyping an autonomous drone for real-time crop disease detection. Looking for a cross-campus collaborator with OpenCV or ROS2 experience.',
     upvotes_count: 56,
     comments_count: 9,
     shares_count: 11,
@@ -126,6 +119,7 @@ export default function CityPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [communities, setCommunities] = useState<Community[]>([]);
   const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [selectedPeerHolo, setSelectedPeerHolo] = useState<StudentProfile | null>(null);
   const [selectedSkillFilter, setSelectedSkillFilter] = useState<string>('ALL');
   const [feedFilter, setFeedFilter] = useState<'ALL' | 'MEDIA' | 'POLLS' | 'DISCUSSIONS'>('ALL');
   const [sortOrder, setSortOrder] = useState<'LATEST' | 'POPULAR'>('LATEST');
@@ -135,11 +129,11 @@ export default function CityPage() {
   // Poll voting state
   const [votedPolls, setVotedPolls] = useState<Record<string, string>>({});
 
-  // Streamlined composer state for authenticated users
+  // Streamlined composer state
   const [isComposerExpanded, setIsComposerExpanded] = useState(false);
   const [postTitle, setPostTitle] = useState('');
   const [postBody, setPostBody] = useState('');
-  const [postTags, setPostTags] = useState('BengaluruPulse');
+  const [postTags, setPostTags] = useState('Bengaluru');
   const [postCategory, setPostCategory] = useState<'HANGOUT_MEME' | 'DISCUSSION' | 'OPPORTUNITY'>('HANGOUT_MEME');
   const [mediaUrl, setMediaUrl] = useState('');
   const [mediaType, setMediaType] = useState<'IMAGE' | 'VIDEO' | 'NONE'>('NONE');
@@ -156,73 +150,36 @@ export default function CityPage() {
   const [commentInput, setCommentInput] = useState<Record<string, string>>({});
   const [commentSubmitting, setCommentSubmitting] = useState<Record<string, boolean>>({});
 
-  // Modals
+  // Modals & UI States
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<{ url: string; title?: string; author: string } | null>(null);
   const [shareModalPost, setShareModalPost] = useState<Post | null>(null);
   const [copiedToast, setCopiedToast] = useState(false);
   const [reportTarget, setReportTarget] = useState<{ id: string; type: any; title: string } | null>(null);
 
-  // Infinite scrolling state
-  const [hasMorePosts, setHasMorePosts] = useState(true);
-  const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const [postsOffset, setPostsOffset] = useState(0);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  const loadMorePosts = async () => {
-    if (isFetchingMore || !hasMorePosts) return;
-    setIsFetchingMore(true);
-    try {
-      const next = await getPostsPaginated({ scope: 'city', limit: 10, offset: postsOffset });
-      if (next.items.length > 0) {
-        setPosts((prev) => [...prev, ...next.items]);
-        setPostsOffset(next.nextOffset);
-        setHasMorePosts(next.hasMore);
-      } else {
-        setHasMorePosts(false);
-      }
-    } catch {
-      setHasMorePosts(false);
-    } finally {
-      setIsFetchingMore(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!sentinelRef.current || !hasMorePosts || isFetchingMore) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMorePosts();
-        }
-      },
-      { rootMargin: '300px' }
-    );
-    observer.observe(sentinelRef.current);
-    return () => observer.disconnect();
-  }, [hasMorePosts, isFetchingMore, postsOffset]);
-
   useEffect(() => {
     setIsLoggedIn(isAuthenticated());
     async function loadData() {
       setLoading(true);
-      const [pPage, cData, peers] = await Promise.all([
-        getPostsPaginated({ scope: 'city', limit: 10, offset: 0 }),
-        getCommunities(),
-        getStudents(),
-      ]);
-      // If feed is empty, seed with starter spotlight posts (Apple HIG rule)
-      if (!pPage.items || pPage.items.length === 0) {
+      try {
+        const [pData, cData, peers] = await Promise.all([
+          getPosts('city'),
+          getCommunities(),
+          getStudents(),
+        ]);
+        if (!pData || pData.length === 0) {
+          setPosts(STARTER_SPOTLIGHT_POSTS);
+        } else {
+          setPosts(pData);
+        }
+        setCommunities((cData || []).filter((c) => c.community_type === 'CROSS_CAMPUS_INTEREST' || !c.college_id));
+        setStudents(peers || []);
+      } catch (err) {
+        console.warn('Using starter spotlight posts:', err);
         setPosts(STARTER_SPOTLIGHT_POSTS);
-        setHasMorePosts(false);
-      } else {
-        setPosts(pPage.items);
-        setHasMorePosts(pPage.hasMore);
-        setPostsOffset(pPage.nextOffset);
+      } finally {
+        setLoading(false);
       }
-      setCommunities(cData.filter((c) => c.community_type === 'CROSS_CAMPUS_INTEREST' || !c.college_id));
-      setStudents(peers);
-      setLoading(false);
     }
     loadData();
   }, []);
@@ -232,7 +189,7 @@ export default function CityPage() {
     if (!file) return;
 
     if (file.size > 20 * 1024 * 1024) {
-      alert('File size exceeds 20MB limit. Please upload a smaller photo or clip.');
+      alert('File size exceeds the 20MB limit. Please upload a smaller photo.');
       return;
     }
 
@@ -243,8 +200,7 @@ export default function CityPage() {
       return;
     }
 
-    const determinedType = isVideo ? 'VIDEO' : 'IMAGE';
-    setMediaType(determinedType);
+    setMediaType(isVideo ? 'VIDEO' : 'IMAGE');
 
     const reader = new FileReader();
     reader.onload = (uploadEvent) => {
@@ -275,9 +231,7 @@ export default function CityPage() {
       setPosts((prev) =>
         prev.map((p) => (p.id === postId ? { ...p, poll: res.poll } : p))
       );
-    } catch {
-      // optimistic state stays
-    }
+    } catch {}
   };
 
   const handleReaction = async (postId: string) => {
@@ -343,7 +297,7 @@ export default function CityPage() {
         prev.map((p) => (p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p))
       );
     } catch {
-      alert('Failed to post comment');
+      alert('Unable to publish comment. Please check your network connection.');
     } finally {
       setCommentSubmitting((prev) => ({ ...prev, [postId]: false }));
     }
@@ -363,9 +317,9 @@ export default function CityPage() {
       const postPayload: any = {
         category: postCategory,
         title: postTitle.trim() || undefined,
-        body: postBody.trim() || (mediaType === 'IMAGE' ? 'Shared a campus photo 📸' : 'Shared a campus clip 🎥'),
+        body: postBody.trim() || (mediaType === 'IMAGE' ? 'Shared a campus photo' : 'Shared a campus video'),
         is_cross_campus: true,
-        tags: tagsArr.length > 0 ? tagsArr : ['BengaluruPulse'],
+        tags: tagsArr.length > 0 ? tagsArr : ['Bengaluru'],
         media_url: mediaUrl || undefined,
         media_type: mediaType !== 'NONE' ? mediaType : undefined,
       };
@@ -383,13 +337,13 @@ export default function CityPage() {
       setShowPollCreator(false);
       setIsComposerExpanded(false);
     } catch {
-      alert('Failed to publish post');
+      alert('Failed to publish post. Please check your network connection.');
     } finally {
       setIsPosting(false);
     }
   };
 
-  // Filter & sort
+  // Filter & sort logic
   let displayedPosts = posts.filter((p) => {
     if (feedFilter === 'MEDIA') return !!p.media_url;
     if (feedFilter === 'POLLS') return !!p.poll;
@@ -407,21 +361,21 @@ export default function CityPage() {
     : students.filter((s) => s.skills.some((sk) => sk.toLowerCase() === selectedSkillFilter.toLowerCase()));
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-8 max-w-4xl mx-auto py-2">
       {/* City Hero Banner */}
       <CampusHeroBanner
         title="Bengaluru City Feed"
-        badgeText="CROSS-CAMPUS RADAR • LIVE"
-        shortCode="BLR // CITY"
-        subtitle="Connect across Bengaluru colleges. Share moments, questions, hackathon updates, and campus life."
+        badgeText="CROSS-CAMPUS NETWORK"
+        shortCode="BLR"
+        subtitle="Connect across Bengaluru colleges. Share updates, technical questions, project pitches, and campus events."
         isOfficial={false}
       />
 
-      {/* Primary Segmented Navigation (Deference: Content First) */}
-      <div className="flex items-center justify-between border-b border-purple-500/20 pb-2">
+      {/* Primary Segmented Navigation (Hick's Law: 3 clear jobs) */}
+      <div className="flex items-center justify-between border-b border-white/10 pb-3">
         <div className="flex gap-2">
           {[
-            { key: 'feed', label: 'Posts & Moments', icon: Flame },
+            { key: 'feed', label: 'Feed & Updates', icon: Flame },
             { key: 'directory', label: 'Peer Directory', icon: Users },
             { key: 'communities', label: 'Campus Clubs', icon: Compass },
           ].map((tab) => {
@@ -431,13 +385,13 @@ export default function CityPage() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as any)}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-mono transition-all ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono transition-all ${
                   isActive
-                    ? 'bg-amber-400/15 text-[#FDE68A] font-bold border border-amber-400/40 shadow-sm'
-                    : 'text-[#C4B5FD] hover:text-white hover:bg-purple-900/20 border border-transparent'
+                    ? 'bg-amber-500/15 text-amber-300 font-bold border border-amber-400/40 shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-[#FBBF24]' : 'text-[#7C6FA6]'}`} />
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-amber-400' : 'text-slate-500'}`} />
                 <span>{tab.label}</span>
               </button>
             );
@@ -445,59 +399,54 @@ export default function CityPage() {
         </div>
       </div>
 
-      <ErrorBoundary name="City Views">
-        {/* TAB 1: POSTS FEED */}
+      {/* TAB 1: FEED */}
       {activeTab === 'feed' && (
-        <div className="space-y-5">
-          {/* 1. Guest Composer Row vs Authenticated Composer (Apple HIG Principle 4) */}
+        <div className="space-y-6">
+          {/* Guest View Row vs Authenticated Composer (Apple HIG Principle 4) */}
           {!isLoggedIn ? (
-            /* Guest View: Collapsed single row asking for sign-in on tap */
             <div
               onClick={() => setShowAuthModal(true)}
-              className="celestial-card p-3.5 flex items-center justify-between gap-3 cursor-pointer hover:border-amber-400/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] transition-all group"
+              className="celestial-card p-4 flex items-center justify-between gap-3 cursor-pointer hover:border-amber-400/50 transition-all group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-purple-900/50 border border-purple-400/30 flex items-center justify-center text-purple-300">
+                <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400">
                   <Flame className="w-4 h-4 text-amber-400" />
                 </div>
-                <span className="text-xs font-mono text-[#7C6FA6] group-hover:text-[#C4B5FD] transition-colors">
-                  Share something with Bengaluru students...
+                <span className="text-xs font-mono text-slate-400 group-hover:text-slate-200 transition-colors">
+                  Share an update with Bengaluru students...
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="neo-badge text-[10px] bg-amber-500/15 text-[#FDE68A] border-amber-400/30">
-                  Sign in to post
-                </span>
-              </div>
+              <span className="neo-badge text-[10px] bg-amber-500/15 text-amber-300 border border-amber-400/30 font-medium">
+                Sign in to post
+              </span>
             </div>
           ) : (
-            /* Authenticated Student Composer (Progressive Disclosure) */
-            <div className="celestial-card p-4 border border-purple-400/30 transition-all">
+            <div className="celestial-card p-5 border border-white/10 transition-all">
               {!isComposerExpanded ? (
                 <div
                   onClick={() => setIsComposerExpanded(true)}
                   className="flex items-center gap-3 cursor-pointer"
                 >
-                  <div className="w-8 h-8 rounded-full bg-amber-400 text-[#090420] flex items-center justify-center font-mono font-bold text-xs">
+                  <div className="w-8 h-8 rounded-full bg-amber-400 text-[#0A0C12] flex items-center justify-center font-mono font-bold text-xs">
                     {getActiveProfile()?.display_name?.charAt(0) || 'U'}
                   </div>
                   <input
                     type="text"
                     readOnly
                     placeholder="Share a campus update, question, or photo..."
-                    className="celestial-input w-full text-xs font-mono py-2 px-3 text-[#F8F7FF] cursor-pointer"
+                    className="celestial-input w-full text-xs font-mono py-2 px-3 text-white cursor-pointer"
                   />
                 </div>
               ) : (
-                <form onSubmit={handleCreatePost} className="space-y-3">
+                <form onSubmit={handleCreatePost} className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-[#FDE68A]">
-                      New Post
+                    <span className="text-xs font-mono font-bold text-amber-300">
+                      Create New Post
                     </span>
                     <button
                       type="button"
                       onClick={() => setIsComposerExpanded(false)}
-                      className="text-[#7C6FA6] hover:text-white p-1"
+                      className="text-slate-400 hover:text-white p-1"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -508,21 +457,20 @@ export default function CityPage() {
                     value={postTitle}
                     onChange={(e) => setPostTitle(e.target.value)}
                     placeholder="Title (optional)..."
-                    className="celestial-input w-full text-xs font-mono p-2 text-[#F8F7FF]"
+                    className="celestial-input w-full text-xs font-mono p-3 text-white"
                   />
 
                   <textarea
                     value={postBody}
                     onChange={(e) => setPostBody(e.target.value)}
-                    placeholder="What's happening on your campus?"
+                    placeholder="What is happening on your campus?"
                     rows={3}
-                    className="celestial-input w-full text-xs p-2.5 text-[#F8F7FF]"
+                    className="celestial-input w-full text-xs p-3 leading-relaxed text-white"
                     autoFocus
                   />
 
-                  {/* Attached Media Preview */}
                   {mediaPreview && (
-                    <div className="relative rounded-xl overflow-hidden border border-amber-400/30 p-2 bg-black/40">
+                    <div className="relative rounded-xl overflow-hidden border border-white/15 p-2 bg-black/40">
                       <button
                         type="button"
                         onClick={handleClearMedia}
@@ -534,9 +482,8 @@ export default function CityPage() {
                     </div>
                   )}
 
-                  {/* Poll Creator */}
                   {showPollCreator && (
-                    <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-400/20 space-y-2">
+                    <div className="p-4 rounded-xl bg-black/30 border border-white/10 space-y-3">
                       <input
                         type="text"
                         value={pollQuestion}
@@ -555,22 +502,21 @@ export default function CityPage() {
                               next[i] = e.target.value;
                               setPollOptions(next);
                             }}
-                            className="celestial-input text-xs p-1.5 text-white"
+                            className="celestial-input text-xs p-2 text-white"
                           />
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* Composer Toolbar */}
-                  <div className="flex items-center justify-between pt-2 border-t border-purple-500/20">
+                  <div className="flex items-center justify-between pt-3 border-t border-white/10">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="p-1.5 rounded-lg border border-purple-400/30 hover:border-amber-400/50 text-[#C4B5FD] hover:text-[#FDE68A] text-xs font-mono flex items-center gap-1"
+                        className="p-2 rounded-xl border border-white/10 hover:border-amber-400/50 text-slate-300 hover:text-white text-xs font-mono flex items-center gap-1.5"
                       >
-                        <ImageIcon className="w-3.5 h-3.5" />
+                        <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
                         <span>Photo</span>
                       </button>
                       <input
@@ -584,9 +530,9 @@ export default function CityPage() {
                       <button
                         type="button"
                         onClick={() => setShowPollCreator(!showPollCreator)}
-                        className="p-1.5 rounded-lg border border-purple-400/30 hover:border-amber-400/50 text-[#C4B5FD] hover:text-[#FDE68A] text-xs font-mono flex items-center gap-1"
+                        className="p-2 rounded-xl border border-white/10 hover:border-amber-400/50 text-slate-300 hover:text-white text-xs font-mono flex items-center gap-1.5"
                       >
-                        <Vote className="w-3.5 h-3.5" />
+                        <Vote className="w-3.5 h-3.5 text-amber-400" />
                         <span>Poll</span>
                       </button>
                     </div>
@@ -594,7 +540,7 @@ export default function CityPage() {
                     <button
                       type="submit"
                       disabled={isPosting}
-                      className="btn-campus-amber text-xs font-mono px-4 py-1.5 flex items-center gap-1.5 font-bold"
+                      className="btn-campus-amber text-xs font-mono px-5 py-2 flex items-center gap-1.5 font-bold shadow-md"
                     >
                       <Send className="w-3 h-3" />
                       <span>{isPosting ? 'Posting...' : 'Post'}</span>
@@ -605,11 +551,11 @@ export default function CityPage() {
             </div>
           )}
 
-          {/* 2. Filter Pills (Clean Segmented Control) */}
+          {/* Filter Pills & Sort Order */}
           <div className="flex items-center justify-between flex-wrap gap-2 text-xs font-mono">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               {[
-                { id: 'ALL', label: 'All' },
+                { id: 'ALL', label: 'All Posts' },
                 { id: 'MEDIA', label: 'Photos & Videos' },
                 { id: 'POLLS', label: 'Polls' },
                 { id: 'DISCUSSIONS', label: 'Discussions' },
@@ -617,10 +563,10 @@ export default function CityPage() {
                 <button
                   key={filter.id}
                   onClick={() => setFeedFilter(filter.id as any)}
-                  className={`px-3 py-1 rounded-full border text-[11px] transition-all ${
+                  className={`px-3.5 py-1.5 rounded-full border text-[11px] transition-all ${
                     feedFilter === filter.id
-                      ? 'border-amber-400/60 bg-amber-500/15 text-[#FDE68A] font-bold shadow-sm'
-                      : 'border-purple-400/20 text-[#7C6FA6] hover:text-white hover:border-purple-400/40'
+                      ? 'border-amber-400/60 bg-amber-500/15 text-amber-300 font-bold shadow-sm'
+                      : 'border-white/10 text-slate-400 hover:text-white hover:border-white/20'
                   }`}
                 >
                   {filter.label}
@@ -630,216 +576,243 @@ export default function CityPage() {
 
             <button
               onClick={() => setSortOrder(sortOrder === 'LATEST' ? 'POPULAR' : 'LATEST')}
-              className="text-[11px] text-[#7C6FA6] hover:text-[#FDE68A] transition-colors"
+              className="text-[11px] text-slate-400 hover:text-white transition-colors"
             >
-              Sort: <strong className="text-white">{sortOrder === 'LATEST' ? 'Latest' : 'Most Upvoted'}</strong>
+              Sort: <strong className="text-amber-300 font-semibold">{sortOrder === 'LATEST' ? 'Latest' : 'Most Upvoted'}</strong>
             </button>
           </div>
 
-          {/* 3. Post Feed Cards */}
-          <div className="space-y-4">
-            {displayedPosts.map((post) => (
-              <div
-                key={post.id}
-                id={`post-${post.id}`}
-                className="celestial-card p-4 sm:p-5 border border-purple-400/25 space-y-3"
+          {/* Proper Skeleton Loading State */}
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="celestial-card p-6 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full skeleton-shimmer" />
+                    <div className="space-y-1.5 flex-1 max-w-xs">
+                      <div className="h-3.5 w-32 skeleton-shimmer rounded" />
+                      <div className="h-3 w-20 skeleton-shimmer rounded" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 w-3/4 skeleton-shimmer rounded" />
+                    <div className="h-3.5 w-full skeleton-shimmer rounded" />
+                    <div className="h-3.5 w-5/6 skeleton-shimmer rounded" />
+                  </div>
+                  <div className="h-44 w-full skeleton-shimmer rounded-xl" />
+                </div>
+              ))}
+            </div>
+          ) : displayedPosts.length === 0 ? (
+            /* Thoughtful Empty State (Miller's Law & Apple Empty State) */
+            <div className="celestial-card p-12 text-center space-y-3 border-dashed">
+              <HelpCircle className="w-10 h-10 text-slate-500 mx-auto opacity-60" />
+              <h3 className="font-display text-base font-bold text-white">
+                No matching posts in this filter
+              </h3>
+              <p className="text-xs font-mono text-slate-400 max-w-sm mx-auto">
+                Try switching to "All Posts" to view updates from other campuses across Bengaluru.
+              </p>
+              <button
+                onClick={() => setFeedFilter('ALL')}
+                className="btn-campus-amber text-xs font-mono px-4 py-1.5 mt-2 font-bold"
               >
-                {/* Author row */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-[#090420] flex items-center justify-center font-mono font-bold text-xs shadow-sm">
-                      {post.author_name ? post.author_name.charAt(0) : 'S'}
-                    </div>
-                    <div>
-                      <div className="text-xs font-mono font-bold text-[#F8F7FF]">
-                        {post.author_name || 'Student Builder'}
+                Reset Filter
+              </button>
+            </div>
+          ) : (
+            /* Post Feed Cards */
+            <div className="space-y-5">
+              {displayedPosts.map((post) => (
+                <div
+                  key={post.id}
+                  id={`post-${post.id}`}
+                  className="celestial-card p-5 sm:p-6 space-y-4"
+                >
+                  {/* Author Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-amber-400 text-[#0A0C12] flex items-center justify-center font-mono font-bold text-xs shadow-sm">
+                        {post.author_name ? post.author_name.charAt(0) : 'S'}
                       </div>
-                      <div className="text-[10px] font-mono text-[#7C6FA6]">
-                        @{post.author_handle || 'student'} • {post.college_name || 'Bengaluru Campus'}
+                      <div>
+                        <div className="text-xs font-mono font-bold text-white">
+                          {post.author_name || 'Student Builder'}
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-400">
+                          @{post.author_handle || 'student'} • {post.college_name || 'Bengaluru Campus'}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <TrustBadge stage={post.author_verification} size="sm" />
-                    <button
-                      onClick={() => setReportTarget({ id: post.id, type: 'POST', title: post.title || post.body })}
-                      className="text-[#7C6FA6] hover:text-rose-400 p-1"
-                      title="Report post"
-                    >
-                      <Flag className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Post content */}
-                {post.title && (
-                  <h3 className="text-xs font-mono font-semibold text-[#F8F7FF]">
-                    {post.title}
-                  </h3>
-                )}
-                <p className="text-xs text-[#C4B5FD] leading-relaxed">
-                  {post.body}
-                </p>
-
-                {/* Media */}
-                {post.media_url && (
-                  <div
-                    onClick={() => setLightboxImage({ url: post.media_url!, title: post.title, author: post.author_name || 'Student' })}
-                    className="rounded-xl overflow-hidden border border-purple-400/20 max-h-80 cursor-pointer bg-black/40 relative group"
-                  >
-                    <OptimizedImage
-                      src={post.media_url}
-                      alt={post.title || 'Post media'}
-                      className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform"
-                    />
-                  </div>
-                )}
-
-                {/* Poll */}
-                {post.poll && (
-                  <div className="p-3.5 rounded-2xl bg-purple-950/40 border border-purple-400/20 space-y-2">
-                    <div className="text-xs font-mono text-[#FDE68A] font-bold">
-                      {post.poll.question}
-                    </div>
-                    <div className="space-y-1.5">
-                      {post.poll.options.map((opt) => {
-                        const totalVotes = post.poll!.options.reduce((sum, o) => sum + (o.votes || 0), 0);
-                        const isVoted = votedPolls[post.id] === opt.id;
-                        const pct = totalVotes > 0
-                          ? Math.round(((opt.votes || 0) / totalVotes) * 100)
-                          : 0;
-                        return (
-                          <button
-                            key={opt.id}
-                            onClick={() => handleVote(post.id, opt.id)}
-                            className={`w-full p-2 rounded-xl text-xs font-mono text-left relative overflow-hidden border transition-all ${
-                              isVoted
-                                ? 'border-amber-400/50 bg-amber-500/15 text-[#FDE68A] font-bold'
-                                : 'border-purple-400/20 bg-purple-900/20 text-[#C4B5FD] hover:border-purple-400/40'
-                            }`}
-                          >
-                            <div
-                              className="absolute left-0 top-0 bottom-0 bg-amber-400/10 transition-all pointer-events-none"
-                              style={{ width: `${pct}%` }}
-                            />
-                            <div className="relative z-10 flex items-center justify-between">
-                              <span>{opt.text}</span>
-                              <span className="text-[10px] text-[#7C6FA6]">{pct}% ({opt.votes || 0})</span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Reaction bar */}
-                <div className="flex items-center justify-between pt-2 border-t border-purple-500/20 text-xs font-mono text-[#7C6FA6]">
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={() => handleReaction(post.id)}
-                      className={`flex items-center gap-1.5 transition-colors ${
-                        post.liked_by_me ? 'text-amber-400 font-bold' : 'hover:text-[#FDE68A]'
-                      }`}
-                    >
-                      <Heart className={`w-3.5 h-3.5 ${post.liked_by_me ? 'fill-amber-400' : ''}`} />
-                      <span>{post.upvotes_count}</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleToggleComments(post.id)}
-                      className="flex items-center gap-1.5 hover:text-[#F8F7FF] transition-colors"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      <span>{post.comments_count}</span>
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setShareModalPost(post);
-                      sharePost(post.id).catch(() => {});
-                    }}
-                    className="flex items-center gap-1 hover:text-purple-300 transition-colors"
-                  >
-                    <Share2 className="w-3.5 h-3.5" />
-                    <span>Share</span>
-                  </button>
-                </div>
-
-                {/* Inline Comment thread */}
-                {expandedComments[post.id] && (
-                  <div className="pt-3 border-t border-purple-500/15 space-y-2.5">
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                      {(commentsByPost[post.id] || []).map((comm) => (
-                        <div key={comm.id} className="p-2 rounded-xl bg-purple-950/30 text-xs font-mono">
-                          <div className="flex items-center justify-between text-[10px] text-[#7C6FA6] mb-0.5">
-                            <span className="text-white font-semibold">{comm.author_name} (@{comm.author_handle})</span>
-                          </div>
-                          <p className="text-[#C4B5FD]">{comm.body}</p>
-                        </div>
-                      ))}
-                      {(commentsByPost[post.id] || []).length === 0 && (
-                        <div className="text-[11px] text-[#7C6FA6] font-mono py-1">
-                          No comments yet. Be the first to reply!
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={commentInput[post.id] || ''}
-                        onChange={(e) => setCommentInput({ ...commentInput, [post.id]: e.target.value })}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
-                        placeholder="Write a comment..."
-                        className="celestial-input flex-1 text-xs py-1.5 px-3 text-white"
-                      />
+                    <div className="flex items-center gap-2">
+                      <TrustBadge stage={post.author_verification} size="sm" />
                       <button
-                        onClick={() => handleAddComment(post.id)}
-                        disabled={commentSubmitting[post.id]}
-                        className="btn-campus-amber text-xs font-mono px-3 py-1.5 font-bold"
+                        onClick={() => setReportTarget({ id: post.id, type: 'POST', title: post.title || post.body })}
+                        className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                        title="Report post"
                       >
-                        Reply
+                        <Flag className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
 
-          {/* Infinite Scroll Sentinel & Loader */}
-          <div ref={sentinelRef} className="py-4 text-center">
-            {isFetchingMore && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-950/80 border border-purple-400/30 text-xs font-mono text-amber-300 shadow-md">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                <span>Loading more pulse moments...</span>
-              </div>
-            )}
-            {!hasMorePosts && posts.length > 3 && (
-              <div className="text-[11px] font-mono text-purple-400/60 py-2">
-                ✦ You have caught up with all city pulse moments ✦
-              </div>
-            )}
-          </div>
+                  {/* Title & Body */}
+                  {post.title && (
+                    <h3 className="font-display text-base font-bold text-white">
+                      {post.title}
+                    </h3>
+                  )}
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    {post.body}
+                  </p>
+
+                  {/* Real Photo Media */}
+                  {post.media_url && (
+                    <div
+                      onClick={() => setLightboxImage({ url: post.media_url!, title: post.title, author: post.author_name || 'Student' })}
+                      className="rounded-xl overflow-hidden border border-white/10 max-h-96 cursor-pointer bg-black/50 relative group"
+                    >
+                      <img
+                        src={post.media_url}
+                        alt={post.title || 'Post media'}
+                        className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-[1.01]"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+
+                  {/* Poll Container */}
+                  {post.poll && (
+                    <div className="p-4 rounded-xl bg-black/40 border border-white/10 space-y-2.5">
+                      <div className="text-xs font-mono text-amber-300 font-bold">
+                        {post.poll.question}
+                      </div>
+                      <div className="space-y-2">
+                        {post.poll.options.map((opt) => {
+                          const totalVotes = post.poll!.options.reduce((sum, o) => sum + (o.votes || 0), 0);
+                          const isVoted = votedPolls[post.id] === opt.id;
+                          const pct = totalVotes > 0
+                            ? Math.round(((opt.votes || 0) / totalVotes) * 100)
+                            : 0;
+                          return (
+                            <button
+                              key={opt.id}
+                              onClick={() => handleVote(post.id, opt.id)}
+                              className={`w-full p-2.5 rounded-xl text-xs font-mono text-left relative overflow-hidden border transition-all ${
+                                isVoted
+                                  ? 'border-amber-400/50 bg-amber-500/15 text-amber-200 font-bold'
+                                  : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
+                              }`}
+                            >
+                              <div
+                                className="absolute left-0 top-0 bottom-0 bg-amber-400/10 pointer-events-none transition-all duration-300"
+                                style={{ width: `${pct}%` }}
+                              />
+                              <div className="relative z-10 flex items-center justify-between">
+                                <span>{opt.text}</span>
+                                <span className="text-[10px] text-slate-400 font-semibold">{pct}% ({opt.votes || 0})</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reaction Bar */}
+                  <div className="flex items-center justify-between pt-3 border-t border-white/10 text-xs font-mono text-slate-400">
+                    <div className="flex items-center gap-5">
+                      <button
+                        onClick={() => handleReaction(post.id)}
+                        className={`flex items-center gap-1.5 transition-colors ${
+                          post.liked_by_me ? 'text-amber-400 font-bold' : 'hover:text-white'
+                        }`}
+                      >
+                        <Heart className={`w-3.5 h-3.5 ${post.liked_by_me ? 'fill-amber-400' : ''}`} />
+                        <span>{post.upvotes_count}</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleToggleComments(post.id)}
+                        className="flex items-center gap-1.5 hover:text-white transition-colors"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>{post.comments_count} Comments</span>
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setShareModalPost(post);
+                        sharePost(post.id).catch(() => {});
+                      }}
+                      className="flex items-center gap-1.5 hover:text-white transition-colors"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>Share</span>
+                    </button>
+                  </div>
+
+                  {/* Comment Thread */}
+                  {expandedComments[post.id] && (
+                    <div className="pt-3 border-t border-white/10 space-y-3">
+                      <div className="space-y-2 max-h-56 overflow-y-auto">
+                        {(commentsByPost[post.id] || []).map((comm) => (
+                          <div key={comm.id} className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs font-mono space-y-1">
+                            <div className="flex items-center justify-between text-[10px] text-slate-400">
+                              <span className="text-white font-semibold">{comm.author_name} (@{comm.author_handle})</span>
+                              <span>{new Date(comm.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <p className="text-slate-300">{comm.body}</p>
+                          </div>
+                        ))}
+                        {(commentsByPost[post.id] || []).length === 0 && (
+                          <div className="text-[11px] text-slate-500 font-mono py-1">
+                            No comments yet. Be the first to reply.
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={commentInput[post.id] || ''}
+                          onChange={(e) => setCommentInput({ ...commentInput, [post.id]: e.target.value })}
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
+                          placeholder="Write a comment..."
+                          className="celestial-input flex-1 text-xs py-2 px-3 text-white"
+                        />
+                        <button
+                          onClick={() => handleAddComment(post.id)}
+                          disabled={commentSubmitting[post.id]}
+                          className="btn-campus-amber text-xs font-mono px-4 py-2 font-bold"
+                        >
+                          Reply
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {/* TAB 2: PEER DIRECTORY */}
       {activeTab === 'directory' && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-mono">
-            <span className="text-[#7C6FA6] mr-1">Filter Skills:</span>
+        <div className="space-y-6">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-mono">
+            <span className="text-slate-500 mr-1">Skills:</span>
             {allSkills.map((sk) => (
               <button
                 key={sk}
                 onClick={() => setSelectedSkillFilter(sk)}
-                className={`px-3 py-1 rounded-full border text-[11px] transition-all ${
+                className={`px-3.5 py-1.5 rounded-full border text-[11px] transition-all ${
                   selectedSkillFilter === sk
-                    ? 'border-amber-400/60 bg-amber-500/15 text-[#FDE68A] font-bold'
-                    : 'border-purple-400/20 text-[#7C6FA6] hover:text-white'
+                    ? 'border-amber-400/60 bg-amber-500/15 text-amber-300 font-bold'
+                    : 'border-white/10 text-slate-400 hover:text-white'
                 }`}
               >
                 {sk}
@@ -847,33 +820,42 @@ export default function CityPage() {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {filteredStudents.map((s) => (
-              <div key={s.user_id} className="celestial-card p-4 flex flex-col justify-between">
+              <div key={s.user_id} className="celestial-card p-5 flex flex-col justify-between space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-mono text-xs font-bold text-white">
-                      {s.display_name} <span className="text-[#7C6FA6]">(@{s.handle})</span>
+                      {s.display_name} <span className="text-slate-500">(@{s.handle})</span>
                     </span>
                     <TrustBadge stage={s.verification_stage} size="sm" />
                   </div>
-                  <div className="text-[11px] font-mono text-[#C4B5FD] mb-2">
+                  <div className="text-xs font-mono text-slate-400 mb-3">
                     {s.college_name || 'Bengaluru College'}
                   </div>
-                  <div className="flex flex-wrap gap-1 mb-3">
+                  <div className="flex flex-wrap gap-1.5">
                     {s.skills.map((sk) => (
-                      <span key={sk} className="neo-badge text-[9px] bg-purple-950/70 border-purple-400/30 text-purple-200">
+                      <span key={sk} className="neo-badge text-[9px] bg-white/5 border border-white/10 text-slate-300">
                         {sk}
                       </span>
                     ))}
                   </div>
                 </div>
-                <Link
-                  href="/messages"
-                  className="btn-campus-amber text-[10px] font-mono py-1.5 text-center font-bold"
-                >
-                  Send Direct Message
-                </Link>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSelectedPeerHolo(s)}
+                    className="pill-glass text-xs font-mono py-2 px-3 flex items-center justify-center gap-1.5 text-slate-300 hover:text-white"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-[#FBBF24]" />
+                    <span>Holo ID</span>
+                  </button>
+                  <Link
+                    href="/messages"
+                    className="btn-campus-amber flex-1 text-xs font-mono py-2 text-center font-bold"
+                  >
+                    Send Direct Message
+                  </Link>
+                </div>
               </div>
             ))}
           </div>
@@ -884,23 +866,23 @@ export default function CityPage() {
       {activeTab === 'communities' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {communities.map((c) => (
-            <div key={c.id} className="celestial-card p-4 flex flex-col justify-between">
+            <div key={c.id} className="celestial-card p-5 flex flex-col justify-between space-y-4">
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-display text-sm font-bold text-white">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-display text-base font-bold text-white">
                     {c.name}
-                  </span>
-                  <span className="text-[10px] font-mono text-[#FDE68A]">
+                  </h3>
+                  <span className="text-xs font-mono text-amber-300">
                     {c.member_count} members
                   </span>
                 </div>
-                <p className="text-xs text-[#C4B5FD] line-clamp-2 mb-3">
+                <p className="text-xs text-slate-300 line-clamp-2">
                   {c.description}
                 </p>
               </div>
               <Link
                 href="/messages"
-                className="btn-campus-amber text-[10px] font-mono py-1.5 text-center font-bold"
+                className="btn-campus-amber text-xs font-mono py-2 text-center font-bold"
               >
                 Join Channel
               </Link>
@@ -908,21 +890,20 @@ export default function CityPage() {
           ))}
         </div>
       )}
-      </ErrorBoundary>
 
-      {/* Guest Sign-in Popover Sheet (Apple HIG Rule 4: Ask sign-in only in exchange for value) */}
+      {/* Guest Sign-in Dialog */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="celestial-card max-w-sm w-full p-6 border border-amber-400/40 text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#2E1065] to-[#120836] border border-amber-400/50 flex items-center justify-center text-[#FBBF24] font-display font-bold text-lg mx-auto shadow-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-entrance">
+          <div className="celestial-card max-w-sm w-full p-6 border border-white/15 text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-xl bg-[#161926] border border-amber-400/40 flex items-center justify-center text-amber-400 font-display font-bold text-lg mx-auto shadow-sm">
               CG
             </div>
             <div>
               <h3 className="font-display text-lg font-bold text-white mb-1">
-                Join the Campus Conversation
+                Join CommonGround
               </h3>
-              <p className="text-xs text-[#C4B5FD] leading-relaxed">
-                Sign in to publish posts, participate in polls, and connect with peers across Bengaluru.
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Sign in to share posts, vote in campus polls, and connect with peers across Bengaluru.
               </p>
             </div>
 
@@ -936,7 +917,7 @@ export default function CityPage() {
               </Link>
               <Link
                 href="/login"
-                className="block w-full py-2 rounded-xl border border-purple-400/30 text-xs font-mono text-[#C4B5FD] hover:text-white hover:border-amber-400/40"
+                className="block w-full py-2.5 rounded-full border border-white/15 text-xs font-mono text-slate-300 hover:text-white hover:border-white/30"
               >
                 Sign In to Existing Account
               </Link>
@@ -944,10 +925,74 @@ export default function CityPage() {
 
             <button
               onClick={() => setShowAuthModal(false)}
-              className="text-[11px] font-mono text-[#7C6FA6] hover:text-white"
+              className="text-[11px] font-mono text-slate-500 hover:text-white"
             >
               Cancel & Continue Browsing
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {shareModalPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-entrance">
+          <div className="celestial-card max-w-sm w-full p-5 border border-white/15 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono font-bold text-white">Share Post</span>
+              <button onClick={() => setShareModalPost(null)} className="text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-300 line-clamp-2">"{shareModalPost.body}"</p>
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/city#post-${shareModalPost.id}`;
+                navigator.clipboard.writeText(url);
+                setCopiedToast(true);
+                setTimeout(() => setCopiedToast(false), 2000);
+              }}
+              className="btn-campus-amber w-full py-2.5 text-xs font-mono font-bold flex items-center justify-center gap-2 shadow-md"
+            >
+              {copiedToast ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+              <span>{copiedToast ? 'Link Copied to Clipboard' : 'Copy Share Link'}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-pointer"
+        >
+          <img src={lightboxImage.url} alt="Enlarged" className="max-h-[85vh] max-w-[90vw] object-contain rounded-xl shadow-2xl" />
+        </div>
+      )}
+
+      {/* 3D Holographic Peer Card Showcase Modal */}
+      {selectedPeerHolo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="relative flex flex-col items-center max-w-sm w-full">
+            <button
+              onClick={() => setSelectedPeerHolo(null)}
+              className="self-end mb-2 text-xs font-mono text-slate-300 hover:text-white bg-[#12151F] hover:bg-white/[0.08] px-3 py-1.5 rounded-xl border border-white/10 transition-colors flex items-center gap-1"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Close Pass</span>
+            </button>
+            <div className="relative group w-full flex justify-center">
+              <StudentHoloCard
+                profile={selectedPeerHolo}
+                onContactClick={() => {
+                  window.location.href = `/messages?userId=${selectedPeerHolo.user_id}`;
+                }}
+              />
+            </div>
+            <div className="text-[11px] font-mono text-slate-400 mt-3 flex items-center gap-1.5 text-center">
+              <Sparkles className="w-3.5 h-3.5 text-[#FBBF24]" />
+              <span>Interactive 3D Holographic Pass • Move cursor or tilt device</span>
+            </div>
           </div>
         </div>
       )}
@@ -961,43 +1006,6 @@ export default function CityPage() {
           targetTitle={reportTarget.title}
           onClose={() => setReportTarget(null)}
         />
-      )}
-
-      {/* Share Modal */}
-      {shareModalPost && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="celestial-card max-w-sm w-full p-5 border border-purple-400/40 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-bold text-white">Share Post</span>
-              <button onClick={() => setShareModalPost(null)} className="text-[#7C6FA6] hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-[#C4B5FD] line-clamp-2">"{shareModalPost.body}"</p>
-            <button
-              onClick={() => {
-                const url = `${window.location.origin}/city#post-${shareModalPost.id}`;
-                navigator.clipboard.writeText(url);
-                setCopiedToast(true);
-                setTimeout(() => setCopiedToast(false), 2000);
-              }}
-              className="btn-campus-amber w-full py-2 text-xs font-mono font-bold flex items-center justify-center gap-2"
-            >
-              {copiedToast ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
-              <span>{copiedToast ? 'Link Copied to Clipboard!' : 'Copy Share Link'}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Lightbox */}
-      {lightboxImage && (
-        <div
-          onClick={() => setLightboxImage(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-pointer"
-        >
-          <img src={lightboxImage.url} alt="Enlarged" className="max-h-[85vh] max-w-[90vw] object-contain rounded-xl" />
-        </div>
       )}
     </div>
   );

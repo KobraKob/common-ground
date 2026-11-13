@@ -96,55 +96,54 @@ export function GlobalHeader() {
   const currentProfile = getActiveProfile();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-purple-500/20 bg-[#090420]/80 backdrop-blur-2xl">
+    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#0A0C12]/85 backdrop-blur-2xl">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
         {/* Brand / Logo */}
         <div className="flex items-center gap-3 shrink-0">
           <Link href="/" className="flex items-center gap-2.5 group">
-            {/* Glowing Logo Icon */}
-            <div className="relative w-9 h-9 rounded-2xl bg-gradient-to-br from-[#2E1065] to-[#120836] border border-amber-400/40 flex items-center justify-center text-[#FBBF24] shadow-[0_0_15px_rgba(251,191,36,0.35)] transition-transform group-hover:scale-105">
-              <span className="font-display font-extrabold text-sm text-[#FBBF24]">CG</span>
-              <span className="absolute -top-1 -right-1 text-[10px] text-[#FDE68A] animate-pulse">✦</span>
+            {/* Minimal Geometric Node Logo */}
+            <div className="w-9 h-9 rounded-xl bg-[#161926] border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-sm transition-transform duration-150 group-hover:scale-105">
+              <span className="font-display font-extrabold text-xs tracking-wider text-amber-300">CG</span>
             </div>
             <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="font-display text-lg font-bold tracking-tight text-white group-hover:text-amber-300 transition-colors">
-                  Common<em className="text-amber-300 not-italic">Ground</em>
+              <div className="flex items-center gap-2">
+                <span className="font-display text-base sm:text-lg font-bold tracking-tight text-white group-hover:text-amber-300 transition-colors">
+                  Common<span className="text-amber-400">Ground</span>
                 </span>
-                <span className="hidden sm:inline-block neo-badge text-[9px] px-1.5 py-0.2 bg-amber-400/10 text-[#FDE68A] border-amber-400/30">
+                <span className="hidden sm:inline-block text-[9px] px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/25 font-mono">
                   BLR
                 </span>
               </div>
-              <span className="text-[9px] font-mono tracking-widest text-[#7C6FA6] uppercase hidden sm:block">
+              <span className="text-[9px] font-mono tracking-widest text-slate-500 uppercase hidden sm:block">
                 CROSS-CAMPUS STUDENT NETWORK
               </span>
             </div>
           </Link>
         </div>
 
-        {/* Global Search Bar (Deference: Content-focused, clean keyboard-friendly input) */}
+        {/* Global Search Bar (Jakob's Law & Fitts's Law) */}
         <div className="flex-1 max-w-md relative hidden md:block">
           <div className="relative">
-            <Search className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search peers, courses, notes, hackathons..."
-              className="celestial-input w-full text-xs font-mono py-2 pl-9 pr-12 text-[#F8F7FF] placeholder:text-[#7C6FA6]"
+              className="celestial-input w-full text-xs font-mono py-2 pl-9 pr-12 text-white placeholder:text-slate-500"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono bg-purple-950/80 border border-purple-400/30 px-1.5 py-0.5 rounded text-[#C4B5FD]">
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-slate-400">
               ⌘K
             </span>
           </div>
 
           {/* Search Results Dropdown */}
           {searchResults && (
-            <div className="absolute top-full left-0 right-0 mt-2 celestial-card p-3 shadow-2xl max-h-96 overflow-y-auto border border-purple-400/30 z-50">
+            <div className="absolute top-full left-0 right-0 mt-2 celestial-card p-3 shadow-2xl max-h-96 overflow-y-auto border border-white/15 z-50 animate-entrance">
               {searchResults.students?.length > 0 && (
                 <div className="mb-3">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#FBBF24] mb-1.5 flex items-center gap-1.5">
-                    <span>✦ Students</span>
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 mb-1.5 font-semibold">
+                    Students
                   </div>
                   <div className="space-y-1">
                     {searchResults.students.map((s: any) => (
@@ -152,11 +151,11 @@ export function GlobalHeader() {
                         key={s.id || s.user_id}
                         href="/profile"
                         onClick={() => setSearchResults(null)}
-                        className="flex items-center justify-between p-2 rounded-xl hover:bg-purple-900/30 text-xs font-mono transition-colors"
+                        className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 text-xs font-mono transition-colors"
                       >
-                        <span className="font-semibold text-[#F8F7FF]">
+                        <span className="font-semibold text-white">
                           {s.name || s.display_name}{' '}
-                          <span className="text-[#7C6FA6]">(@{s.handle})</span>
+                          <span className="text-slate-500">(@{s.handle})</span>
                         </span>
                         <TrustBadge stage={s.stage || s.verification_stage} size="sm" />
                       </Link>
@@ -167,8 +166,8 @@ export function GlobalHeader() {
 
               {searchResults.commons_posts?.length > 0 && (
                 <div className="mb-3">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#A855F7] mb-1.5 flex items-center gap-1.5">
-                    <span>✦ Course Q&A & Notes</span>
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 mb-1.5 font-semibold">
+                    Course Q&A & Notes
                   </div>
                   <div className="space-y-1">
                     {searchResults.commons_posts.map((p: any) => (
@@ -176,7 +175,7 @@ export function GlobalHeader() {
                         key={p.id}
                         href="/commons"
                         onClick={() => setSearchResults(null)}
-                        className="block p-2 rounded-xl hover:bg-purple-900/30 text-xs font-mono text-[#C4B5FD] hover:text-[#FDE68A] truncate transition-colors"
+                        className="block p-2 rounded-lg hover:bg-white/5 text-xs font-mono text-slate-300 hover:text-amber-300 truncate transition-colors"
                       >
                         {p.title}
                       </Link>
@@ -187,8 +186,8 @@ export function GlobalHeader() {
 
               {searchResults.communities?.length > 0 && (
                 <div>
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#38BDF8] mb-1.5 flex items-center gap-1.5">
-                    <span>✦ Campus Communities</span>
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 mb-1.5 font-semibold">
+                    Campus Communities
                   </div>
                   <div className="space-y-1">
                     {searchResults.communities.map((c: any) => (
@@ -196,10 +195,10 @@ export function GlobalHeader() {
                         key={c.id}
                         href="/messages"
                         onClick={() => setSearchResults(null)}
-                        className="flex items-center justify-between p-2 rounded-xl hover:bg-purple-900/30 text-xs font-mono transition-colors"
+                        className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 text-xs font-mono transition-colors"
                       >
-                        <span className="text-[#F8F7FF] font-medium">{c.name}</span>
-                        <span className="text-[10px] font-mono text-[#7C6FA6]">{c.member_count} members</span>
+                        <span className="text-white font-medium">{c.name}</span>
+                        <span className="text-[10px] font-mono text-slate-500">{c.member_count} members</span>
                       </Link>
                     ))}
                   </div>
@@ -207,7 +206,7 @@ export function GlobalHeader() {
               )}
 
               {!searchResults.students?.length && !searchResults.commons_posts?.length && !searchResults.communities?.length && (
-                <div className="p-3 text-center text-xs font-mono text-[#7C6FA6]">
+                <div className="p-3 text-center text-xs font-mono text-slate-400">
                   No matching students, notes, or groups found.
                 </div>
               )}
@@ -217,12 +216,11 @@ export function GlobalHeader() {
 
         {/* Right Controls */}
         <div className="flex items-center gap-2.5">
-          {/* Guest or Authenticated State */}
           {!isLoggedIn ? (
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-purple-400/30 bg-[#120836]/70 hover:border-amber-400/50 text-xs font-mono text-[#C4B5FD] hover:text-[#FDE68A] transition-all"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-white/15 bg-white/5 hover:border-amber-400/50 text-xs font-mono text-slate-300 hover:text-white transition-all"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 <span>Sign In</span>
@@ -230,7 +228,7 @@ export function GlobalHeader() {
 
               <Link
                 href="/signup"
-                className="btn-campus-amber text-xs font-mono px-3.5 py-1.5 flex items-center gap-1 font-bold shadow-sm"
+                className="btn-campus-amber text-xs font-mono px-4 py-1.5 flex items-center gap-1 font-bold shadow-sm"
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 <span>Join Free</span>
@@ -240,20 +238,20 @@ export function GlobalHeader() {
             <div className="flex items-center gap-2">
               <Link
                 href="/profile"
-                className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-purple-400/30 bg-[#120836]/70 hover:border-amber-400/50 transition-all"
+                className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-white/15 bg-white/5 hover:border-amber-400/50 transition-all"
                 title="My Profile"
               >
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-[#090420] flex items-center justify-center font-mono font-bold text-[11px] shadow-sm">
+                <div className="w-6 h-6 rounded-full bg-amber-400 text-[#0A0C12] flex items-center justify-center font-mono font-bold text-[11px] shadow-sm">
                   {currentProfile?.display_name ? currentProfile.display_name.charAt(0) : 'U'}
                 </div>
-                <span className="text-xs font-mono font-medium hidden sm:inline text-[#F8F7FF]">
+                <span className="text-xs font-mono font-medium hidden sm:inline text-white">
                   @{currentProfile?.handle || 'me'}
                 </span>
               </Link>
 
               <button
                 onClick={handleSignOut}
-                className="p-1.5 rounded-full text-[#7C6FA6] hover:text-rose-400 transition-colors"
+                className="p-1.5 rounded-full text-slate-400 hover:text-rose-400 transition-colors"
                 title="Sign out"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -264,7 +262,7 @@ export function GlobalHeader() {
           {/* Mobile Search Button */}
           <button
             onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-            className="md:hidden p-2 rounded-full border border-purple-400/30 bg-[#120836]/70 text-[#C4B5FD] hover:text-[#FDE68A] transition-all"
+            className="md:hidden p-2 rounded-full border border-white/15 bg-white/5 text-slate-300 hover:text-white transition-all"
             title="Search"
           >
             {isMobileSearchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
@@ -273,13 +271,13 @@ export function GlobalHeader() {
           {/* Atmosphere Toggle */}
           <button
             onClick={toggleAtmosphere}
-            className="p-2 rounded-full border border-purple-400/30 bg-[#120836]/70 text-[#FDE68A] hover:border-amber-400/50 hover:shadow-[0_0_12px_rgba(251,191,36,0.3)] transition-all"
+            className="p-2 rounded-full border border-white/15 bg-white/5 text-amber-300 hover:border-amber-400/50 transition-all"
             title={isTwilight ? 'Switch to Deep Midnight' : 'Switch to Twilight Atmosphere'}
           >
             {isTwilight ? (
-              <Orbit className="w-4 h-4 text-[#C084FC]" />
+              <Orbit className="w-4 h-4 text-amber-400" />
             ) : (
-              <Moon className="w-4 h-4 text-[#FBBF24]" />
+              <Moon className="w-4 h-4 text-amber-300" />
             )}
           </button>
         </div>
@@ -287,25 +285,25 @@ export function GlobalHeader() {
 
       {/* Expandable Mobile Search Drawer */}
       {isMobileSearchOpen && (
-        <div className="md:hidden border-t border-purple-500/20 px-4 py-3 bg-[#090420]/95 backdrop-blur-2xl">
+        <div className="md:hidden border-t border-white/10 px-4 py-3 bg-[#0A0C12]/95 backdrop-blur-2xl">
           <div className="relative">
-            <Search className="w-4 h-4 text-purple-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               autoFocus
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search peers, courses, notes..."
-              className="celestial-input w-full text-xs font-mono py-2 pl-9 pr-4 text-[#F8F7FF]"
+              className="celestial-input w-full text-xs font-mono py-2 pl-9 pr-4 text-white"
             />
           </div>
 
           {searchResults && (
-            <div className="mt-2 celestial-card p-3 shadow-2xl max-h-72 overflow-y-auto border border-purple-400/30">
+            <div className="mt-2 celestial-card p-3 shadow-2xl max-h-72 overflow-y-auto border border-white/15">
               {searchResults.students?.length > 0 && (
                 <div className="mb-2">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#FBBF24] mb-1">
-                    ✦ Students
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 mb-1 font-semibold">
+                    Students
                   </div>
                   {searchResults.students.map((s: any) => (
                     <Link
@@ -315,7 +313,7 @@ export function GlobalHeader() {
                         setSearchResults(null);
                         setIsMobileSearchOpen(false);
                       }}
-                      className="flex items-center justify-between p-1.5 rounded-lg hover:bg-purple-900/30 text-xs font-mono"
+                      className="flex items-center justify-between p-1.5 rounded-lg hover:bg-white/5 text-xs font-mono"
                     >
                       <span>{s.name || s.display_name}</span>
                       <TrustBadge stage={s.stage || s.verification_stage} size="sm" />

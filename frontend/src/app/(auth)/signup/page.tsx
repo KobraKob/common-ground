@@ -123,35 +123,34 @@ function SignupForm() {
 
   return (
     <div className="max-w-md mx-auto py-8 px-4">
-      <div className="celestial-card p-6 sm:p-8 border border-purple-400/30 relative overflow-hidden shadow-2xl backdrop-blur-2xl">
-        {/* Glow corners */}
-        <div className="absolute -top-16 -right-16 w-36 h-36 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 w-36 h-36 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="celestial-card p-6 sm:p-8 border border-white/10 bg-[#12151F]/95 rounded-xl relative overflow-hidden shadow-2xl backdrop-blur-2xl">
+        {/* Amber accent warmth */}
+        <div className="absolute -top-16 -right-16 w-36 h-36 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="text-center mb-6">
           <Link href="/" className="inline-flex items-center gap-2 group mb-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#2E1065] to-[#120836] border border-amber-400/40 flex items-center justify-center text-[#FBBF24] font-display font-extrabold text-base shadow-[0_0_15px_rgba(251,191,36,0.35)] transition-transform group-hover:scale-105">
+            <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-400/40 flex items-center justify-center text-[#FBBF24] font-display font-extrabold text-base shadow-[0_0_15px_rgba(251,191,36,0.25)] transition-transform group-hover:scale-105">
               CG
             </div>
           </Link>
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[#F8F7FF] tracking-tight">
-            Join <span className="text-celestial-gradient">CommonGround</span>
+            Join <span className="text-[#FBBF24]">CommonGround</span>
           </h1>
-          <p className="text-xs font-mono text-[#C4B5FD] mt-1">
-            Connect across Bengaluru's student network in 30 seconds
+          <p className="text-xs font-mono text-slate-400 mt-1">
+            Connect across Bengaluru&apos;s student network in 30 seconds
           </p>
         </div>
 
         {errorMsg && (
           <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-400/30 flex items-center gap-2 text-rose-300 text-xs font-mono">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {successMsg && (
           <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-400/30 flex items-center gap-2 text-emerald-300 text-xs font-mono">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
             <span>{successMsg}</span>
           </div>
         )}
@@ -161,7 +160,7 @@ function SignupForm() {
           {/* 1. Email Field with Instant Campus Detection */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-mono uppercase tracking-wider text-[#C4B5FD]">
+              <label className="text-xs font-mono uppercase tracking-wider text-slate-300">
                 College or Personal Email
               </label>
               {isInstitutional && (
@@ -172,13 +171,13 @@ function SignupForm() {
               )}
             </div>
             <div className="relative">
-              <Mail className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => handleEmailChange(e.target.value)}
                 placeholder="you@rvce.edu.in (or personal email)"
-                className="celestial-input w-full text-xs font-mono py-2.5 pl-10 pr-3 text-[#F8F7FF] placeholder:text-[#7C6FA6]"
+                className="celestial-input w-full text-xs font-mono py-2.5 pl-10 pr-3 text-[#F8F7FF] placeholder:text-slate-500 rounded-xl border border-white/10 bg-[#0E1017] focus:border-amber-400"
                 required
                 autoFocus
               />
@@ -204,18 +203,18 @@ function SignupForm() {
           {/* If personal email or no detected college, choose campus simply */}
           {!detectedCollege && (
             <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1.5">
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5">
                 Select Your Bengaluru Campus:
               </label>
               <div className="relative">
-                <Building2 className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <select
                   value={selectedCollegeId}
                   onChange={(e) => setSelectedCollegeId(e.target.value)}
-                  className="celestial-input w-full text-xs font-mono py-2.5 pl-10 pr-8 text-[#F8F7FF] cursor-pointer appearance-none bg-[#090420]"
+                  className="celestial-input w-full text-xs font-mono py-2.5 pl-10 pr-8 text-[#F8F7FF] cursor-pointer appearance-none rounded-xl border border-white/10 bg-[#0E1017] focus:border-amber-400"
                 >
                   {colleges.map((col) => (
-                    <option key={col.id} value={col.id} className="bg-[#090420] text-white">
+                    <option key={col.id} value={col.id} className="bg-[#0E1017] text-white">
                       {col.name} ({col.short_name})
                     </option>
                   ))}
@@ -226,23 +225,23 @@ function SignupForm() {
 
           {/* 2. Password Field (Single field with show/hide toggle as per Apple HIG) */}
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1.5">
+            <label className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5">
               Password
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 6 characters"
-                className="celestial-input w-full text-xs font-mono py-2.5 pl-10 pr-10 text-[#F8F7FF] placeholder:text-[#7C6FA6]"
+                className="celestial-input w-full text-xs font-mono py-2.5 pl-10 pr-10 text-[#F8F7FF] placeholder:text-slate-500 rounded-xl border border-white/10 bg-[#0E1017] focus:border-amber-400"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-purple-400 hover:text-white"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                 title={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -252,34 +251,34 @@ function SignupForm() {
 
           {/* Optional Display Name (Auto-suggested from email, easily editable) */}
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-[#C4B5FD] mb-1.5">
-              Your Name <span className="text-[10px] text-[#7C6FA6] lowercase font-normal">(optional)</span>
+            <label className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5">
+              Your Name <span className="text-[10px] text-slate-400 lowercase font-normal">(optional)</span>
             </label>
             <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="e.g. Aarav Patel"
-              className="celestial-input w-full text-xs font-mono py-2 px-3 text-[#F8F7FF] placeholder:text-[#7C6FA6]"
+              className="celestial-input w-full text-xs font-mono py-2 px-3 text-[#F8F7FF] placeholder:text-slate-500 rounded-xl border border-white/10 bg-[#0E1017] focus:border-amber-400"
             />
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="btn-campus-amber w-full py-3 text-xs font-mono uppercase tracking-wider flex items-center justify-center gap-2 font-bold shadow-lg mt-2"
+            className="btn-campus-amber w-full py-3 text-xs font-mono uppercase tracking-wider flex items-center justify-center gap-2 font-bold shadow-lg mt-2 rounded-xl"
           >
             <span>{isSubmitting ? 'Creating Account...' : 'Get Started Free'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
-        <div className="mt-6 pt-5 border-t border-purple-500/20 text-center">
-          <p className="text-xs font-mono text-[#C4B5FD]">
+        <div className="mt-6 pt-5 border-t border-white/10 text-center">
+          <p className="text-xs font-mono text-slate-400">
             Already have an account?{' '}
             <Link
               href="/login"
-              className="text-[#FDE68A] hover:underline font-semibold"
+              className="text-[#FBBF24] hover:underline font-semibold"
             >
               Sign in
             </Link>
@@ -293,7 +292,7 @@ function SignupForm() {
 export default function SignupPage() {
   return (
     <Suspense fallback={
-      <div className="max-w-md mx-auto py-12 text-center text-xs font-mono text-[#C4B5FD]">
+      <div className="max-w-md mx-auto py-12 text-center text-xs font-mono text-slate-400">
         Loading signup...
       </div>
     }>

@@ -16,11 +16,11 @@ import {
 import { getActiveProfile, isAuthenticated } from '@/lib/api';
 
 /**
- * Core 5 Primary Navigation Destinations (Apple HIG: ≤ 5 destinations).
- * Straightforward plain labels without cryptic matrix codes.
+ * 5 Primary Destinations (Hick's Law & Apple HIG).
+ * Strict 12px radius, clean amber active state, no purple gradients.
  */
 const PRIMARY_DESTINATIONS = [
-  { href: '/city', label: 'City Pulse', icon: Compass },
+  { href: '/city', label: 'City Feed', icon: Compass },
   { href: '/campus', label: 'Campus Hub', icon: Building2 },
   { href: '/commons', label: 'Commons', icon: BookOpen },
   { href: '/build', label: 'Build Squads', icon: Hammer },
@@ -36,7 +36,6 @@ export function NavigationSidebar() {
     if (typeof window !== 'undefined') {
       setIsLoggedIn(isAuthenticated());
       const profile = getActiveProfile();
-      // Only show mod queue to authorized staff/moderators
       const role = (profile as any)?.role || (profile as any)?.platform_role;
       setIsModerator(role === 'MODERATOR' || role === 'ADMIN');
     }
@@ -44,9 +43,9 @@ export function NavigationSidebar() {
 
   return (
     <>
-      {/* Desktop Slim Sidebar (Apple-inspired deference & hierarchy) */}
-      <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 border-r border-purple-500/20 min-h-[calc(100vh-4rem)] p-3 bg-[#0B0524]/60 backdrop-blur-2xl">
-        <div className="space-y-1 flex-1 pt-2">
+      {/* Desktop Slim Sidebar */}
+      <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 border-r border-white/10 min-h-[calc(100vh-4rem)] p-3 bg-[#0E1017]/80 backdrop-blur-2xl">
+        <div className="space-y-1.5 flex-1 pt-2">
           {PRIMARY_DESTINATIONS.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
             const Icon = item.icon;
@@ -54,21 +53,21 @@ export function NavigationSidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`relative flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-mono transition-all duration-200 overflow-hidden ${
+                className={`relative flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-mono transition-all duration-150 overflow-hidden ${
                   isActive
-                    ? 'bg-gradient-to-r from-amber-500/15 via-purple-600/15 to-transparent text-[#FDE68A] font-bold border border-amber-400/40 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
-                    : 'text-[#C4B5FD] hover:text-[#F8F7FF] hover:bg-purple-900/20 border border-transparent hover:border-purple-500/20'
+                    ? 'bg-amber-500/10 text-amber-300 font-bold border border-amber-400/35 shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
                 }`}
               >
-                {/* Lit Window Left Glow Indicator */}
+                {/* Active Amber Indicator */}
                 {isActive && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-gradient-to-b from-[#FDE68A] via-[#FBBF24] to-[#F59E0B] rounded-r-full shadow-[0_0_12px_#FBBF24]" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-amber-400 rounded-r-full shadow-[0_0_8px_#F59E0B]" />
                 )}
 
                 <div className="flex items-center gap-3 pl-1">
                   <Icon
                     className={`w-4 h-4 transition-colors ${
-                      isActive ? 'text-[#FBBF24] drop-shadow-[0_0_8px_#FBBF24]' : 'text-[#7C6FA6]'
+                      isActive ? 'text-amber-400' : 'text-slate-500'
                     }`}
                   />
                   <span>{item.label}</span>
@@ -78,33 +77,32 @@ export function NavigationSidebar() {
           })}
         </div>
 
-        {/* Bottom Utility: Profile + Conditional Mod Queue */}
-        <div className="pt-3 border-t border-purple-500/20 space-y-1">
+        {/* Bottom Utility: Profile + Mod Queue */}
+        <div className="pt-3 border-t border-white/10 space-y-1">
           {isLoggedIn && (
             <Link
               href="/profile"
-              className={`flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-mono transition-all duration-200 ${
+              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-mono transition-all duration-150 ${
                 pathname === '/profile'
-                  ? 'bg-gradient-to-r from-amber-500/15 via-purple-600/15 to-transparent text-[#FDE68A] font-bold border border-amber-400/40 shadow-[0_0_12px_rgba(245,158,11,0.15)]'
-                  : 'text-[#C4B5FD] hover:text-[#F8F7FF] hover:bg-purple-900/20 border border-transparent'
+                  ? 'bg-amber-500/10 text-amber-300 font-bold border border-amber-400/35 shadow-sm'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <User className={`w-4 h-4 ${pathname === '/profile' ? 'text-[#FBBF24]' : 'text-[#7C6FA6]'}`} />
+                <User className={`w-4 h-4 ${pathname === '/profile' ? 'text-amber-400' : 'text-slate-500'}`} />
                 <span>My Profile</span>
               </div>
-              <ChevronRight className="w-3.5 h-3.5 opacity-60 text-[#7C6FA6]" />
+              <ChevronRight className="w-3.5 h-3.5 opacity-50 text-slate-500" />
             </Link>
           )}
 
-          {/* Mod Queue: Strictly visible only to confirmed moderators */}
           {isModerator && (
             <Link
               href="/moderation"
-              className={`flex items-center justify-between px-3.5 py-2 rounded-2xl text-xs font-mono transition-all duration-200 ${
+              className={`flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-mono transition-all duration-150 ${
                 pathname === '/moderation'
-                  ? 'bg-purple-900/30 text-amber-300 border border-amber-400/40'
-                  : 'text-[#7C6FA6] hover:text-white hover:bg-purple-900/20 border border-transparent'
+                  ? 'bg-white/10 text-amber-300 border border-amber-400/40'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
               <div className="flex items-center gap-2">
@@ -119,8 +117,8 @@ export function NavigationSidebar() {
         </div>
       </aside>
 
-      {/* Mobile Native-Feel Bottom Tab Dock (5 Primary Destinations) */}
-      <nav className="md:hidden fixed bottom-3 left-3 right-3 z-40 rounded-3xl border border-purple-500/30 bg-[#090422]/95 backdrop-blur-2xl px-2 py-1.5 flex items-center justify-around shadow-[0_12px_36px_rgba(3,1,12,0.9)] safe-area-pb">
+      {/* Mobile Native-Feel Bottom Tab Bar (Fitts's Law: 48px touch targets) */}
+      <nav className="md:hidden fixed bottom-3 left-3 right-3 z-40 rounded-xl border border-white/15 bg-[#0E1017]/95 backdrop-blur-2xl px-2 py-2 flex items-center justify-around shadow-2xl safe-area-pb">
         {PRIMARY_DESTINATIONS.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
           const Icon = item.icon;
@@ -128,23 +126,23 @@ export function NavigationSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center py-1 px-2.5 rounded-2xl text-[10px] font-mono transition-all duration-150 ${
+              className={`flex flex-col items-center py-1 px-3 rounded-lg text-[10px] font-mono transition-all ${
                 isActive
-                  ? 'text-[#FDE68A] font-bold scale-105'
-                  : 'text-[#7C6FA6] hover:text-[#C4B5FD]'
+                  ? 'text-amber-300 font-bold scale-105'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               <div className="relative">
                 <Icon
                   className={`w-5 h-5 mb-0.5 ${
-                    isActive ? 'text-[#FBBF24] drop-shadow-[0_0_8px_#FBBF24]' : ''
+                    isActive ? 'text-amber-400' : ''
                   }`}
                 />
                 {isActive && (
-                  <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-[#FBBF24] shadow-[0_0_6px_#FBBF24]" />
+                  <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_#F59E0B]" />
                 )}
               </div>
-              <span className="truncate max-w-[54px]">{item.label.split(' ')[0]}</span>
+              <span className="truncate max-w-[56px]">{item.label.split(' ')[0]}</span>
             </Link>
           );
         })}

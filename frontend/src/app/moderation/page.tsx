@@ -9,7 +9,6 @@ import {
   Ban, 
   EyeOff, 
   History, 
-  AlertTriangle,
   Sparkles
 } from 'lucide-react';
 import { getModerationQueue, executeModerationAction } from '@/lib/api';
@@ -24,9 +23,14 @@ export default function ModerationPage() {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const queue = await getModerationQueue();
-      setReports(queue);
-      setLoading(false);
+      try {
+        const queue = await getModerationQueue();
+        setReports(queue || []);
+      } catch (err) {
+        console.warn('Could not load moderation queue:', err);
+      } finally {
+        setLoading(false);
+      }
     }
     loadData();
   }, []);
@@ -54,9 +58,8 @@ export default function ModerationPage() {
         },
         ...auditLog,
       ]);
-      alert(`Action ${actionType} completed successfully.`);
     } catch {
-      alert('Failed to execute moderation action');
+      alert('Failed to execute moderation action. Please try again.');
     }
   };
 
@@ -73,43 +76,53 @@ export default function ModerationPage() {
       />
 
       {/* Reports Queue */}
-      <div className="celestial-card p-6 md:p-8">
-        <div className="flex items-center justify-between mb-5">
+      <div className="celestial-card p-6 md:p-8 rounded-xl border border-white/10 bg-[#12151F] space-y-5">
+        <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-bold text-[#F8F7FF] flex items-center gap-2">
+            <ShieldAlert className="w-5 h-5 text-amber-400" />
             <span>Pending Incident Reports ({reports.length})</span>
-            <span className="text-[#FBBF24]">✦</span>
           </h2>
           <span className="neo-badge text-[9px] bg-amber-500/15 text-[#FDE68A] border-amber-400/30">
             TRIAGE QUEUE
           </span>
         </div>
 
-        {reports.length === 0 ? (
-          <div className="p-8 text-center text-xs font-mono text-[#C4B5FD] bg-purple-950/20 rounded-2xl border border-purple-500/20">
-            ✓ All clean. No pending student safety reports in the queue!
+        {loading ? (
+          <div className="p-8 space-y-3">
+            {[1, 2].map((n) => (
+              <div key={n} className="p-4 rounded-xl border border-white/10 bg-white/[0.02] space-y-2">
+                <div className="w-32 h-4 rounded skeleton-shimmer" />
+                <div className="w-full h-8 rounded skeleton-shimmer" />
+              </div>
+            ))}
+          </div>
+        ) : reports.length === 0 ? (
+          <div className="p-8 text-center text-xs font-mono text-slate-400 bg-white/[0.02] rounded-xl border border-white/10 flex items-center justify-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>All clean. No pending student safety reports in the queue!</span>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             {reports.map((rep) => (
               <div
                 key={rep.id}
-                className="p-4 rounded-xl border border-purple-500/25 bg-purple-950/25 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="p-4 rounded-xl border border-white/10 bg-white/[0.02] flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 <div>
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <span className="neo-badge text-[9px] bg-rose-500/15 text-rose-300 border-rose-400/40">
                       {rep.reason}
                     </span>
-                    <span className="neo-badge text-[9px] bg-purple-900/60 text-[#C4B5FD] border-purple-400/30">
+                    <span className="neo-badge text-[9px] bg-white/5 text-slate-300 border-white/10">
                       TARGET: {rep.target_type}
                     </span>
-                    <span className="text-[10px] font-mono text-[#7C6FA6]">
+                    <span className="text-[10px] font-mono text-slate-500">
                       Report ID: {rep.id.slice(0, 8)} • Reported {new Date(rep.created_at).toLocaleTimeString()}
                     </span>
                   </div>
 
-                  <p className="text-xs font-mono text-[#F8F7FF] mb-1">
-                    Details: "{rep.details || 'No additional notes provided by reporter.'}"
+                  <p className="text-xs font-mono text-slate-200">
+                    Details: &quot;{rep.details || 'No additional notes provided by reporter.'}&quot;
                   </p>
                 </div>
 
@@ -117,7 +130,7 @@ export default function ModerationPage() {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => handleAction(rep.id, 'HIDE_CONTENT', rep.target_type, rep.target_id)}
-                    className="pill-glass text-[10px] py-1 px-3 border-amber-400/40 text-amber-200 hover:border-amber-400"
+                    className="px-3 py-1.5 rounded-xl border border-amber-400/40 bg-amber-500/10 text-amber-200 hover:border-amber-400 text-xs font-mono font-bold flex items-center gap-1.5 transition-all"
                     title="Hide content from public feeds and search"
                   >
                     <EyeOff className="w-3 h-3 text-[#FBBF24]" />
@@ -126,7 +139,7 @@ export default function ModerationPage() {
 
                   <button
                     onClick={() => handleAction(rep.id, 'SUSPEND_USER', rep.target_type, rep.target_id)}
-                    className="pill-glass text-[10px] py-1 px-3 border-rose-400/40 text-rose-300 hover:border-rose-400"
+                    className="px-3 py-1.5 rounded-xl border border-rose-400/40 bg-rose-500/10 text-rose-300 hover:border-rose-400 text-xs font-mono font-bold flex items-center gap-1.5 transition-all"
                     title="Suspend user account across all campus hubs"
                   >
                     <Ban className="w-3 h-3 text-rose-400" />
@@ -135,7 +148,7 @@ export default function ModerationPage() {
 
                   <button
                     onClick={() => handleAction(rep.id, 'DISMISS_REPORT', rep.target_type, rep.target_id)}
-                    className="pill-glass text-[10px] py-1 px-3"
+                    className="px-3 py-1.5 rounded-xl border border-white/10 hover:bg-white/[0.04] text-xs font-mono text-slate-400 hover:text-white flex items-center gap-1.5 transition-all"
                     title="Dismiss report as invalid"
                   >
                     <XCircle className="w-3 h-3" />
@@ -149,8 +162,8 @@ export default function ModerationPage() {
       </div>
 
       {/* Immutable Moderation Audit Log */}
-      <div className="celestial-card p-6 md:p-8">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="celestial-card p-6 md:p-8 rounded-xl border border-white/10 bg-[#12151F] space-y-4">
+        <div className="flex items-center gap-2">
           <History className="w-4 h-4 text-[#FBBF24]" />
           <h2 className="font-display text-lg font-bold text-[#F8F7FF]">
             Immutable Audit Trail (moderation_actions)
@@ -160,7 +173,7 @@ export default function ModerationPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
             <thead>
-              <tr className="border-b border-purple-500/20 text-[#7C6FA6] text-[10px] uppercase">
+              <tr className="border-b border-white/10 text-slate-500 text-[10px] uppercase">
                 <th className="pb-3">Timestamp</th>
                 <th className="pb-3">Actor</th>
                 <th className="pb-3">Action</th>
@@ -168,27 +181,28 @@ export default function ModerationPage() {
                 <th className="pb-3">Audit Notes</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-purple-500/10">
+            <tbody className="divide-y divide-white/5">
               {auditLog.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-[#7C6FA6]">
-                    No moderation actions logged in current session. All actions taken by moderators are logged here.
+                  <td colSpan={5} className="py-8 text-center text-slate-500">
+                    No moderation actions logged in current session. All actions taken by moderators are tracked here.
                   </td>
                 </tr>
               ) : (
                 auditLog.map((log) => (
                   <tr key={log.id} className="py-2.5">
-                  <td className="py-3 text-[#7C6FA6]">{log.timestamp}</td>
-                  <td className="py-3 font-semibold text-[#F8F7FF]">{log.actor}</td>
-                  <td className="py-3">
-                    <span className="neo-badge text-[8px] bg-purple-900/60 text-[#C4B5FD] border-purple-400/30">
-                      {log.action_type}
-                    </span>
-                  </td>
-                  <td className="py-3 text-[#C4B5FD]">{log.target}</td>
-                  <td className="py-3 text-[#7C6FA6] truncate max-w-xs">{log.notes}</td>
-                </tr>
-              )))}
+                    <td className="py-3 text-slate-500">{log.timestamp}</td>
+                    <td className="py-3 font-semibold text-[#F8F7FF]">{log.actor}</td>
+                    <td className="py-3">
+                      <span className="neo-badge text-[8px] bg-white/5 text-slate-300 border-white/10">
+                        {log.action_type}
+                      </span>
+                    </td>
+                    <td className="py-3 text-slate-300">{log.target}</td>
+                    <td className="py-3 text-slate-500 truncate max-w-xs">{log.notes}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
