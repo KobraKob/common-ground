@@ -294,6 +294,14 @@ async def list_user_conversations(
         in (counterpart_rows.all() if counterpart_rows else [])
     }
 
+    member_roles_result = await db.execute(
+        select(ConversationMember.conversation_id, ConversationMember.role).where(
+            ConversationMember.user_id == user.id,
+            ConversationMember.conversation_id.in_(conversation_ids),
+        )
+    )
+    member_roles = {conversation_id: role for conversation_id, role in member_roles_result.all()}
+
     current_profile_result = await db.execute(
         select(StudentProfile.college_id).where(StudentProfile.user_id == user.id)
     )
@@ -352,6 +360,7 @@ async def list_user_conversations(
             created_at=conversation.created_at,
             last_message_at=conversation.last_message_at,
             last_message=previews.get(conversation.id),
+            member_role=member_roles.get(conversation.id),
         ))
     return responses
 
