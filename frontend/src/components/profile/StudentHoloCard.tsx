@@ -22,15 +22,15 @@ const generateDefaultAvatar = (name: string, college: string): string => {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500">
     <defs>
       <radialGradient id="nebula" cx="50%" cy="35%" r="75%">
-        <stop offset="0%" stop-color="#1E2230" />
-        <stop offset="45%" stop-color="#12151F" />
-        <stop offset="85%" stop-color="#0E1017" />
-        <stop offset="100%" stop-color="#0A0C12" />
+        <stop offset="0%" stop-color="#D6B588" />
+        <stop offset="45%" stop-color="#C6C0B9" />
+        <stop offset="85%" stop-color="#705E46" />
+        <stop offset="100%" stop-color="#422701" />
       </radialGradient>
       <linearGradient id="amberGold" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#FDE68A" />
-        <stop offset="50%" stop-color="#F59E0B" />
-        <stop offset="100%" stop-color="#B45309" />
+        <stop offset="0%" stop-color="#D6B588" />
+        <stop offset="50%" stop-color="#705E46" />
+        <stop offset="100%" stop-color="#422701" />
       </linearGradient>
       <filter id="glow">
         <feGaussianBlur stdDeviation="6" result="blur" />
@@ -39,8 +39,8 @@ const generateDefaultAvatar = (name: string, college: string): string => {
     </defs>
     <rect width="100%" height="100%" fill="url(#nebula)"/>
     <g transform="translate(200, 200)">
-      <circle r="95" fill="none" stroke="rgba(245, 158, 11, 0.18)" stroke-dasharray="6 6" stroke-width="2"/>
-      <circle r="82" fill="#12151F" stroke="url(#amberGold)" stroke-width="3" filter="url(#glow)"/>
+      <circle r="95" fill="none" stroke="rgba(66, 39, 1, 0.18)" stroke-dasharray="6 6" stroke-width="2"/>
+      <circle r="82" fill="#705E46" stroke="url(#amberGold)" stroke-width="3" filter="url(#glow)"/>
       <text y="32" font-family="'Outfit', system-ui, sans-serif" font-size="94" font-weight="800" fill="url(#amberGold)" text-anchor="middle" letter-spacing="-2">${initial}</text>
     </g>
     <rect x="120" y="320" width="160" height="28" rx="14" fill="rgba(245, 158, 11, 0.12)" stroke="rgba(245, 158, 11, 0.3)" stroke-width="1.5"/>
@@ -96,19 +96,19 @@ export const StudentHoloCard: React.FC<StudentHoloCardProps> = ({
       contactText={contactText}
       showUserInfo={showUserInfo}
       avatarUrl={avatarUrl}
-      iconUrl="/assets/celestial-pattern.svg"
+      iconUrl=""
       miniAvatarUrl={avatarUrl}
-      holo={holo}
-      glare={glare}
-      tiltStrength={tiltStrength}
-      parallax={10}
+      holo={0.08}
+      glare={0.04}
+      tiltStrength={0}
+      parallax={0}
       radius={12}
-      enableTilt={true}
-      intro={true}
+      enableTilt={false}
+      intro={false}
       enableMobileTilt={enableMobileTilt}
       mobileTiltSensitivity={6}
-      theme="dark"
-      backdropColor="#12151F"
+      theme="light"
+      backdropColor="#D6B588"
       className={className}
       onContactClick={onContactClick}
     />
