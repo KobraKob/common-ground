@@ -591,6 +591,10 @@ export async function executeModerationAction(payload: any): Promise<any> {
 }
 
 // ----------------------------------------------------
+export async function getAnalyticsSummary(days = 30): Promise<any> {
+  return await request<any>(`/analytics/summary?days=${days}`);
+}
+
 export async function trackAnalyticsEvent(
   event_name: 'page_view' | 'search_performed' | 'post_created' | 'project_created' | 'event_rsvp' | 'community_joined' | 'circle_created',
   surface?: 'landing' | 'city' | 'campus' | 'commons' | 'build' | 'discover' | 'messages' | 'profile' | 'passport'
