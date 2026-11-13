@@ -9,6 +9,7 @@ from app.core.security import get_current_user, get_current_user_id
 from app.core.permissions import verify_can_dm, require_community_member_role
 from app.modules.identity.models import User, StudentProfile
 from app.modules.communities.models import Community, CommunityMembership
+from app.modules.analytics.models import AnalyticsEvent
 from app.modules.messaging.models import Conversation, ConversationMember, Message
 from app.modules.communities.schemas import (
     CommunityCreateRequest,
@@ -169,6 +170,7 @@ async def join_community(
         role="MEMBER",
     )
     db.add(membership)
+    db.add(AnalyticsEvent(user_id=user.id, event_name='community_joined', college_id=community.college_id))
     community.member_count += 1
 
     # Add user to linked conversations
