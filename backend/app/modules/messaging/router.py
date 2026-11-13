@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.database import get_db
 from app.core.permissions import verify_can_dm
@@ -136,12 +137,13 @@ async def list_conversations(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    peer_member = aliased(ConversationMember)
     other_name = (
         select(StudentProfile.display_name)
-        .join(ConversationMember, ConversationMember.user_id == StudentProfile.user_id)
+        .join(peer_member, peer_member.user_id == StudentProfile.user_id)
         .where(
-            ConversationMember.conversation_id == Conversation.id,
-            ConversationMember.user_id != user.id,
+            peer_member.conversation_id == Conversation.id,
+            peer_member.user_id != user.id,
         )
         .limit(1)
         .scalar_subquery()
