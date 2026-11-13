@@ -122,7 +122,7 @@ export default function CommonsPage() {
   });
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="cg-page space-y-8">
       {/* Commons Hero Banner */}
       <CampusHeroBanner
         title="Academic Commons"
