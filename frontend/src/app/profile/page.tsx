@@ -173,7 +173,7 @@ export default function ProfilePage() {
                   <TrustBadge stage={profile.verification_stage} />
                 </div>
                 <p className="text-xs font-mono text-slate-400 mt-1">
-                  @{profile.handle} • {profile.college_name || 'RV College of Engineering'}
+                  @{profile.handle} • {profile.college_name || 'College not listed'}
                 </p>
               </div>
 
