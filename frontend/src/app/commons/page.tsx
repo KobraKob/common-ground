@@ -109,7 +109,7 @@ export default function CommonsPage() {
       {/* Commons Hero Banner */}
       <CampusHeroBanner
         title="Academic Commons"
-        badgeText="SEARCHABLE COURSE VAULT • VERIFIED"
+        badgeText="Student Q&A and resources"
         shortCode="COMMONS // Q&A"
         subtitle="Ask questions, share useful study resources and learn with students across Bengaluru."
         isOfficial={true}
