@@ -20,7 +20,7 @@ async def test_profile_privacy_settings_are_persisted(client: AsyncClient, db_se
     await db_session.commit()
 
     response = await client.patch(
-        "/api/v1/auth/me",
+        "/api/v1/profiles/me",
         json={"profile_visibility": "CAMPUS_ONLY", "dm_permission": "NONE"},
         headers={"X-User-Id": user.id},
     )
