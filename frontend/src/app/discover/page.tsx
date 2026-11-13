@@ -6,8 +6,8 @@ import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Building2, CalendarDays, ExternalLink, Layers3, MapPin, Users } from 'lucide-react';
-import { getColleges, getCommunities, getEvents, getProjects, getMyProfile, getActiveProfile, getPosts, joinCommunity, createCommunity, rsvpEvent, isAuthenticated } from '@/lib/api';
-import type { College, Community, EventItem, Post, ProjectItem, StudentProfile } from '@/types';
+import { getColleges, getCommunities, getEvents, getProjects, getMyProfile, getActiveProfile, getPosts, joinCommunity, createCommunity, rsvpEvent, isAuthenticated, getEventAttendees, markEventAttendance } from '@/lib/api';
+import type { College, Community, EventItem, EventAttendeeItem, Post, ProjectItem, StudentProfile } from '@/types';
 import { CampusNetworkMap } from '@/components/discover/CampusNetworkMap';
 
 type Section = 'campuses' | 'circles' | 'projects' | 'events' | 'opportunities';
@@ -48,8 +48,11 @@ export default function DiscoverPage() {
   const [showCircleForm, setShowCircleForm] = useState(false);
   const [circleName, setCircleName] = useState('');
   const [circleDescription, setCircleDescription] = useState('');
+  const [attendanceEventId, setAttendanceEventId] = useState('');
+  const [attendees, setAttendees] = useState<EventAttendeeItem[]>([]);
 
   const upcoming = useMemo(() => events.filter((event) => new Date(event.ends_at) >= new Date()), [events]);
+  const myPastEvents = useMemo(() => events.filter((event) => event.organizer_id === profile?.user_id && new Date(event.ends_at) < new Date()), [events, profile]);
   const matchingProjects = useMemo(() => projects.filter((project) => {
     if (!profile?.skills?.length) return false;
     const skillSet = new Set(profile.skills.map((skill) => skill.toLowerCase()));
@@ -78,6 +81,29 @@ export default function DiscoverPage() {
     try { await rsvpEvent(event.id, 'GOING'); await queryClient.invalidateQueries({ queryKey: ['discover', 'hub', cacheScope] }); setNotice(`Your RSVP for ${event.title} was recorded.`); }
     catch { setNotice('Could not record your RSVP. Sign in and try again.'); }
     finally { setBusyId(''); }
+  }
+
+  async function loadEventAttendees(event: EventItem) {
+    setBusyId(`attendance-${event.id}`);
+    setNotice('');
+    try {
+      const result = await getEventAttendees(event.id);
+      setAttendees(result);
+      setAttendanceEventId(event.id);
+    } catch {
+      setNotice('Only the event organizer can view this RSVP list.');
+    } finally { setBusyId(''); }
+  }
+
+  async function confirmAttendance(eventId: string, attendeeId: string) {
+    setBusyId(`attendance-${attendeeId}`);
+    setNotice('');
+    try {
+      await markEventAttendance(eventId, attendeeId);
+      setAttendees((current) => current.map((item) => item.user_id === attendeeId ? { ...item, attended: true } : item));
+    } catch (error: any) {
+      setNotice(error?.detail || 'Attendance could not be confirmed.');
+    } finally { setBusyId(''); }
   }
 
   async function handleCreateCircle(event: FormEvent<HTMLFormElement>) {
@@ -185,6 +211,13 @@ export default function DiscoverPage() {
               <button disabled={busyId === event.id} onClick={() => rsvp(event)} className="mt-4 min-h-11 rounded-full bg-[var(--cg-accent)] px-4 text-sm font-semibold text-white disabled:opacity-50">{busyId === event.id ? 'Saving…' : 'RSVP'}</button>
             </article>)}
             {upcoming.length === 0 && <Empty title="No upcoming events listed" body="When student groups publish workshops, hackathons and campus events, they will appear here."/>}
+            {myPastEvents.length > 0 && <section className="space-y-3 sm:col-span-2">
+              <div><h3 className="font-semibold">Events you organized</h3><p className="mt-1 text-sm cg-muted">Confirm attendance for students who RSVP'd GOING. Attendance can be marked only after an event ends.</p></div>
+              {myPastEvents.map((event)=><article key={event.id} className="cg-surface p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3"><div><h4 className="font-medium">{event.title}</h4><p className="mt-1 text-xs cg-muted">Ended {new Date(event.ends_at).toLocaleDateString()}</p></div><button type="button" disabled={busyId===`attendance-${event.id}`} onClick={()=>loadEventAttendees(event)} className="min-h-11 rounded-full border border-[var(--cg-border)] px-4 text-sm">{busyId===`attendance-${event.id}`?'Loading…':'Review RSVPs'}</button></div>
+                {attendanceEventId===event.id && <ul className="mt-4 divide-y divide-[var(--cg-border)]">{attendees.length ? attendees.map((attendee)=><li key={attendee.user_id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div><p className="text-sm font-medium">{attendee.display_name}</p><p className="text-xs cg-muted">@{attendee.handle}</p></div>{attendee.attended ? <span className="text-xs font-medium text-[var(--cg-success)]">Attendance confirmed</span> : <button type="button" disabled={busyId===`attendance-${attendee.user_id}`} onClick={()=>confirmAttendance(event.id,attendee.user_id)} className="min-h-10 rounded-full bg-[var(--cg-accent)] px-3 text-xs font-semibold text-white">{busyId===`attendance-${attendee.user_id}`?'Saving…':'Mark attended'}</button>}</li>) : <li className="py-3 text-sm cg-muted">No GOING RSVPs for this event.</li>}</ul>}
+              </article>)}
+            </section>}
           </section>}
         </>
       )}
