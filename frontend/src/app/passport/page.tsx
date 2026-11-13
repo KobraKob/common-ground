@@ -10,6 +10,7 @@ const emptyContributions: MyContributions = {
   posts_created: 0,
   questions_asked: 0,
   useful_answers: 0,
+  tasks_marked_done: 0,
   communities: [],
   events_attended: [],
   attendance_note: 'Events appear only after their organizer confirms attendance. An RSVP alone is not counted as attendance.',
@@ -48,6 +49,7 @@ export default function PassportPage() {
     { label: 'Confirmed event attendance', value: contributions.events_attended.length, icon: CalendarCheck },
     { label: 'Communities joined', value: contributions.communities.length, icon: Users },
     { label: 'Useful answers', value: contributions.useful_answers, icon: BookOpen },
+    { label: 'Tasks marked done', value: contributions.tasks_marked_done, icon: Award },
   ];
 
   return <div className="cg-page space-y-8">
