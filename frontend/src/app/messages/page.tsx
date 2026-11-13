@@ -54,8 +54,9 @@ export default function MessagesPage() {
           const msgs = await getMessages(selectedConversation.id);
           setMessages(msgs || []);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.warn('Could not load conversations:', err);
+        setNotice(err?.detail || 'Could not load conversations. Refresh to try again.');
       } finally {
         setLoading(false);
       }
@@ -68,8 +69,9 @@ export default function MessagesPage() {
     try {
       const msgs = await getMessages(convId);
       setMessages(msgs || []);
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Failed to load thread messages:', err);
+      setNotice(err?.detail || 'Could not load this conversation.');
     }
   };
 
