@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import { VirtualizedFeed } from '@/components/shared/VirtualizedFeed';
 import Link from 'next/link';
 import { 
   Compass, 
@@ -59,7 +60,6 @@ export default function CityPage() {
   const [nextPostOffset, setNextPostOffset] = useState(0);
   const [hasMorePosts, setHasMorePosts] = useState(false);
   const [loadingMorePosts, setLoadingMorePosts] = useState(false);
-  const loadMoreSentinelRef = useRef<HTMLButtonElement>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Poll voting state
@@ -134,16 +134,6 @@ export default function CityPage() {
       setLoadingMorePosts(false);
     }
   };
-
-  useEffect(() => {
-    const node = loadMoreSentinelRef.current;
-    if (!node || !hasMorePosts || loadingMorePosts) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) void loadMorePosts();
-    }, { rootMargin: '480px 0px' });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [hasMorePosts, loadingMorePosts, nextPostOffset]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -583,12 +573,19 @@ export default function CityPage() {
             </div>
           ) : (
             /* Post Feed Cards */
-            <div className="space-y-5">
-              {displayedPosts.map((post) => (
+            <VirtualizedFeed
+              items={displayedPosts}
+              estimateSize={440}
+              overscan={4}
+              hasMore={hasMorePosts}
+              isFetchingNextPage={loadingMorePosts}
+              onLoadMore={loadMorePosts}
+              className="space-y-5"
+              renderItem={(post) => (
                 <div
                   key={post.id}
                   id={`post-${post.id}`}
-                  className="celestial-card p-5 sm:p-6 space-y-4"
+                  className="celestial-card p-5 sm:p-6 space-y-4 mb-5"
                 >
                   {/* Author Header */}
                   <div className="flex items-center justify-between">
@@ -756,8 +753,9 @@ export default function CityPage() {
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
+              )}
+            />
+            {hasMorePosts && <button type="button" onClick={loadMorePosts} disabled={loadingMorePosts} className="btn-primary mx-auto block">{loadingMorePosts ? 'Loading…' : 'Load more posts'}</button>}
           )}
         </div>
       )}
