@@ -280,7 +280,11 @@ async def list_profiles(
     current_user_id: Optional[str] = Depends(get_optional_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(StudentProfile).where(StudentProfile.profile_visibility == "PUBLIC")
+    query = (
+        select(StudentProfile, College.name)
+        .outerjoin(College, StudentProfile.college_id == College.id)
+        .where(StudentProfile.profile_visibility == "PUBLIC")
+    )
     if college_id:
         query = query.where(StudentProfile.college_id == college_id)
 
@@ -296,17 +300,13 @@ async def list_profiles(
         )
 
     result = await db.execute(query.order_by(StudentProfile.created_at.desc()).limit(60))
-    profiles = result.scalars().all()
+    profile_rows = result.all()
 
     response = []
-    for p in profiles:
+    for p, college_name in profile_rows:
         if skill and skill.upper() != "ALL":
             if not any(skill.lower() == s.lower() for s in (p.skills or [])):
                 continue
-        college_name = None
-        if p.college_id:
-            c_res = await db.execute(select(College.name).where(College.id == p.college_id))
-            college_name = c_res.scalar_one_or_none()
         response.append(
             StudentProfileResponse(
                 user_id=p.user_id,
