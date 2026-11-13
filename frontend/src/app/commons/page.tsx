@@ -16,95 +16,15 @@ import {
   Tag,
   ArrowRight
 } from 'lucide-react';
-import { getPosts, createPost, getResources, getActiveProfile } from '@/lib/api';
+import { getPostsPaginated, createPost, getResources, getActiveProfile } from '@/lib/api';
 import { Post, ResourceItem } from '@/types';
 import { ReportModal } from '@/components/shared/ReportModal';
 import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
 
-// Starter questions to guarantee a rich first visit
-const STARTER_COMMONS_POSTS: Post[] = [
-  {
-    id: 'starter-commons-1',
-    author_id: 'aarav-rvce',
-    author_name: 'Aarav Patel',
-    author_handle: 'aarav_builder',
-    college_name: 'RV College of Engineering',
-    author_verification: 'STAGE_3_INSTITUTIONAL_VERIFIED',
-    category: 'QUESTION_QA',
-    title: 'How to prepare for Autonomous 3rd Sem Data Structures exams?',
-    body: 'Looking for reliable past notes and important algorithm problems (Trees, Graphs, Sorting). Any RVCE or PESU seniors have pointers on faculty marking keys?',
-    accepted_answer_comment_id: 'ans-1',
-    upvotes_count: 34,
-    comments_count: 8,
-    shares_count: 12,
-    is_cross_campus: true,
-    is_pinned: false,
-    tags: ['DSA', 'Academics', 'VTU'],
-    created_at: new Date(Date.now() - 3600000 * 16).toISOString(),
-  },
-  {
-    id: 'starter-commons-2',
-    author_id: 'diya-pesu',
-    author_name: 'Diya Sharma',
-    author_handle: 'diya_design',
-    college_name: 'PES University',
-    author_verification: 'STAGE_3_INSTITUTIONAL_VERIFIED',
-    category: 'QUESTION_QA',
-    title: 'Recommended design systems and Figma component libraries for student hackathons?',
-    body: 'Building our presentation demo this weekend. What free open-source component systems work fastest with Next.js and Tailwind without heavy setup overhead?',
-    upvotes_count: 22,
-    comments_count: 5,
-    shares_count: 7,
-    is_cross_campus: true,
-    is_pinned: false,
-    tags: ['UIUX', 'Figma', 'Nextjs'],
-    created_at: new Date(Date.now() - 3600000 * 30).toISOString(),
-  },
-];
-
-const STARTER_RESOURCES: ResourceItem[] = [
-  {
-    id: 'starter-res-1',
-    uploader_id: 'aarav-rvce',
-    uploader_name: 'Aarav Patel (RVCE)',
-    title: 'Data Structures & Algorithms Semester Blueprint',
-    description: 'Comprehensive handwritten lecture notes covering trees, graphs, sorting, and asymptotic analysis for autonomous VTU colleges.',
-    subject_tags: ['DSA', 'VTU', 'Algorithms'],
-    file_url: 'https://example.com/dsa-notes.pdf',
-    is_pinned: true,
-    is_public_commons: true,
-    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-  },
-  {
-    id: 'starter-res-2',
-    uploader_id: 'diya-pesu',
-    uploader_name: 'Diya Sharma (PESU)',
-    title: 'Computer Networks Packet Tracer Lab Manual',
-    description: 'Step-by-step configurations for OSPF, VLAN trunking, and subnetting topologies with verified screenshots and test captures.',
-    subject_tags: ['Networks', 'Labs', 'Cisco'],
-    file_url: 'https://example.com/cn-lab.pdf',
-    is_pinned: false,
-    is_public_commons: true,
-    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
-  },
-  {
-    id: 'starter-res-3',
-    uploader_id: 'kavya-bmsce',
-    uploader_name: 'Kavya Rao (BMSCE)',
-    title: 'Microcontroller & Embedded Systems Lab Prep Guide',
-    description: 'ARM Cortex M4 assembly routines, timer interrupts, and ADC interfacing examples tested on lab hardware benches.',
-    subject_tags: ['Embedded', 'ARM', 'Hardware'],
-    file_url: 'https://example.com/embedded-lab.pdf',
-    is_pinned: false,
-    is_public_commons: true,
-    created_at: new Date(Date.now() - 3600000 * 72).toISOString(),
-  },
-];
-
 export default function CommonsPage() {
   const [activeTab, setActiveTab] = useState<'qa' | 'resources'>('qa');
-  const [posts, setPosts] = useState<Post[]>(STARTER_COMMONS_POSTS);
-  const [resources, setResources] = useState<ResourceItem[]>(STARTER_RESOURCES);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [resources, setResources] = useState<ResourceItem[]>([]);
   const [searchFilter, setSearchFilter] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
@@ -124,23 +44,17 @@ export default function CommonsPage() {
     async function loadData() {
       setLoading(true);
       try {
-        const [postsData, resData] = await Promise.all([
-          getPosts('commons'),
+        const [postPage, resData] = await Promise.all([
+          getPostsPaginated({ scope: 'commons', limit: 20, offset: 0 }),
           getResources(),
         ]);
-        const qPosts = (postsData || []).filter((p) => p.category === 'QUESTION_QA' || p.category === 'DISCUSSION');
-        if (qPosts.length > 0) {
-          setPosts(qPosts);
-        } else {
-          setPosts(STARTER_COMMONS_POSTS);
-        }
-        if (resData && resData.length > 0) {
-          setResources(resData);
-        } else {
-          setResources(STARTER_RESOURCES);
-        }
+        const qPosts = (postPage.items || []).filter((post) => post.category === 'QUESTION_QA' || post.category === 'DISCUSSION');
+        setPosts(qPosts);
+        setResources(resData || []);
       } catch (err) {
-        console.warn('Using starter commons data:', err);
+        console.warn('Commons content could not be loaded:', err);
+        setPosts([]);
+        setResources([]);
       } finally {
         setLoading(false);
       }
@@ -195,7 +109,7 @@ export default function CommonsPage() {
         title="Academic Commons"
         badgeText="SEARCHABLE COURSE VAULT • VERIFIED"
         shortCode="COMMONS // Q&A"
-        subtitle="Search peer-verified exam blueprints, lecture summaries, and course solutions verified by students across Bengaluru campuses."
+        subtitle="Ask questions, share useful study resources and learn with students across Bengaluru."
         isOfficial={true}
         actionSlot={
           <button
@@ -225,7 +139,7 @@ export default function CommonsPage() {
                 Academics Tip: Filter by your current semester subjects
               </div>
               <p className="text-xs font-sans text-slate-400 leading-relaxed">
-                Looking for syllabus-specific solutions? Tap a subject filter below to instantly view verified notes and accepted solutions.
+                Looking for syllabus-specific help? Browse questions or share a resource with other students.
               </p>
             </div>
           </div>
@@ -366,18 +280,7 @@ export default function CommonsPage() {
                     {post.body}
                   </p>
 
-                  {/* Solved Answer Highlight */}
-                  {isSolved && (
-                    <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-400/25 space-y-1.5">
-                      <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#FDE68A]">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#FBBF24]" />
-                        <span>Accepted Senior Answer:</span>
-                      </div>
-                      <p className="text-xs text-amber-100 leading-relaxed font-sans">
-                        Focus on AVL tree rotations and Dijkstra graph implementations. Verified notes available in the Study Vault!
-                      </p>
-                    </div>
-                  )}
+                  {isSolved && <div className="flex items-center gap-2 text-[13px] text-[var(--success)]"><CheckCircle2 size={15} /> Accepted answer</div>}
 
                   <div className="flex items-center justify-between text-xs font-mono text-slate-400 pt-3 border-t border-white/10">
                     <div className="flex items-center gap-4">
@@ -425,7 +328,7 @@ export default function CommonsPage() {
                   <div>
                     <div className="flex items-center justify-between mb-2.5">
                       <span className="neo-badge text-[9px] bg-white/5 text-slate-300 border-white/10">
-                        VERIFIED STUDY RESOURCE
+                        STUDY RESOURCE
                       </span>
                     </div>
                     <h3 className="font-display text-base font-bold text-[#F8F7FF] mb-1.5">
@@ -448,13 +351,15 @@ export default function CommonsPage() {
                       Shared by {res.uploader_name}
                     </span>
                     {res.file_url && (
-                      <button
-                        onClick={() => alert('Accessing verified study notes...')}
-                        className="btn-campus-amber text-xs font-mono px-3.5 py-1.5 flex items-center gap-1.5 font-bold"
+                      <a
+                        href={res.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-primary text-sm px-3.5 py-1.5 flex items-center gap-1.5"
                       >
                         <FolderDown className="w-3.5 h-3.5" />
                         <span>Download</span>
-                      </button>
+                      </a>
                     )}
                   </div>
                 </div>
