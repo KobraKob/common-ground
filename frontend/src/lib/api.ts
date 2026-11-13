@@ -240,7 +240,7 @@ export async function getMyProfile(): Promise<StudentProfile | null> {
 }
 
 export async function updateMyProfile(payload: Partial<StudentProfile>): Promise<StudentProfile> {
-  const updated = await request<StudentProfile>('/auth/me', {
+  const updated = await request<StudentProfile>('/profiles/me', {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
