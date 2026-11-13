@@ -192,12 +192,12 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* 4-Stage Trust Architecture Visualizer */}
+      {/* Identity status guide */}
       <div className="celestial-card p-6 md:p-8 rounded-xl border border-white/10 bg-[#12151F] space-y-4">
         <div>
           <h3 className="font-display text-lg font-bold text-[#F8F7FF] flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-amber-400" />
-            <span>The 4-Stage Trust Architecture</span>
+            <span>Identity status</span>
           </h3>
           <p className="text-xs text-slate-400 font-mono mt-1">
             CommonGround enforces strict honesty in student affiliations to protect cross-campus trust.
@@ -208,14 +208,14 @@ export default function ProfilePage() {
           {[
             {
               stage: 'STAGE_1_PROVISIONAL' as const,
-              title: 'Stage 1: Provisional',
+              title: 'New',
               badge: 'Self-Reported',
               desc: 'Open onboarding. Self-reported Bengaluru college without official verification.',
               active: profile.verification_stage === 'STAGE_1_PROVISIONAL',
             },
             {
               stage: 'STAGE_2_COMMUNITY_VALIDATED' as const,
-              title: 'Stage 2: Peer-Validated',
+              title: 'Vouched',
               badge: 'Campus Rep Invite',
               desc: 'Validated through trusted student representatives or peer cohort invites.',
               active: profile.verification_stage === 'STAGE_2_COMMUNITY_VALIDATED',
@@ -229,7 +229,7 @@ export default function ProfilePage() {
             },
             {
               stage: 'STAGE_4_OFFICIAL_PARTNER' as const,
-              title: 'Stage 4: Official Partner',
+              title: 'Institutional partner',
               badge: 'Authorized Admin',
               desc: 'Official college department accounts. Never implied for student-led hubs.',
               active: profile.verification_stage === 'STAGE_4_OFFICIAL_PARTNER',
