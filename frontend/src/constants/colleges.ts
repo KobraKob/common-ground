@@ -1,8 +1,8 @@
 import { College } from '@/types';
 
 /**
- * Accredited Bengaluru College Cluster Directory.
- * Official platform institutional reference data.
+ * Curated campus directory used for CommonGround navigation.
+ * Listing a college does not imply an official partnership or endorsement.
  */
 export const BENGALURU_COLLEGES: College[] = [
   {
@@ -86,8 +86,7 @@ export const BENGALURU_COLLEGES: College[] = [
 ];
 
 /**
- * Intelligent college domain detection for fast 2-field signup.
- * Matches any accredited college email (e.g. aarav@rvce.edu.in -> RVCE).
+ * Suggests a campus from an email domain during signup. A domain match is not mailbox ownership verification.
  */
 export function detectCollegeFromEmail(email: string): College | null {
   if (!email || !email.includes('@')) return null;
