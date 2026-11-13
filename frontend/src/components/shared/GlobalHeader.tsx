@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Search, Sun, Moon, UserCheck } from 'lucide-react';
 import { unifiedSearch, setActiveUser, getActiveUserId } from '@/lib/api';
-import { DEMO_USERS, SEED_COLLEGES } from '@/lib/mockData';
+import { DEMO_USERS } from '@/lib/mockData';
 import { TrustBadge } from './TrustBadge';
 
 export function GlobalHeader() {
@@ -13,12 +13,12 @@ export function GlobalHeader() {
   const [isSearching, setIsSearching] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(getActiveUserId());
-  const [selectedCollegeSlug, setSelectedCollegeSlug] = useState('rvce');
 
   useEffect(() => {
     const storedDark = localStorage.getItem('theme') === 'dark';
     setIsDark(storedDark);
     document.documentElement.classList.toggle('dark', storedDark);
+    setCurrentUserId(getActiveUserId());
   }, []);
 
   useEffect(() => {
@@ -61,11 +61,6 @@ export function GlobalHeader() {
     const newUid = e.target.value;
     setActiveUser(newUid);
     setCurrentUserId(newUid);
-    const prof = DEMO_USERS.find((u) => u.user_id === newUid);
-    if (prof?.college_id) {
-      const college = SEED_COLLEGES.find((item) => item.id === prof.college_id);
-      if (college) setSelectedCollegeSlug(college.slug);
-    }
     window.location.reload();
   };
 
