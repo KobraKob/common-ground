@@ -84,7 +84,7 @@ async def verify_can_dm(sender_id: str, recipient_id: str, db: AsyncSession):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Recipient profile is visible only to students from the same campus",
         )
-    if recipient.profile_visibility == "SHARED_COMMUNITIES_ONLY" and not (same_campus or shared_community):
+    if recipient.profile_visibility == "SHARED_COMMUNITIES_ONLY" and not shared_community:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Recipient profile is visible only to shared community members",
