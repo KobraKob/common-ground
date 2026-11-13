@@ -14,6 +14,14 @@ type Summary = {
   projects_created: number;
   events_created: number;
   public_communities: number;
+  event_rsvps: number;
+  searches: number;
+  search_to_profile_open_rate: number | null;
+  average_feed_load_ms: number | null;
+  feed_load_samples: number;
+  top_interests: { topic: string; students: number }[];
+  active_communities: { id: string; name: string; posts_in_period: number }[];
+  minimum_cohort_size: number;
   measurement_note: string;
 };
 
@@ -35,6 +43,8 @@ export default function InsightsPage() {
     { label: 'Projects created · 30d', value: summary.projects_created, icon: FolderKanban },
     { label: 'Events created · 30d', value: summary.events_created, icon: CalendarDays },
     { label: 'Public communities', value: summary.public_communities, icon: Users },
+    { label: 'Event registrations · 30d', value: summary.event_rsvps, icon: CalendarDays },
+    { label: 'Searches · 30d', value: summary.searches, icon: Activity },
   ] : [];
 
   return <div className="cg-page space-y-8">
@@ -43,6 +53,14 @@ export default function InsightsPage() {
     {error && <div role="alert" className="cg-surface flex items-center gap-3 p-5 text-sm"><ShieldAlert className="text-[var(--cg-danger)]"/>{error}</div>}
     {summary && <>
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{metrics.map(({label,value,icon:Icon})=><article key={label} className="cg-surface p-5"><div className="flex items-center justify-between gap-3"><p className="text-sm cg-muted">{label}</p><Icon size={18} className="text-[var(--cg-accent)]"/></div><p className="mt-4 text-3xl font-semibold tabular-nums">{value.toLocaleString()}</p></article>)}</section>
+      <section className="grid gap-4 lg:grid-cols-2">
+        <article className="cg-surface p-5"><h2 className="font-semibold">Discovery quality</h2><p className="mt-3 text-3xl font-semibold tabular-nums">{summary.search_to_profile_open_rate === null ? '—' : `${summary.search_to_profile_open_rate}%`}</p><p className="mt-1 text-sm cg-muted">Search users who also opened a profile during this period. This is overlap, not proof of causation.</p></article>
+        <article className="cg-surface p-5"><h2 className="font-semibold">Feed response</h2><p className="mt-3 text-3xl font-semibold tabular-nums">{summary.average_feed_load_ms === null ? '—' : `${summary.average_feed_load_ms.toLocaleString()} ms`}</p><p className="mt-1 text-sm cg-muted">Average browser-reported feed load across {summary.feed_load_samples.toLocaleString()} samples.</p></article>
+      </section>
+      <section className="grid gap-4 lg:grid-cols-2">
+        <article className="cg-surface p-5"><h2 className="font-semibold">Shared interests</h2><p className="mt-1 text-xs cg-muted">Only topics shared by at least {summary.minimum_cohort_size} public profiles are shown.</p>{summary.top_interests.length ? <ul className="mt-4 space-y-3">{summary.top_interests.map((item)=><li key={item.topic} className="flex items-center justify-between gap-4 text-sm"><span>{item.topic}</span><span className="tabular-nums cg-muted">{item.students} students</span></li>)}</ul> : <p className="mt-4 text-sm cg-muted">Not enough public profile data yet.</p>}</article>
+        <article className="cg-surface p-5"><h2 className="font-semibold">Active public communities</h2><p className="mt-1 text-xs cg-muted">Communities with at least {summary.minimum_cohort_size} visible posts in this period.</p>{summary.active_communities.length ? <ul className="mt-4 space-y-3">{summary.active_communities.map((item)=><li key={item.id} className="flex items-center justify-between gap-4 text-sm"><span>{item.name}</span><span className="tabular-nums cg-muted">{item.posts_in_period} posts</span></li>)}</ul> : <p className="mt-4 text-sm cg-muted">No communities meet the reporting threshold yet.</p>}</article>
+      </section>
       <section className="cg-surface p-5"><h2 className="font-semibold">Measurement notes</h2><p className="mt-2 text-sm leading-6 cg-muted">{summary.measurement_note}</p><p className="mt-3 text-xs cg-muted">Last generated: {new Date(summary.generated_at).toLocaleString()}</p></section>
     </>}
   </div>;
