@@ -29,6 +29,11 @@ class TaskCreateRequest(BaseModel):
     assignee_id: Optional[str] = None
 
 
+class TaskUpdateRequest(BaseModel):
+    status: Optional[str] = None
+    assignee_id: Optional[str] = None
+
+
 class TaskResponse(BaseModel):
     id: str
     project_id: str
