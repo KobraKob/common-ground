@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, Plus, Users } from 'lucide-react';
-import { createProject, createProjectTask, getMyProfile, getProjectMembers, getProjectTasks, getProjects, requestToJoinProject, updateProjectTask } from '@/lib/api';
-import type { ProjectItem, ProjectMemberItem, StudentProfile, TaskItem } from '@/types';
+import { createProject, createProjectTask, getMyProfile, getProjectJoinRequests, getProjectMembers, getProjectTasks, getProjects, requestToJoinProject, updateProjectMemberStatus, updateProjectTask } from '@/lib/api';
+import type { ProjectItem, ProjectJoinRequestItem, ProjectMemberItem, StudentProfile, TaskItem } from '@/types';
 
 export default function BuildPage() {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
@@ -25,6 +25,8 @@ export default function BuildPage() {
   const [workspaceError, setWorkspaceError] = useState('');
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [members, setMembers] = useState<ProjectMemberItem[]>([]);
+  const [joinRequests, setJoinRequests] = useState<ProjectJoinRequestItem[]>([]);
+  const [workspaceNotice, setWorkspaceNotice] = useState('');
   const [selectedAssignee, setSelectedAssignee] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskBusy, setTaskBusy] = useState(false);
@@ -77,16 +79,36 @@ export default function BuildPage() {
   }
 
   async function openWorkspace(project: ProjectItem) {
-    setWorkspace(project); setTasks([]); setMembers([]); setWorkspaceError('');
+    setWorkspace(project); setTasks([]); setMembers([]); setJoinRequests([]); setWorkspaceError(''); setWorkspaceNotice('');
     setSelectedAssignee(profile?.user_id || '');
     try {
-      const [projectTasks, projectMembers] = await Promise.all([
+      const isLead = profile?.user_id === project.creator_id;
+      const [projectTasks, projectMembers, pendingRequests] = await Promise.all([
         getProjectTasks(project.id),
         getProjectMembers(project.id),
+        isLead ? getProjectJoinRequests(project.id) : Promise.resolve([]),
       ]);
       setTasks(projectTasks);
       setMembers(projectMembers);
+      setJoinRequests(pendingRequests);
     } catch { setWorkspaceError('Workspace access is limited to the project lead and accepted collaborators.'); }
+  }
+
+  async function reviewJoinRequest(request: ProjectJoinRequestItem, status: 'ACCEPTED' | 'DECLINED') {
+    if (!workspace) return;
+    setTaskBusy(true); setWorkspaceError(''); setWorkspaceNotice('');
+    try {
+      await updateProjectMemberStatus(workspace.id, request.member_id, status);
+      setJoinRequests((current) => current.filter((item) => item.member_id !== request.member_id));
+      if (status === 'ACCEPTED') {
+        setMembers(await getProjectMembers(workspace.id));
+        setWorkspaceNotice(`${request.display_name} joined the project team.`);
+      } else {
+        setWorkspaceNotice(`Declined ${request.display_name}'s request.`);
+      }
+    } catch (error: any) {
+      setWorkspaceError(error?.detail || 'Could not update this join request.');
+    } finally { setTaskBusy(false); }
   }
 
   async function changeTask(task: TaskItem, changes: { status?: TaskItem['status']; assignee_id?: string | null }) {
@@ -150,6 +172,8 @@ export default function BuildPage() {
     {joinProject && <div role="dialog" aria-modal="true" aria-labelledby="join-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><form onSubmit={handleJoin} className="cg-surface w-full max-w-lg space-y-4 p-6"><h2 id="join-title" className="text-xl font-semibold">Request to join {joinProject.title}</h2><label className="block text-sm font-medium">Role you want<input value={joinRole} onChange={(e)=>setJoinRole(e.target.value)} className="celestial-input mt-2 w-full px-3"/></label><label className="block text-sm font-medium">Why should the team work with you?<textarea required minLength={5} rows={4} value={joinNote} onChange={(e)=>setJoinNote(e.target.value)} className="celestial-input mt-2 w-full px-3 py-2"/></label><div className="flex justify-end gap-2"><button type="button" onClick={()=>setJoinProject(null)} className="min-h-11 rounded-full px-4 text-sm">Cancel</button><button disabled={submitting} className="btn-campus-amber min-h-11 rounded-full px-5">{submitting?'Sending…':'Send request'}</button></div></form></div>}
 
     {workspace && <div role="dialog" aria-modal="true" aria-labelledby="workspace-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><section className="cg-surface max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6"><div className="flex items-start justify-between gap-3"><div><p className="cg-eyebrow">PROJECT WORKSPACE</p><h2 id="workspace-title" className="mt-1 text-2xl font-semibold">{workspace.title}</h2></div><button onClick={()=>setWorkspace(null)} aria-label="Close workspace" className="min-h-11 min-w-11 rounded-full bg-[var(--cg-elevated)]">×</button></div><div className="mt-5 space-y-4">
+        {isWorkspaceLead && <section><div className="flex items-center justify-between gap-3"><h3 className="font-semibold">Join requests</h3><span className="text-xs cg-muted">{joinRequests.length} pending</span></div>{joinRequests.length ? <ul className="mt-3 space-y-3">{joinRequests.map((request)=><li key={request.member_id} className="rounded-xl bg-[var(--cg-elevated)] p-3"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-semibold">{request.display_name}</p><p className="text-xs cg-muted">@{request.handle} · {request.role_title}</p></div><span className="text-xs cg-muted">{new Date(request.requested_at).toLocaleDateString()}</span></div>{request.pitch_note && <p className="mt-2 text-sm leading-6">{request.pitch_note}</p>}<div className="mt-3 flex gap-2"><button disabled={taskBusy} onClick={()=>reviewJoinRequest(request,'ACCEPTED')} className="min-h-10 rounded-full bg-[var(--cg-accent)] px-4 text-xs font-semibold text-white">Accept</button><button disabled={taskBusy} onClick={()=>reviewJoinRequest(request,'DECLINED')} className="min-h-10 rounded-full border border-[var(--cg-border)] px-4 text-xs">Decline</button></div></li>)}</ul> : <p className="mt-2 text-sm cg-muted">No pending requests.</p>}</section>}
+        {workspaceNotice && <p role="status" className="text-sm text-[var(--cg-success)]">{workspaceNotice}</p>}
         <section><h3 className="font-semibold">Team</h3>{members.length ? <ul className="mt-3 flex flex-wrap gap-2">{members.map((member)=><li key={member.user_id} className="rounded-full bg-[var(--cg-elevated)] px-3 py-1.5 text-xs">{member.display_name} · {member.role_title}</li>)}</ul> : <p className="mt-2 text-sm cg-muted">Accepted team members will appear here.</p>}</section>
         <section><h3 className="font-semibold">Tasks</h3>{workspaceError && <p role="alert" className="text-sm text-[var(--cg-danger)]">{workspaceError}</p>}
           {tasks.length ? <div className="mt-3 space-y-2">{tasks.map((task)=><div key={task.id} className="grid gap-2 rounded-xl bg-[var(--cg-elevated)] p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
