@@ -9,6 +9,10 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api/v1"
     PORT: int = 8000
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 1800
     HOST: str = "0.0.0.0"
     SECRET_KEY: str = ""
     
