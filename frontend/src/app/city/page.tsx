@@ -632,7 +632,7 @@ export default function CityPage() {
                   {post.media_url && (
                     <div
                       onClick={() => setLightboxImage({ url: post.media_url!, title: post.title, author: post.author_name || 'Student' })}
-                      className="rounded-xl overflow-hidden border border-white/10 max-h-96 cursor-pointer bg-black/50 relative group"
+                      className="relative aspect-[4/5] max-h-96 cursor-pointer overflow-hidden rounded-xl border border-[var(--separator)] bg-black/50"
                     >
                       <Image
                         src={post.media_url}
