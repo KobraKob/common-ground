@@ -6,18 +6,21 @@ from app.modules.commons.models import Post
 from app.modules.colleges.models import College
 from app.modules.communities.models import Community
 from app.modules.projects.models import Project
+from app.modules.identity.models import User
 
 
 @pytest.mark.asyncio
-async def test_performance_monitoring_and_headers(client: AsyncClient):
+async def test_performance_monitoring_and_headers(client: AsyncClient, db_session):
     # Test health check receives performance timing headers
     res = await client.get("/health")
     assert res.status_code == 200
     assert "x-response-time" in res.headers
     assert "server-timing" in res.headers
 
-    # Test metrics endpoint
-    metrics_res = await client.get("/api/v1/system/metrics")
+    # Runtime metrics are restricted to moderators and administrators.
+    db_session.add(User(id="metrics-moderator", email="metrics@moderator.test", platform_role="MODERATOR"))
+    await db_session.commit()
+    metrics_res = await client.get("/api/v1/system/metrics", headers={"X-User-Id": "metrics-moderator"})
     assert metrics_res.status_code == 200
     data = metrics_res.json()
     assert "total_requests" in data
