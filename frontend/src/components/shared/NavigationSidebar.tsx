@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Building2, Compass, BookOpen, MessageSquare, Hammer, User, ShieldCheck, Map } from 'lucide-react';
-import { getActiveProfile, isAuthenticated } from '@/lib/api';
+import { getActiveProfile, getMyProfile, isAuthenticated } from '@/lib/api';
 
 const desktopItems = [
   { href: '/city', label: 'City', icon: Compass },
@@ -22,9 +22,20 @@ export function NavigationSidebar() {
   const [isModerator, setIsModerator] = useState(false);
 
   useEffect(() => {
-    const profile = getActiveProfile() as any;
-    const role = profile?.role || profile?.platform_role;
-    setIsModerator(isAuthenticated() && (role === 'MODERATOR' || role === 'ADMIN'));
+    let active = true;
+    const cachedProfile = getActiveProfile();
+    const cachedRole = cachedProfile?.platform_role;
+    if (!isAuthenticated()) {
+      setIsModerator(false);
+    } else if (cachedRole) {
+      setIsModerator(cachedRole === 'MODERATOR' || cachedRole === 'ADMIN');
+    } else {
+      getMyProfile().then((profile) => {
+        if (!active) return;
+        setIsModerator(profile?.platform_role === 'MODERATOR' || profile?.platform_role === 'ADMIN');
+      });
+    }
+    return () => { active = false; };
   }, [pathname]);
 
   const active = (href: string) => pathname === href || (href !== '/' && pathname.startsWith(href + '/'));
