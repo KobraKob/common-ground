@@ -38,6 +38,7 @@ export default function CommonsPage() {
   const [qBody, setQBody] = useState('');
   const [qTags, setQTags] = useState('DSA, Academics');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [reportTarget, setReportTarget] = useState<{ id: string; type: any; title: string } | null>(null);
 
   useEffect(() => {
@@ -66,6 +67,7 @@ export default function CommonsPage() {
     e.preventDefault();
     if (!qTitle.trim() || !qBody.trim()) return;
     setIsSubmitting(true);
+    setErrorMessage('');
     try {
       const tagsList = qTags.split(',').map((t) => t.trim()).filter(Boolean);
       const created = await createPost({
@@ -80,7 +82,7 @@ export default function CommonsPage() {
       setQBody('');
       setShowAskModal(false);
     } catch {
-      alert('Failed to publish question. Please try again.');
+      setErrorMessage('Your question could not be published. Check your connection and try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -368,6 +370,8 @@ export default function CommonsPage() {
           )}
         </div>
       )}
+
+      {errorMessage && <p role="alert" className="rounded-xl bg-[var(--surface)] p-3 text-sm text-[var(--danger)]">{errorMessage}</p>}
 
       {/* Ask Question Modal */}
       {showAskModal && (
