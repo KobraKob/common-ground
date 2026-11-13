@@ -554,6 +554,13 @@ export async function updateProjectTask(projectId: string, taskId: string, paylo
   return await request<TaskItem>(`/projects/${projectId}/tasks/${taskId}`, { method: 'PATCH', body: JSON.stringify(payload) });
 }
 
+export async function requestToJoinProject(projectId: string, roleTitle: string, pitchNote: string): Promise<any> {
+  return await request<any>(`/projects/${projectId}/join-request`, {
+    method: 'POST',
+    body: JSON.stringify({ role_title: roleTitle, pitch_note: pitchNote }),
+  });
+}
+
 export async function createProject(payload: any): Promise<ProjectItem> {
   return await request<ProjectItem>('/projects', {
     method: 'POST',
