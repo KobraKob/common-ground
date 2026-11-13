@@ -92,6 +92,13 @@ async def test_mentorship_respects_mentor_contact_permissions(client: AsyncClien
     db_session.add(MentorshipProfile(user_id=mentor.id, is_available=True, topics=["Design"]))
     await db_session.commit()
 
+    directory = await client.get(
+        "/api/v1/mentorship/mentors",
+        headers={"X-User-Id": requester.id},
+    )
+    assert directory.status_code == 200
+    assert directory.json() == []
+
     response = await client.post(
         "/api/v1/mentorship/requests",
         json={"mentor_id": mentor.id, "note": "I would appreciate advice on my portfolio."},
