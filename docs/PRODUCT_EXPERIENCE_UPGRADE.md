@@ -79,7 +79,7 @@ These are intentionally not represented as shipped functionality:
 ## Acceptance gates
 
 - Backend test suite passes, including new analytics and project permission tests.
-- Frontend lint and production build pass.
+- Frontend TypeScript static check and production build pass.
 - Dependency and secret scanning pass.
 - Staging database migration is applied and rolled back in a rehearsal.
 - Project workspace authorization is verified for owner, accepted member, pending member and unrelated user.
