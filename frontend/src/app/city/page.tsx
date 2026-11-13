@@ -315,7 +315,8 @@ export default function CityPage() {
     ? students
     : students.filter((s) => s.skills.some((sk) => sk.toLowerCase() === selectedSkillFilter.toLowerCase()));
 
-  const renderPostCard = (post: Post) => (<div
+  const renderPostCard = (post: Post) => {
+    return (<div
                   key={post.id}
                   id={`post-${post.id}`}
                   className="celestial-card p-5 sm:p-6 space-y-4"
@@ -486,6 +487,7 @@ export default function CityPage() {
                     </div>
                   )}
                 </div>);
+  };
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto py-2">
