@@ -3,7 +3,7 @@ from httpx import AsyncClient
 
 from app.modules.identity.models import StudentProfile, User
 from app.modules.colleges.models import College
-from app.modules.projects.models import Project
+from app.modules.projects.models import Project, ProjectMember, Task
 
 
 @pytest.mark.asyncio
@@ -69,3 +69,61 @@ async def test_cross_campus_closed_project_rejects_external_join(client: AsyncCl
     )
 
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_task_assignment_and_status_permissions(client: AsyncClient, db_session):
+    owner = User(id="task-owner", email="task-owner@project.test", platform_role="USER")
+    assignee = User(id="task-assignee", email="task-assignee@project.test", platform_role="USER")
+    other_member = User(id="task-other", email="task-other@project.test", platform_role="USER")
+    db_session.add_all([owner, assignee, other_member])
+    db_session.add(Project(
+        id="task-permissions-project",
+        creator_id=owner.id,
+        title="Task permissions",
+        pitch="Verify project task ownership",
+        description="Check who can assign and update project tasks.",
+        stage="RECRUITING",
+        skills_needed=[],
+        open_roles=[],
+        is_cross_campus_open=True,
+    ))
+    db_session.add_all([
+        ProjectMember(project_id="task-permissions-project", user_id=assignee.id, role_title="Developer", status="ACCEPTED"),
+        ProjectMember(project_id="task-permissions-project", user_id=other_member.id, role_title="Designer", status="ACCEPTED"),
+    ])
+    db_session.add(Task(
+        id="assigned-task",
+        project_id="task-permissions-project",
+        title="Implement a feature",
+        status="TODO",
+        assignee_id=assignee.id,
+    ))
+    await db_session.commit()
+
+    forbidden_assignment = await client.post(
+        "/api/v1/projects/task-permissions-project/tasks",
+        json={"title": "Assign someone else's task", "assignee_id": other_member.id},
+        headers={"X-User-Id": assignee.id},
+    )
+    forbidden_update = await client.patch(
+        "/api/v1/projects/task-permissions-project/tasks/assigned-task",
+        json={"status": "DONE"},
+        headers={"X-User-Id": other_member.id},
+    )
+    allowed_update = await client.patch(
+        "/api/v1/projects/task-permissions-project/tasks/assigned-task",
+        json={"status": "IN_PROGRESS"},
+        headers={"X-User-Id": assignee.id},
+    )
+    lead_assignment = await client.patch(
+        "/api/v1/projects/task-permissions-project/tasks/assigned-task",
+        json={"assignee_id": other_member.id},
+        headers={"X-User-Id": owner.id},
+    )
+
+    assert forbidden_assignment.status_code == 403
+    assert forbidden_update.status_code == 403
+    assert allowed_update.status_code == 200
+    assert lead_assignment.status_code == 200
+    assert lead_assignment.json()["assignee_id"] == other_member.id
