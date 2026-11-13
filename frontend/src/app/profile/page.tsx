@@ -90,7 +90,7 @@ export default function ProfilePage() {
         <User className="w-12 h-12 text-[#FBBF24] mx-auto" />
         <h2 className="font-display text-xl font-bold text-white">Sign in to view your profile</h2>
         <p className="text-xs font-mono text-slate-400">
-          Access your verified credentials, course badges, and privacy controls.
+          Manage your profile, identity checks and privacy settings.
         </p>
         <div className="flex gap-3 justify-center pt-2">
           <Link href="/login" className="btn-campus-amber text-xs font-mono px-5 py-2 font-bold">
@@ -105,7 +105,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8"><div className="flex justify-end"><Link href="/passport" className="text-link">View student passport <ArrowUpRight size={16} /></Link></div>
       {/* Student Identity Showcase & Holographic Pass */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left: 3D Holographic Student ID Card */}
@@ -113,7 +113,7 @@ export default function ProfilePage() {
           <div className="relative group w-full flex justify-center">
             <StudentHoloCard
               profile={profile}
-              contactText={profile.verification_stage === 'STAGE_3_INSTITUTIONAL_VERIFIED' ? 'Verified' : 'Verify Email'}
+              contactText={profile.verification_stage === 'STAGE_3_INSTITUTIONAL_VERIFIED' ? 'Verified' : 'Request review'}
               onContactClick={() => {
                 if (profile.verification_stage !== 'STAGE_3_INSTITUTIONAL_VERIFIED') {
                   setShowVerifyModal(true);
@@ -149,7 +149,7 @@ export default function ProfilePage() {
                   className="btn-campus-amber shrink-0 text-xs font-mono px-4 py-2 font-bold flex items-center gap-1.5 shadow-sm"
                 >
                   <Mail className="w-3.5 h-3.5" />
-                  <span>Verify College Email</span>
+                  <span>Request verification review</span>
                 </button>
               )}
             </div>
@@ -175,7 +175,7 @@ export default function ProfilePage() {
             {/* Skills Badges */}
             <div className="pt-3 border-t border-white/10">
               <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-2.5 font-semibold">
-                Verified Skill Stacks
+                Skills and interests
               </div>
               <div className="flex flex-wrap gap-2">
                 {profile.skills.map((s) => (
@@ -332,13 +332,13 @@ export default function ProfilePage() {
               </button>
             </div>
             <p className="text-xs font-mono text-slate-400">
-              Enter your college email address ending in .edu.in or .ac.in to unlock the Stage 3 Verified Student badge.
+              Enter your college email to submit an institutional verification request. A matching domain alone does not verify mailbox ownership.
             </p>
 
             {verifySubmitted ? (
               <div className="p-4 bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 rounded-xl text-center text-xs font-mono flex items-center justify-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Verification link dispatched. Please check your student inbox!</span>
+                <span>Request submitted. Your account remains new until the review is complete.</span>
               </div>
             ) : (
               <form onSubmit={handleRequestVerification} className="space-y-4">
