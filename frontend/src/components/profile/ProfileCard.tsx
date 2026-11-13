@@ -45,19 +45,19 @@ const THEMES: Record<'dark' | 'light', ThemeStyles> = {
     '--pc-shade': 'rgba(0, 0, 0, 0.4)'
   },
   light: {
-    '--pc-frame': 'rgba(240, 240, 243, 0.8)',
-    '--pc-frame-edge': 'rgba(24, 24, 27, 0.07)',
-    '--pc-frame-highlight': 'rgba(255, 255, 255, 0.95)',
-    '--pc-frame-shadow': '0 22px 44px -22px rgba(24, 24, 27, 0.3), 0 6px 16px -10px rgba(24, 24, 27, 0.16)',
-    '--pc-tile': 'linear-gradient(180deg, #ffffff 0%, #f6f6f8 100%)',
-    '--pc-tile-edge': 'rgba(24, 24, 27, 0.08)',
-    '--pc-tile-highlight': 'rgba(255, 255, 255, 1)',
-    '--pc-tile-shadow': '0 4px 10px -5px rgba(24, 24, 27, 0.25)',
-    '--pc-ink': '#27272a',
-    '--pc-muted': 'rgba(39, 39, 42, 0.6)',
-    '--pc-hover': 'brightness(0.97)',
-    '--pc-press': 'brightness(0.92)',
-    '--pc-shade': 'rgba(24, 24, 27, 0.14)'
+    '--pc-frame': 'rgba(214, 181, 136, 0.34)',
+    '--pc-frame-edge': 'rgba(112, 94, 70, 0.24)',
+    '--pc-frame-highlight': 'rgba(255, 255, 255, 0.58)',
+    '--pc-frame-shadow': '0 16px 34px -24px rgba(66, 39, 1, 0.24), 0 4px 12px -8px rgba(66, 39, 1, 0.12)',
+    '--pc-tile': 'linear-gradient(180deg, #FCFAF6 0%, #EDE6DC 100%)',
+    '--pc-tile-edge': 'rgba(112, 94, 70, 0.22)',
+    '--pc-tile-highlight': 'rgba(255, 255, 255, 0.72)',
+    '--pc-tile-shadow': '0 3px 8px -5px rgba(66, 39, 1, 0.18)',
+    '--pc-ink': '#422701',
+    '--pc-muted': 'rgba(112, 94, 70, 0.82)',
+    '--pc-hover': 'brightness(0.99)',
+    '--pc-press': 'brightness(0.96)',
+    '--pc-shade': 'rgba(66, 39, 1, 0.08)'
   }
 };
 
