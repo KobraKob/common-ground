@@ -159,8 +159,8 @@ export default function DiscoverPage() {
         <Link href="/mentorship" className="cg-link inline-flex min-h-11 items-center text-sm font-medium">Explore peer mentorship <ExternalLink size={14} className="ml-2"/></Link>
       </header>
 
-      <section aria-label="Campus intelligence snapshot" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[['Campuses', colleges.length], ['Interest circles', circles.length], ['Projects listed', projects.length], ['Upcoming events', upcoming.length], ['Opportunities', opportunities.length]].map(([label, value]) => <div key={label} className="cg-surface p-4"><p className="text-xs cg-muted">{label}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p></div>)}
+      <section aria-label="Community overview" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-[var(--cg-border)] py-4">
+        {[['Campuses', colleges.length], ['Interest circles', circles.length], ['Projects listed', projects.length], ['Upcoming events', upcoming.length], ['Opportunities', opportunities.length]].map(([label, value]) => <div key={label} className="min-w-[104px]"><p className="text-xs cg-muted">{label}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p></div>)}
       </section>
 
       <div className="flex flex-wrap gap-2 border-b border-[var(--cg-border)] pb-3" role="tablist" aria-label="Discovery categories">
@@ -170,7 +170,7 @@ export default function DiscoverPage() {
 
       {discoveryQuery.isError && <p role="alert" className="rounded-xl border border-[var(--cg-border)] bg-[var(--cg-surface)] px-4 py-3 text-sm">Some discovery data could not be loaded. Refresh to try again.</p>}
       {profile && <section className="space-y-4">
-        <div><p className="cg-eyebrow">PERSONALIZED DISCOVERY</p><h2 className="mt-2 text-2xl font-semibold">Recommended for you</h2><p className="mt-1 text-sm cg-muted">Transparent matches from your listed skills, interests and campus. No opaque recommendation score.</p></div>
+        <div><p className="cg-eyebrow">A FEW PLACES TO START</p><h2 className="mt-2 text-2xl font-semibold">Worth a look</h2><p className="mt-1 text-sm cg-muted">Transparent matches from your listed skills, interests and campus. No opaque recommendation score.</p></div>
         {recommendations.length ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{recommendations.map((item)=><article key={item.kind+item.id} className="cg-surface flex flex-col p-4"><div className="flex items-center justify-between gap-2"><span className="cg-eyebrow">{item.kind}</span><span className="text-xs cg-muted">{item.reason}</span></div><h3 className="mt-3 font-semibold">{item.title}</h3><p className="mt-2 line-clamp-3 flex-1 text-sm cg-muted">{item.description}</p><button type="button" onClick={()=>setSection(item.section)} className="cg-link mt-4 inline-flex min-h-11 items-center self-start text-sm font-medium">Explore {item.kind.toLowerCase()} <ArrowUpRight size={14} className="ml-2"/></button></article>)}</div> : <div className="cg-surface flex flex-wrap items-center justify-between gap-3 p-5"><p className="text-sm cg-muted">{profileSignals.size ? 'No direct matches yet. Explore all listings or update your interests.' : 'Add skills and interests to your profile to receive relevant project, event and community suggestions.'}</p><Link href="/profile" className="cg-link inline-flex min-h-11 items-center text-sm">Update profile <ArrowUpRight size={14} className="ml-1"/></Link></div>}
       </section>}
       {notice && <p role="status" className="rounded-xl border border-[var(--cg-border)] bg-[var(--cg-surface)] px-4 py-3 text-sm">{notice}</p>}
