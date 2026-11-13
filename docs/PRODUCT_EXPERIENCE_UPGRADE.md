@@ -63,10 +63,6 @@ Prioritise meaningful collaboration and repeat utility over vanity engagement me
 - **Weekly retention:** percentage of students active in both the previous 7-day window and the current 7-day window.
 - **Search-to-connection:** percentage of distinct searching students with a later connection event in the selected period. This is user-level attribution, not query-level attribution.
 - **City feed p75:** 75th percentile of initial city-feed data-load duration from authenticated client samples. It is not a substitute for LCP/INP/CLS or a full page-load measurement.
-- **Event registrations:** GOING RSVP records created in the selected period; not proof of attendance.
-- **Weekly retention:** percentage of students active in both the previous 7-day window and the current 7-day window.
-- **Search-to-connection:** percentage of distinct searching students with a later connection event in the selected period. This is user-level attribution, not query-level attribution.
-- **City feed p75:** 75th percentile of initial city-feed data-load duration from authenticated client samples. It is not a substitute for LCP/INP/CLS or a full page-load measurement.
 - **Public communities:** visible community inventory, not active membership.
 
 The analytics dashboard displays this measurement limitation directly. It intentionally does not expose individual activity.
