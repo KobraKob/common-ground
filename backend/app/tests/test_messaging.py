@@ -66,6 +66,7 @@ async def test_direct_messaging_is_private_and_idempotent(client: AsyncClient, d
         headers={"X-User-Id": recipient.id},
     )
     assert recipient_inbox.status_code == 200
+    assert recipient_inbox.json()[0]["title"] == "Message Sender"
     assert recipient_inbox.json()[0]["last_message"] == "Could you review my project portfolio?"
 
     recipient_messages = await client.get(
