@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   MessageSquare, 
   Megaphone, 
@@ -29,6 +29,7 @@ export default function MessagesPage() {
   const [messageSearch, setMessageSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [myProfile, setMyProfile] = useState<StudentProfile | null>(null);
+  const messageRequestId = useRef(0);
 
   // Report modal
   const [reportTarget, setReportTarget] = useState<{ id: string; type: any; title: string } | null>(null);
@@ -53,9 +54,11 @@ export default function MessagesPage() {
   }, []);
 
   const handleSelectConv = async (convId: string) => {
+    const requestId = ++messageRequestId.current;
     setSelectedConvId(convId);
+    setMessages([]);
     const msgs = await getMessages(convId);
-    setMessages(msgs);
+    if (requestId === messageRequestId.current) setMessages(msgs);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -63,7 +66,7 @@ export default function MessagesPage() {
     if (!messageInput.trim() || !selectedConvId) return;
     try {
       const newMsg = await sendMessage(selectedConvId, messageInput.trim());
-      setMessages([...messages, newMsg]);
+      setMessages((current) => [...current, newMsg]);
       setMessageInput('');
     } catch {
       alert('Failed to deliver message');
