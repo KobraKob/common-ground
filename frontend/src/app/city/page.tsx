@@ -27,7 +27,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { 
-  getPosts, 
+  getPostsPaginated, 
   getCommunities, 
   getStudents,
   votePoll, 
@@ -56,6 +56,9 @@ export default function CityPage() {
   const [sortOrder, setSortOrder] = useState<'LATEST' | 'POPULAR'>('LATEST');
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [hasMorePosts, setHasMorePosts] = useState(false);
+  const [nextPostOffset, setNextPostOffset] = useState(0);
+  const [isLoadingMorePosts, setIsLoadingMorePosts] = useState(false);
 
   // Poll voting state
   const [votedPolls, setVotedPolls] = useState<Record<string, string>>({});
@@ -93,16 +96,14 @@ export default function CityPage() {
     async function loadData() {
       setLoading(true);
       try {
-        const [pData, cData, peers] = await Promise.all([
-          getPosts('city'),
+        const [postPage, cData, peers] = await Promise.all([
+          getPostsPaginated({ scope: 'city', limit: 12, offset: 0 }),
           getCommunities(),
           getStudents(),
         ]);
-        if (!pData || pData.length === 0) {
-          setPosts([]);
-        } else {
-          setPosts(pData);
-        }
+        setPosts(postPage.items);
+        setHasMorePosts(postPage.hasMore);
+        setNextPostOffset(postPage.nextOffset);
         setCommunities((cData || []).filter((c) => c.community_type === 'CROSS_CAMPUS_INTEREST' || !c.college_id));
         setStudents(peers || []);
       } catch (err) {
@@ -114,6 +115,22 @@ export default function CityPage() {
     }
     loadData();
   }, []);
+
+  const loadMorePosts = async () => {
+    if (isLoadingMorePosts || !hasMorePosts) return;
+    setIsLoadingMorePosts(true);
+    try {
+      const page = await getPostsPaginated({ scope: 'city', limit: 12, offset: nextPostOffset });
+      setPosts((current) => {
+        const seen = new Set(current.map((post) => post.id));
+        return [...current, ...page.items.filter((post) => !seen.has(post.id))];
+      });
+      setHasMorePosts(page.hasMore);
+      setNextPostOffset(page.nextOffset);
+    } finally {
+      setIsLoadingMorePosts(false);
+    }
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -609,6 +626,7 @@ export default function CityPage() {
                         alt={post.title || 'Post media'}
                         className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-[1.01]"
                         loading="lazy"
+                        decoding="async"
                       />
                     </div>
                   )}
@@ -726,6 +744,14 @@ export default function CityPage() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+          {hasMorePosts && (
+            <div className="flex justify-center pt-2">
+              <button type="button" onClick={loadMorePosts} disabled={isLoadingMorePosts}
+                className="min-h-11 rounded-full border border-[var(--cg-border)] px-5 text-sm font-medium text-[var(--cg-text)] hover:bg-[var(--cg-elevated)] disabled:opacity-50">
+                {isLoadingMorePosts ? 'Loading posts…' : 'Load more posts'}
+              </button>
             </div>
           )}
         </div>
