@@ -20,10 +20,10 @@ The repository now contains a browser smoke suite using Playwright and axe. It c
 ## 2. Dependency reproducibility
 
 - Keep `frontend/package-lock.json` committed. CI must use `npm ci`, never `npm install`.
-- `backend/requirements.in` is the Python input manifest. Generate a complete, hash-pinned lock using:
-  `pip-compile --generate-hashes --resolver=backtracking --output-file=backend/requirements.lock backend/requirements.in`
-  Run from repository root with pip-tools installed.
-- Once the lock is generated and reviewed, install in CI with `pip-sync backend/requirements.lock` and use the lock as the cache key.
+- `backend/requirements.in` is the Python input manifest. Regenerate the exact-version lock from the `backend/` directory with:
+  `pip-compile --resolver=backtracking --output-file=requirements.lock requirements.in`
+- CI and legacy backend installs use `backend/requirements.lock`; `backend/requirements.txt` delegates to that lock. `pip-audit` audits the same locked file.
+- The current lock pins direct and transitive package versions but does not yet include artifact hashes. Add `--generate-hashes` during the next lock refresh and commit the resulting reviewed hash set.
 - Dependabot updates must be reviewed and pass the same CI gates. Do not auto-merge dependency updates into production.
 - Pin GitHub Actions to reviewed full commit SHAs as a follow-up hardening task; major-version tags are used in the initial workflows for maintainability.
 
