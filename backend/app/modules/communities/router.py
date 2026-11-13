@@ -1,5 +1,6 @@
 import uuid
 from typing import List, Optional
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc, func
@@ -440,8 +441,26 @@ async def list_conversation_messages(
             and_(ConversationMember.conversation_id == conversation_id, ConversationMember.user_id == user.id)
         )
     )
-    if not mem_res.scalar_one_or_none():
+    member = mem_res.scalar_one_or_none()
+    if not member:
         raise HTTPException(status_code=403, detail="You do not have access to this conversation")
+
+    conversation_result = await db.execute(
+        select(Conversation).where(Conversation.id == conversation_id)
+    )
+    conversation = conversation_result.scalar_one_or_none()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if conversation.conversation_type == "DIRECT":
+        other_result = await db.execute(
+            select(ConversationMember.user_id).where(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.user_id != user.id,
+            ).limit(1)
+        )
+        other_user_id = other_result.scalar_one_or_none()
+        if other_user_id:
+            await verify_can_dm(user.id, other_user_id, db)
 
     query = (
         select(Message, StudentProfile.display_name, StudentProfile.handle)
@@ -462,6 +481,10 @@ async def list_conversation_messages(
     query = query.order_by(Message.created_at.asc()).offset(offset).limit(limit)
     result = await db.execute(query)
     rows = result.all()
+
+    from datetime import datetime, timezone
+    member.last_read_at = datetime.now(timezone.utc)
+    await db.commit()
 
     has_more = (offset + len(rows)) < total_count
     response.headers["X-Total-Count"] = str(total_count)
@@ -496,6 +519,22 @@ async def send_message(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    body = payload.body.strip()
+    if not body:
+        raise HTTPException(status_code=422, detail="Message cannot be empty")
+    if len(body) > 5000:
+        raise HTTPException(status_code=422, detail="Message exceeds the 5000 character limit")
+
+    recent_since = datetime.now(timezone.utc) - timedelta(minutes=1)
+    recent_count_result = await db.execute(
+        select(func.count(Message.id)).where(
+            Message.sender_id == user.id,
+            Message.created_at >= recent_since,
+        )
+    )
+    if int(recent_count_result.scalar() or 0) >= 30:
+        raise HTTPException(status_code=429, detail="Message rate limit reached. Try again shortly.")
+
     # Verify membership
     mem_res = await db.execute(
         select(ConversationMember).where(
@@ -539,7 +578,7 @@ async def send_message(
         conversation_id=conversation_id,
         sender_id=user.id,
         reply_to_message_id=payload.reply_to_message_id,
-        body=payload.body,
+        body=body,
         attachments=payload.attachments,
         is_announcement=is_announcement,
         created_at=now,
