@@ -489,6 +489,27 @@ export async function sendMessage(conversationId: string, body: string): Promise
 // Projects & Events
 // ----------------------------------------------------
 
+export type MyContributions = {
+  posts_created: number;
+  questions_asked: number;
+  useful_answers: number;
+  communities: { id: string; name: string; slug: string; joined_at: string }[];
+  events_attended: { id: string; title: string; starts_at: string; attended_at: string }[];
+  attendance_note: string;
+};
+
+export async function getMyContributions(): Promise<MyContributions> {
+  return await request<MyContributions>('/profiles/me/contributions');
+}
+
+export async function getMyEventAttendance(): Promise<{ id: string; event_id: string; title: string; starts_at: string; attended_at: string }[]> {
+  return await request('/events/attendance/mine');
+}
+
+export async function markEventAttendance(eventId: string, attendeeId: string): Promise<{ marked: boolean; already_marked: boolean }> {
+  return await request(`/events/${eventId}/attendance/${attendeeId}`, { method: 'POST' });
+}
+
 export async function getMyProjects(): Promise<ProjectItem[]> {
   try { return await request<ProjectItem[]>('/projects/mine'); }
   catch { return []; }
