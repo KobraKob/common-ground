@@ -69,6 +69,12 @@ jobs:
           exit 1
       - name: Smoke test rendered routes
         run: npm run smoke
+      - name: Install ephemeral browser-test dependencies
+        run: npm install --no-save --package-lock=false playwright @axe-core/playwright
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+      - name: Run responsive and accessibility browser tests
+        run: npm run e2e
       - name: Install pinned browser test tooling
         run: npm install --prefix /tmp/cg-e2e --no-save --package-lock=false playwright@1.54.0 @axe-core/playwright@4.10.2
       - name: Install Chromium
