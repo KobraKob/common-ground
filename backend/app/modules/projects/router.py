@@ -314,9 +314,9 @@ async def update_project_member_status(
 
         is_cross = bool(col1 and col2 and col1 != col2)
         analytics = AnalyticsEvent(
-            user_id=user.id,
+            user_id=member.user_id,
             event_name="connection_created",
-            college_id=col1,
+            college_id=col2,
             is_cross_campus_interaction=is_cross,
             event_metadata={"surface": "build"},
         )
