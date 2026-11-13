@@ -57,6 +57,8 @@ export interface College {
   is_active_cluster: boolean;
   member_count?: number;
   community_count?: number;
+  latitude?: number | null;
+  longitude?: number | null;
   created_at: string;
 }
 
