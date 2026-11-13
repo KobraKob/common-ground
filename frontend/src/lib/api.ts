@@ -351,7 +351,12 @@ export async function getPostsPaginated({
       offset: String(offset),
       ...(tag ? { tag } : {}),
     });
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const { data, headers } = await requestWithMeta<Post[]>(`/posts?${params}`);
+    const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startedAt;
+    if (scope === 'city' || scope === 'campus' || scope === 'commons') {
+      void trackAnalyticsEvent('feed_load_completed', scope, durationMs);
+    }
     const totalCount = Number(headers.get('x-total-count') || data.length);
     const hasMore = headers.get('x-has-more') === 'true' || offset + data.length < totalCount;
     return {
