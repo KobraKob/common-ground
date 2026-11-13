@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.modules.identity.models import User, StudentProfile, UserBlock
+from app.modules.analytics.models import AnalyticsEvent
 from app.modules.communities.models import CommunityMembership
 from app.modules.colleges.models import College
 from app.modules.mentorship.models import MentorshipProfile, MentorshipRequest
@@ -323,5 +324,21 @@ async def update_mentorship_request(
 
     request.status = payload.status
     request.updated_at = datetime.now(timezone.utc)
+    if payload.status == "ACCEPTED":
+        mentor_college_result = await db.execute(
+            select(StudentProfile.college_id).where(StudentProfile.user_id == request.mentor_id)
+        )
+        requester_college_result = await db.execute(
+            select(StudentProfile.college_id).where(StudentProfile.user_id == request.requester_id)
+        )
+        mentor_college_id = mentor_college_result.scalar_one_or_none()
+        requester_college_id = requester_college_result.scalar_one_or_none()
+        db.add(AnalyticsEvent(
+            user_id=user.id,
+            event_name="connection_created",
+            college_id=mentor_college_id,
+            is_cross_campus_interaction=bool(mentor_college_id and requester_college_id and mentor_college_id != requester_college_id),
+            event_metadata={"surface": "mentorship"},
+        ))
     await db.commit()
     return {"id": request.id, "status": request.status}
