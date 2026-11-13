@@ -23,7 +23,9 @@ export default function BuildPage() {
   const [joinRole, setJoinRole] = useState('Collaborator');
   const [workspace, setWorkspace] = useState<ProjectItem | null>(null);
   const [workspaceError, setWorkspaceError] = useState('');
-  const [tasks, setTasks] = useState<TaskItem[]>([]);\n  const [members, setMembers] = useState<ProjectMemberItem[]>([]);\n  const [selectedAssignee, setSelectedAssignee] = useState('');
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [members, setMembers] = useState<ProjectMemberItem[]>([]);
+  const [selectedAssignee, setSelectedAssignee] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskBusy, setTaskBusy] = useState(false);
   const [filter, setFilter] = useState('ALL');
