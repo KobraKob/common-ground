@@ -40,7 +40,7 @@ async def test_direct_messaging_is_private_and_idempotent(client: AsyncClient, d
         json={"recipient_user_id": recipient.id},
         headers={"X-User-Id": sender.id},
     )
-    assert created.status_code == 201
+    assert created.status_code == 201, created.text
     conversation_id = created.json()["id"]
     assert created.json()["title"] == "Message Recipient"
 
@@ -120,11 +120,11 @@ async def test_direct_messaging_respects_blocks_and_contact_permissions(client: 
         json={"recipient_user_id": blocked_user.id},
         headers={"X-User-Id": requester.id},
     )
-    assert blocked_response.status_code == 403
+    assert blocked_response.status_code == 403, blocked_response.text
 
     restricted_response = await client.post(
         "/api/v1/conversations/direct",
         json={"recipient_user_id": restricted_user.id},
         headers={"X-User-Id": requester.id},
     )
-    assert restricted_response.status_code == 403
+    assert restricted_response.status_code == 403, restricted_response.text
