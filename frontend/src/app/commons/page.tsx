@@ -49,16 +49,8 @@ export default function CommonsPage() {
           getResources(),
         ]);
         const qPosts = (postsData || []).filter((p) => p.category === 'QUESTION_QA' || p.category === 'DISCUSSION');
-        if (qPosts.length > 0) {
-          setPosts(qPosts);
-        } else {
-          setPosts(STARTER_COMMONS_POSTS);
-        }
-        if (resData && resData.length > 0) {
-          setResources(resData);
-        } else {
-          setResources(STARTER_RESOURCES);
-        }
+        setPosts(qPosts);
+        setResources(resData || []);
       } catch (err) {
         console.warn('Could not load the knowledge commons:', err);
       } finally {
