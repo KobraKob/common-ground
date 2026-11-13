@@ -162,6 +162,7 @@ async def signup(
         dm_permission=profile.dm_permission,
         onboarding_completed=profile.onboarding_completed,
         created_at=profile.created_at,
+        platform_role=new_user.platform_role, 
     )
 
     return AuthResponse(
@@ -223,6 +224,7 @@ async def login(
         dm_permission=profile.dm_permission if profile else "SAME_CAMPUS_OR_COMMUNITY",
         onboarding_completed=profile.onboarding_completed if profile else True,
         created_at=profile.created_at if profile else user.created_at,
+        platform_role=user.platform_role, 
     )
 
     return AuthResponse(
@@ -267,6 +269,8 @@ async def auth_me(
         dm_permission=profile.dm_permission,
         onboarding_completed=profile.onboarding_completed,
         created_at=profile.created_at,
+        platform_role=new_user.platform_role, 
+        platform_role=user.platform_role,
     )
 
 
@@ -454,6 +458,7 @@ async def complete_onboarding(
         dm_permission=profile.dm_permission,
         onboarding_completed=profile.onboarding_completed,
         created_at=profile.created_at,
+        platform_role=new_user.platform_role, 
     )
 
 
@@ -493,6 +498,7 @@ async def get_my_profile(
         dm_permission=profile.dm_permission,
         onboarding_completed=profile.onboarding_completed,
         created_at=profile.created_at,
+        platform_role=new_user.platform_role, 
     )
 
 
@@ -540,6 +546,7 @@ async def update_my_profile(
         dm_permission=profile.dm_permission,
         onboarding_completed=profile.onboarding_completed,
         created_at=profile.created_at,
+        platform_role=new_user.platform_role, 
     )
 
 
@@ -615,6 +622,7 @@ async def get_profile_by_handle(
         dm_permission=profile.dm_permission,
         onboarding_completed=profile.onboarding_completed,
         created_at=profile.created_at,
+        platform_role=new_user.platform_role, 
     )
 
 
