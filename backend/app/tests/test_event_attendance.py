@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from sqlalchemy import select
 from httpx import AsyncClient
 
 from app.modules.events.models import Event, EventAttendance, EventRSVP
@@ -59,7 +60,7 @@ async def test_organizer_confirms_attendance_after_event_and_student_can_view_it
     assert len(history.json()) == 1
     assert history.json()[0]["title"] == event.title
     record = (await db_session.execute(
-        __import__("sqlalchemy").select(EventAttendance).where(EventAttendance.user_id == attendee.id)
+        select(EventAttendance).where(EventAttendance.user_id == attendee.id)
     )).scalar_one()
     assert record.marked_by == organizer.id
 
