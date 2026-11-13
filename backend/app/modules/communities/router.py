@@ -479,9 +479,10 @@ async def list_conversation_messages(
     count_res = await db.execute(count_subq)
     total_count = count_res.scalar() or 0
 
-    query = query.order_by(Message.created_at.asc()).offset(offset).limit(limit)
+    query = query.order_by(Message.created_at.desc()).offset(offset).limit(limit)
     result = await db.execute(query)
-    rows = result.all()
+    rows = list(result.all())
+    rows.reverse()
 
     from datetime import datetime, timezone
     member.last_read_at = datetime.now(timezone.utc)
