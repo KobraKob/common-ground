@@ -2,7 +2,9 @@ import time
 import logging
 from typing import Dict, Any, List
 from collections import defaultdict, deque
-from fastapi import Request, Response, APIRouter, Depends, HTTPException\nfrom app.core.security import get_current_user\nfrom app.modules.identity.models import User
+from fastapi import Request, Response, APIRouter, Depends, HTTPException
+from app.core.security import get_current_user
+from app.modules.identity.models import User
 from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger("commonground.monitoring")
@@ -115,7 +117,9 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
             raise
 
         duration_ms = (time.perf_counter() - start_time) * 1000.0
-        route = request.scope.get("route")\n        metric_path = getattr(route, "path", path)\n        metrics_tracker.record_request(request.method, metric_path, response.status_code, duration_ms)
+        route = request.scope.get("route")
+        metric_path = getattr(route, "path", path)
+        metrics_tracker.record_request(request.method, metric_path, response.status_code, duration_ms)
 
         response.headers["X-Response-Time"] = f"{duration_ms:.2f}ms"
         response.headers["Server-Timing"] = f"app;dur={duration_ms:.2f};desc=\"FastAPI processing\""
