@@ -25,41 +25,6 @@ import { TrustBadge } from '@/components/shared/TrustBadge';
 import { ReportModal } from '@/components/shared/ReportModal';
 import { CampusHeroBanner } from '@/components/shared/CampusHeroBanner';
 
-// Default starter discussions per campus
-const STARTER_CAMPUS_DISCUSSIONS: Record<string, any[]> = {
-  rvce: [
-    {
-      id: 'rvce-disc-1',
-      category: 'DISCUSSION',
-      title: '8th Mile Battle of the Bands Soundcheck Schedule',
-      body: 'Main stage audio test in the quadrangle begins at 6 PM. Technical crew passes are available at the student council office.',
-      upvotes: 42,
-      comments: 7,
-      created_at: new Date(Date.now() - 3600000 * 3).toISOString(),
-    },
-    {
-      id: 'rvce-disc-2',
-      category: 'QUESTION_QA',
-      title: 'Elective Selection Guidance for 6th Semester Computer Science',
-      body: 'Looking for advice between High Performance Computing and Computer Vision. What is the lab project workload like for each course?',
-      upvotes: 28,
-      comments: 11,
-      created_at: new Date(Date.now() - 3600000 * 8).toISOString(),
-    },
-  ],
-  pesu: [
-    {
-      id: 'pesu-disc-1',
-      category: 'DISCUSSION',
-      title: 'Kinetic Lighting Sequence Testing for Annual Showcase',
-      body: 'The illuminated circular LED array is installed in the open amphitheatre. Demonstration sequences start after evening lab sessions.',
-      upvotes: 38,
-      comments: 6,
-      created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
-    },
-  ],
-};
-
 export default function CampusPage() {
   const [colleges, setColleges] = useState<College[]>(BENGALURU_COLLEGES);
   const [selectedSlug, setSelectedSlug] = useState('rvce');
@@ -69,18 +34,10 @@ export default function CampusPage() {
   const defaultCollege = BENGALURU_COLLEGES.find((c) => c.slug === selectedSlug) || BENGALURU_COLLEGES[0];
   const [overview, setOverview] = useState<any>({
     college: defaultCollege,
-    student_created_communities: [
-      { id: 'comm-1', name: 'Computer Science & Engineering', type: 'DEPARTMENT', member_count: 140, description: 'Course discussions, lab manuals, and peer doubt clearing for CSE students.' },
-      { id: 'comm-2', name: 'Campus Robotics Club', type: 'CLUB', member_count: 85, description: 'Autonomous ground robots, ROS2 workshops, and rover challenge teams.' },
-      { id: 'comm-3', name: 'Google Developer Group On Campus', type: 'CLUB', member_count: 110, description: 'Web, cloud, and open source workshops for student builders.' },
-    ],
-    pinned_announcements: [
-      { id: 'ann-1', title: 'Autonomous End-Semester Examination Schedule', body: 'Hall tickets and examination blueprints have been published on the student portal. Practical examinations begin Monday.', created_at: new Date().toISOString() },
-    ],
-    upcoming_events: [
-      { id: 'evt-1', title: 'Inter-College Hackathon 2026', description: '36-hour cross-campus software and hardware sprint. Cash prize pool and incubator referrals.', venue_or_link: 'Main Auditorium & CS Labs', rsvp_count: 94 },
-    ],
-    active_discussions: STARTER_CAMPUS_DISCUSSIONS[selectedSlug] || STARTER_CAMPUS_DISCUSSIONS.rvce,
+    student_created_communities: [],
+    pinned_announcements: [],
+    upcoming_events: [],
+    active_discussions: [],
   });
 
   // Post form state
@@ -113,7 +70,7 @@ export default function CampusPage() {
               ...data,
               active_discussions: (data.active_discussions && data.active_discussions.length > 0)
                 ? data.active_discussions
-                : (STARTER_CAMPUS_DISCUSSIONS[selectedSlug] || STARTER_CAMPUS_DISCUSSIONS.rvce),
+                : [],
             });
           }
         }
@@ -181,7 +138,7 @@ export default function CampusPage() {
                     setOverview((prev: any) => ({
                       ...prev,
                       college: matched,
-                      active_discussions: STARTER_CAMPUS_DISCUSSIONS[slug] || STARTER_CAMPUS_DISCUSSIONS.rvce,
+                      active_discussions: [],
                     }));
                   }
                 }}
