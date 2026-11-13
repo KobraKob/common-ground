@@ -79,9 +79,9 @@ The analytics dashboard displays this measurement limitation directly. It intent
 These are intentionally not represented as shipped functionality:
 
 - Campus representatives should verify approximate map pins before they are treated as authoritative entrances or travel/safety guidance. Coordinate provenance and limitations are recorded in docs/CAMPUS_COORDINATE_SOURCES.md.
-- A complete contribution ledger for peer mentoring outcomes and project task completion. The Passport currently records accepted project memberships and organizer-confirmed event attendance; it does not yet claim mentorship sessions or completed tasks until those outcomes have a verified workflow.
+- Verified mentorship session outcomes are not tracked yet. The Passport includes tasks marked DONE in the collaboration workspace, clearly labelled as team status rather than independently audited credentials.
 - Milestone history, activity timeline and richer task dependencies in project workspaces.
-- Automatic infinite-scroll integration. City and Commons currently use explicit accessible “Load more” pagination; the reusable virtualized feed primitive is not yet wired into those routes.
+- Commons still uses explicit accessible pagination. City now uses TanStack infinite queries with window virtualization and no nested feed scroll container.
 - Broader TanStack Query migration for server-state caching and invalidation across legacy pages. Discovery and the City feed now use cached query flows; other legacy routes remain to be migrated.
 - A full WCAG 2.2 AA audit with keyboard/screen-reader testing across every route and modal.
 - A full browser-based E2E suite and verified deployment/restore drills. CI includes production-route HTTP smoke checks, but these do not replace real browser interaction tests.
@@ -89,7 +89,7 @@ These are intentionally not represented as shipped functionality:
 
 ## Acceptance gates
 
-- Backend test suite passes, including new analytics and project permission tests.
+- Backend test suite passes, including analytics, project task permissions, organizer-confirmed attendance and mentorship consent/contact-boundary tests.
 - Frontend TypeScript static check and production build pass.
 - Dependency and secret scanning pass.
 - Staging database migration is applied and rolled back in a rehearsal.
