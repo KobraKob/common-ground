@@ -118,5 +118,5 @@ class ProjectJoinRequestResponse(BaseModel):
     display_name: str
     handle: str
     role_title: str
-    pitch_note: str
+    pitch_note: Optional[str] = None
     requested_at: datetime
