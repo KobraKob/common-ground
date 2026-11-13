@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Building2, CalendarDays, Compass, ExternalLink, Layers3, MapPin, Users } from 'lucide-react';
-import { getColleges, getCommunities, getEvents, getProjects, joinCommunity, rsvpEvent } from '@/lib/api';
-import type { College, Community, EventItem, ProjectItem } from '@/types';
+import { getColleges, getCommunities, getEvents, getProjects, getMyProfile, joinCommunity, rsvpEvent } from '@/lib/api';
+import type { College, Community, EventItem, ProjectItem, StudentProfile } from '@/types';
 
 type Section = 'campuses' | 'circles' | 'projects' | 'events';
 
@@ -13,27 +13,27 @@ export default function DiscoverPage() {
   const [colleges, setColleges] = useState<College[]>([]);
   const [circles, setCircles] = useState<Community[]>([]);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
-  const [events, setEvents] = useState<EventItem[]>([]);
+  const [events, setEvents] = useState<EventItem[]>([]);\n  const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState('');
-  const [notice, setNotice] = useState('');
+  const [notice, setNotice] = useState('');\n  const [matchSkillsOnly, setMatchSkillsOnly] = useState(false);
 
   useEffect(() => {
     let live = true;
-    Promise.all([getColleges(), getCommunities(), getProjects(), getEvents()])
-      .then(([campusData, circleData, projectData, eventData]) => {
+    Promise.all([getColleges(), getCommunities(), getProjects(), getEvents(), getMyProfile()])
+      .then(([campusData, circleData, projectData, eventData, myProfile]) => {
         if (!live) return;
         setColleges(campusData || []);
         setCircles((circleData || []).filter((item) => item.community_type === 'CROSS_CAMPUS_INTEREST'));
         setProjects(projectData || []);
-        setEvents(eventData || []);
+        setEvents(eventData || []);\n        setProfile(myProfile || null);
       })
       .catch(() => { if (live) setNotice('Some discovery data could not be loaded. Try again in a moment.'); })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, []);
 
-  const upcoming = useMemo(() => events.filter((event) => new Date(event.ends_at) >= new Date()), [events]);
+  const upcoming = useMemo(() => events.filter((event) => new Date(event.ends_at) >= new Date()), [events]);\n  const matchingProjects = useMemo(() => projects.filter((project) => {\n    if (!profile?.skills?.length) return false;\n    const skillSet = new Set(profile.skills.map((skill) => skill.toLowerCase()));\n    return project.skills_needed.some((skill) => skillSet.has(skill.toLowerCase()));\n  }), [projects, profile]);\n  const visibleProjects = matchSkillsOnly ? matchingProjects : projects;
   const tabs: { id: Section; label: string }[] = [
     { id: 'campuses', label: 'Campuses' }, { id: 'circles', label: 'Circles' },
     { id: 'projects', label: 'Projects' }, { id: 'events', label: 'Events' },
@@ -60,7 +60,7 @@ export default function DiscoverPage() {
         <p className="max-w-2xl text-base leading-7 cg-muted">Explore participating colleges, interest circles, student projects and upcoming events across Bengaluru. Listings come from the live CommonGround services.</p>
       </header>
 
-      <div className="flex flex-wrap gap-2 border-b border-[var(--cg-border)] pb-3" role="tablist" aria-label="Discovery categories">
+      <section aria-label="Campus intelligence snapshot" className="grid grid-cols-2 gap-3 sm:grid-cols-4">\n        {[['Campuses', colleges.length], ['Interest circles', circles.length], ['Projects listed', projects.length], ['Upcoming events', upcoming.length]].map(([label, value]) => <div key={label} className="cg-surface p-4"><p className="text-xs cg-muted">{label}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p></div>)}\n      </section>\n\n      <div className="flex flex-wrap gap-2 border-b border-[var(--cg-border)] pb-3" role="tablist" aria-label="Discovery categories">
         {tabs.map((tab) => <button key={tab.id} role="tab" aria-selected={section === tab.id} onClick={() => setSection(tab.id)}
           className={`min-h-11 rounded-full px-4 text-sm font-medium transition-colors ${section === tab.id ? 'bg-[var(--cg-accent)] text-white' : 'bg-[var(--cg-elevated)] text-[var(--cg-muted)] hover:text-[var(--cg-text)]'}`}>{tab.label}</button>)}
       </div>
