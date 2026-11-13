@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Literal
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -24,9 +24,24 @@ class MemberStatusUpdateRequest(BaseModel):
 
 
 class TaskCreateRequest(BaseModel):
-    title: str = Field(..., min_length=1)
-    status: str = "TODO"  # TODO, IN_PROGRESS, DONE
+    title: str = Field(..., min_length=2, max_length=255)
+    status: Literal["TODO", "IN_PROGRESS", "DONE"] = "TODO"
     assignee_id: Optional[str] = None
+
+
+class TaskUpdateRequest(BaseModel):
+    title: Optional[str] = Field(None, min_length=2, max_length=255)
+    status: Optional[Literal["TODO", "IN_PROGRESS", "DONE"]] = None
+    assignee_id: Optional[str] = None
+
+
+class ProjectMemberResponse(BaseModel):
+    user_id: str
+    display_name: str
+    handle: str
+    role_title: str
+    is_creator: bool = False
+    joined_at: datetime
 
 
 class TaskResponse(BaseModel):
