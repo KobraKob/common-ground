@@ -170,6 +170,18 @@ async def request_to_join_project(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    # Cross-campus visibility is enforced server-side, not only by the UI.
+    if not project.is_cross_campus_open:
+        profile_result = await db.execute(
+            select(StudentProfile.college_id).where(StudentProfile.user_id == user.id)
+        )
+        applicant_college_id = profile_result.scalar_one_or_none()
+        if applicant_college_id != project.college_id:
+            raise HTTPException(status_code=403, detail="This project is limited to its own campus")
+
+    if project.stage not in {"IDEA", "RECRUITING"}:
+        raise HTTPException(status_code=409, detail="This project is not accepting new collaborators")
+
     # Check already member or pending
     m_res = await db.execute(
         select(ProjectMember).where(
@@ -236,11 +248,34 @@ async def update_project_member_status(
     return {"message": f"Member status updated to {payload.status}"}
 
 
+async def require_project_member(project_id: str, user_id: str, db: AsyncSession) -> Project:
+    project_result = await db.execute(select(Project).where(Project.id == project_id))
+    project = project_result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project.creator_id == user_id:
+        return project
+    member_result = await db.execute(
+        select(ProjectMember.id).where(
+            and_(
+                ProjectMember.project_id == project_id,
+                ProjectMember.user_id == user_id,
+                ProjectMember.status == "ACCEPTED",
+            )
+        )
+    )
+    if member_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=403, detail="Only accepted project members can access this workspace")
+    return project
+
+
 @router.get("/projects/{project_id}/tasks", response_model=List[TaskResponse])
 async def list_project_tasks(
     project_id: str,
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_project_member(project_id, user.id, db)
     result = await db.execute(select(Task).where(Task.project_id == project_id).order_by(Task.created_at.asc()))
     return result.scalars().all()
 
@@ -252,11 +287,26 @@ async def create_project_task(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_project_member(project_id, user.id, db)
+    assignee_id = payload.assignee_id or user.id
+    if assignee_id != user.id:
+        assignee_result = await db.execute(
+            select(ProjectMember.id).where(
+                and_(
+                    ProjectMember.project_id == project_id,
+                    ProjectMember.user_id == assignee_id,
+                    ProjectMember.status == "ACCEPTED",
+                )
+            )
+        )
+        if assignee_result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=400, detail="Tasks can only be assigned to accepted project members")
+
     task = Task(
         project_id=project_id,
         title=payload.title,
         status=payload.status,
-        assignee_id=payload.assignee_id or user.id,
+        assignee_id=assignee_id,
     )
     db.add(task)
     await db.commit()
