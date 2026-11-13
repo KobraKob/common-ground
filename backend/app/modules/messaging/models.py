@@ -19,11 +19,14 @@ class Conversation(Base):
     community_id: Mapped[str] = mapped_column(GUID, ForeignKey("communities.id", ondelete="CASCADE"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(150), nullable=True)
     description: Mapped[Text] = mapped_column(Text, nullable=True)
+    direct_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     last_message_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
 
     members = relationship("ConversationMember", back_populates="conversation", cascade="all, delete-orphan")
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
+
+    __table_args__ = (UniqueConstraint("direct_key", name="uq_conversations_direct_key"),)
 
 
 class ConversationMember(Base):
