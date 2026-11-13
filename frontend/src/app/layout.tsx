@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { Inter } from 'next/font/google';
 import { GlobalHeader } from '@/components/shared/GlobalHeader';
 import { NavigationSidebar } from '@/components/shared/NavigationSidebar';
 import { CelestialBackground } from '@/components/shared/CelestialBackground';
 import { Providers } from '@/app/providers';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'CommonGround — Bengaluru Cross-Campus Network',
