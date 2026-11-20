@@ -111,7 +111,7 @@ jobs:
         run: npx --yes @lhci/cli@0.14.0 autorun --config=./lighthouserc.json
       - name: Upload Lighthouse reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: common-ground-lighthouse-reports
           path: frontend/.lighthouseci
