@@ -15,7 +15,7 @@
     "@astryxdesign/core": "^0.7.14",
     "@astryxdesign/theme-y2k": "^0.7.14",
     "@capacitor/cli": "^7.0.0",
-    "@capacitor/core": "^7.0.0",
+    "@capacitor/core": "^8.6.2",
     "@hugeicons/core-free-icons": "^4.4.0",
     "@hugeicons/react": "^1.1.10",
     "@stylexjs/stylex": "^0.19.0",
